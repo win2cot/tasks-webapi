@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   pull_request:
 
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+
 permissions:
   contents: read
   checks: write
@@ -25,6 +29,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
       - name: Run tests
         run: ./gradlew test
