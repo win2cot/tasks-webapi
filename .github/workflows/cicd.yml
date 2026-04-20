@@ -50,13 +50,15 @@ jobs:
           path: build/reports/tests/test/
 
       - name: JaCoCo Report
-        uses: madrapps/jacoco-report@v1.6.1
+        uses: madrapps/jacoco-report@v1.7.2
         if: always()
         with:
           paths: build/reports/jacoco/test/jacocoTestReport.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-          title: Code Coverage
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
           update-comment: true
+          title: Code Coverage
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
