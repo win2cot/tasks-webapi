@@ -10,6 +10,24 @@
     {
       "matchUpdateTypes": ["patch"],
       "automerge": true
+    },
+    {
+      "matchManagers": ["gradle", "gradle-wrapper"],
+      "matchPackagePatterns": ["^org\\.springframework"],
+      "groupName": "Spring Boot"
+    },
+    {
+      "matchPackageNames": [
+        "com.google.errorprone:error_prone_core",
+        "com.uber.nullaway:nullaway"
+      ],
+      "groupName": "Static Analysis (Error Prone + NullAway)"
+    },
+    {
+      "matchPackageNames": [
+        "org.projectlombok:lombok"
+      ],
+      "groupName": "Lombok"
     }
   ]
 }
