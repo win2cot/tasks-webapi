@@ -34,7 +34,7 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 
     // Other dependencies
-    errorprone 'com.google.errorprone:error_prone_core:2.28.0'
+    errorprone 'com.google.errorprone:error_prone_core:2.49.0'
     errorprone 'com.uber.nullaway:nullaway:0.12.3'
 }
 
