@@ -13,8 +13,10 @@
     },
     {
       "matchManagers": ["gradle", "gradle-wrapper"],
-      "matchPackagePatterns": ["^org\\.springframework"],
-      "groupName": "Spring Boot"
+      "groupName": "Spring Boot",
+      "matchPackageNames": [
+        "/^org\\.springframework/"
+      ]
     },
     {
       "matchPackageNames": [
