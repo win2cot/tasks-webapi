@@ -1,0 +1,4 @@
+# Permission verification test
+This file was created to verify that claude_args and permissions are working correctly.
+Branch: claude/issue-47-20260427-1238
+Issue: #47
