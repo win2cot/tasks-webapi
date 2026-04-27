@@ -20,6 +20,12 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.modulith:spring-modulith-bom:2.0.6'
+    }
+}
+
 dependencies {
     // Spring Boot dependencies
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -32,6 +38,10 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // Spring Modulith
+    implementation 'org.springframework.modulith:spring-modulith-starter-core'
+    testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
 
     // Other dependencies
     errorprone 'com.google.errorprone:error_prone_core:2.49.0'
