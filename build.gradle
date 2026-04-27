@@ -33,6 +33,10 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
+    // Spring Modulith
+    implementation 'org.springframework.modulith:spring-modulith-starter-core:2.0.0'
+    testImplementation 'org.springframework.modulith:spring-modulith-starter-test:2.0.0'
+
     // Other dependencies
     errorprone 'com.google.errorprone:error_prone_core:2.49.0'
     errorprone 'com.uber.nullaway:nullaway:0.13.4'
