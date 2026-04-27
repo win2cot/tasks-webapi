@@ -5,7 +5,7 @@ import org.springframework.modulith.core.ApplicationModules;
 
 class ModularityTests {
 
-  ApplicationModules modules = ApplicationModules.of(TasksWebapiApplication.class);
+  static final ApplicationModules modules = ApplicationModules.of(TasksWebapiApplication.class);
 
   @Test
   void verifyModularity() {
