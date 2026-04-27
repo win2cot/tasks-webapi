@@ -8,6 +8,7 @@ on:
 env:
   LANG: ja_JP.UTF-8
   TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: read
