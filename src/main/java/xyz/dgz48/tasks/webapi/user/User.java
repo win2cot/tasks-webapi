@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SuppressWarnings("NullAway.Init")
+@SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
 public class User {
 
   @Id
