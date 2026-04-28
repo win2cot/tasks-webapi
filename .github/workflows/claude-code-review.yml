@@ -45,6 +45,7 @@ jobs:
             Please review this pull request and post your findings as a comment.
             Focus on: correctness, null safety, test coverage, and code quality.
             Post the review result as a GitHub PR comment.
+            Write all review comments in Japanese.
           claude_args: |
             --max-turns 20
             --allowed-tools Bash(gh pr comment *) Bash(gh pr view *) Bash(gh pr diff *) Bash(git diff *) Read Glob Grep LS
