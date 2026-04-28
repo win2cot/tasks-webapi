@@ -30,6 +30,7 @@ dependencies {
     // Spring Boot dependencies
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.jspecify:jspecify'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -42,6 +43,18 @@ dependencies {
     // Spring Modulith
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
     testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
+
+    // Flyway
+    implementation 'org.springframework.boot:spring-boot-flyway'
+    implementation 'org.flywaydb:flyway-mysql'
+
+    // MySQL
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // Testcontainers
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-mysql'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 
     // Other dependencies
     errorprone 'com.google.errorprone:error_prone_core:2.49.0'

@@ -1,6 +1,10 @@
 spring:
   application:
     name: tasks-webapi
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
 
 server:
   port: 8080
