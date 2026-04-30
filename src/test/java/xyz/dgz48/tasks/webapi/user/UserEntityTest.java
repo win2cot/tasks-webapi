@@ -7,17 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
 
 @SpringBootTest
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})
 @Transactional
 class UserEntityTest {
-
-  @MockitoBean JwtDecoder jwtDecoder;
 
   @Autowired EntityManager entityManager;
 

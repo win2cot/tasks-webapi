@@ -29,4 +29,16 @@ class SecurityConfigTest {
   void authenticatedRequestIsAllowed() throws Exception {
     mockMvc.perform(get("/api/tasks").with(jwt())).andExpect(status().isNotFound());
   }
+
+  @Test
+  void actuatorHealthIsPubliclyAccessible() throws Exception {
+    // Actuator endpoints are not registered in @WebMvcTest slice; 404 confirms security allows
+    // through
+    mockMvc.perform(get("/actuator/health")).andExpect(status().isNotFound());
+  }
+
+  @Test
+  void actuatorInfoIsPubliclyAccessible() throws Exception {
+    mockMvc.perform(get("/actuator/info")).andExpect(status().isNotFound());
+  }
 }
