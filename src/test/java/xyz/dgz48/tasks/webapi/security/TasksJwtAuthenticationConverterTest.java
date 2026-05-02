@@ -21,21 +21,28 @@ class TasksJwtAuthenticationConverterTest {
 
   @Mock UserRepository userRepository;
   @Mock Jwt jwt;
+  @Mock User user;
 
   @InjectMocks TasksJwtAuthenticationConverter converter;
 
   @Test
   void convertsJwtToAuthenticationToken() {
-    User user = new User("sub123", "user@example.com", "山田太郎", "ヤマダタロウ", "開発部");
     when(jwt.getSubject()).thenReturn("sub123");
     when(userRepository.findByOidcSub("sub123")).thenReturn(Optional.of(user));
+    when(user.getId()).thenReturn(1L);
+    when(user.getOidcSub()).thenReturn("sub123");
+    when(user.getEmail()).thenReturn("user@example.com");
+    when(user.getFullName()).thenReturn("山田太郎");
+    when(user.getFullNameKana()).thenReturn("ヤマダタロウ");
+    when(user.getDepartmentName()).thenReturn("開発部");
 
     AbstractAuthenticationToken token = converter.convert(jwt);
 
     assertThat(token).isInstanceOf(TasksAuthenticationToken.class);
     assertThat(token.isAuthenticated()).isTrue();
     TasksPrincipal principal = (TasksPrincipal) token.getPrincipal();
-    assertThat(principal.getOidcSub()).isEqualTo("sub123");
+    assertThat(principal.getId()).isEqualTo(1L);
+    assertThat(principal.getSub()).isEqualTo("sub123");
     assertThat(principal.getEmail()).isEqualTo("user@example.com");
     assertThat(principal.getFullName()).isEqualTo("山田太郎");
     assertThat(principal.getDepartmentName()).isEqualTo("開発部");

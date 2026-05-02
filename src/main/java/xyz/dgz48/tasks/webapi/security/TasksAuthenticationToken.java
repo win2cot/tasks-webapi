@@ -7,6 +7,8 @@ import org.springframework.security.core.GrantedAuthority;
 
 public class TasksAuthenticationToken extends AbstractAuthenticationToken {
 
+  private static final long serialVersionUID = 1L;
+
   private final TasksPrincipal principal;
 
   public TasksAuthenticationToken(

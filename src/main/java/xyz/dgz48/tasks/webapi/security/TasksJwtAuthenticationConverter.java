@@ -28,7 +28,8 @@ public class TasksJwtAuthenticationConverter
     User user =
         userRepository
             .findByOidcSub(sub)
-            .orElseThrow(() -> new InvalidBearerTokenException("User not found: " + sub));
+            .orElseThrow(
+                () -> new InvalidBearerTokenException("User not found for provided sub claim"));
     TasksPrincipal principal =
         new TasksPrincipal(
             user.getId(),

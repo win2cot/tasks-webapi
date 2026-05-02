@@ -1,12 +1,14 @@
 package xyz.dgz48.tasks.webapi.security;
 
 import java.security.Principal;
+import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
 
+@EqualsAndHashCode(of = "sub")
 public class TasksPrincipal implements Principal {
 
   private final Long id;
-  private final String oidcSub;
+  private final String sub;
   private final String email;
   private final String fullName;
   private final String fullNameKana;
@@ -14,13 +16,13 @@ public class TasksPrincipal implements Principal {
 
   public TasksPrincipal(
       Long id,
-      String oidcSub,
+      String sub,
       String email,
       String fullName,
       String fullNameKana,
       @Nullable String departmentName) {
     this.id = id;
-    this.oidcSub = oidcSub;
+    this.sub = sub;
     this.email = email;
     this.fullName = fullName;
     this.fullNameKana = fullNameKana;
@@ -29,15 +31,15 @@ public class TasksPrincipal implements Principal {
 
   @Override
   public String getName() {
-    return oidcSub;
+    return sub;
   }
 
   public Long getId() {
     return id;
   }
 
-  public String getOidcSub() {
-    return oidcSub;
+  public String getSub() {
+    return sub;
   }
 
   public String getEmail() {

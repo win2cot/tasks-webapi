@@ -12,7 +12,7 @@ class TasksPrincipalTest {
         new TasksPrincipal(1L, "sub123", "user@example.com", "山田太郎", "ヤマダタロウ", "開発部");
 
     assertThat(principal.getId()).isEqualTo(1L);
-    assertThat(principal.getOidcSub()).isEqualTo("sub123");
+    assertThat(principal.getSub()).isEqualTo("sub123");
     assertThat(principal.getEmail()).isEqualTo("user@example.com");
     assertThat(principal.getFullName()).isEqualTo("山田太郎");
     assertThat(principal.getFullNameKana()).isEqualTo("ヤマダタロウ");
@@ -20,7 +20,7 @@ class TasksPrincipalTest {
   }
 
   @Test
-  void getNameReturnsOidcSub() {
+  void getNameReturnsSub() {
     TasksPrincipal principal =
         new TasksPrincipal(1L, "sub123", "user@example.com", "山田太郎", "ヤマダタロウ", null);
 
