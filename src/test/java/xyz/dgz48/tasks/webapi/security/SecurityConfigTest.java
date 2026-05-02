@@ -11,12 +11,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import xyz.dgz48.tasks.webapi.user.UserRepository;
 
 @WebMvcTest
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, TasksJwtAuthenticationConverter.class})
 class SecurityConfigTest {
 
   @MockitoBean JwtDecoder jwtDecoder;
+  @MockitoBean UserRepository userRepository;
 
   @Autowired MockMvc mockMvc;
 
