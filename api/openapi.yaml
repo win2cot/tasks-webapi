@@ -1,0 +1,690 @@
+openapi: 3.1.0
+info:
+  title: タスク管理システム API
+  description: |
+    マルチテナントSaaS型タスク管理システムのREST API仕様(v1.2準拠)。
+
+    認証はKeycloak経由のOIDC、本APIはJWTを Spring Security OAuth2 Resource Server で検証する。
+    全リクエストには `Authorization: Bearer {access_token}` を付与し、
+    アクティブテナントは `X-Tenant-Id` ヘッダで送出する。
+
+    認可は3階層: SaaS Admin / Tenant Admin / Member。
+    タスクごとの参照認可は visibility (TENANT/STAKEHOLDERS/PRIVATE) と所有者・関係者・担当者の関係で決定する。
+  version: "1.2.0"
+  contact:
+    name: 開発チーム
+    email: dev@example.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.taskflow.example.com
+    description: 本番環境
+  - url: https://staging-api.taskflow.example.com
+    description: ステージング環境
+  - url: http://localhost:8080
+    description: ローカル開発環境
+
+# ======================================================================
+# セキュリティ
+# ======================================================================
+security:
+  - bearerAuth: []
+    tenantHeader: []
+
+# ======================================================================
+# パス
+# ======================================================================
+paths:
+  # --- 認証・テナント ---
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: ログイン中ユーザー情報・所属テナント一覧
+      operationId: getMe
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/auth/tenants/{tenantId}/select:
+    post:
+      tags: [Auth]
+      summary: アクティブテナント切替
+      operationId: selectTenant
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: No Content }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: ログアウト(Keycloakセッション終了)
+      operationId: logout
+      responses:
+        "204": { description: No Content }
+
+  # --- テナント (SaaS Admin) ---
+  /api/tenants:
+    get:
+      tags: [Tenant]
+      summary: テナント一覧 (SaaS Admin)
+      description: "認可: SaaS Admin のみ"
+      operationId: listTenants
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Tenant" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Tenant]
+      summary: テナント作成 (SaaS Admin)
+      description: "認可: SaaS Admin のみ"
+      operationId: createTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantCreateRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "400": { $ref: "#/components/responses/Validation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/tenants/{id}:
+    put:
+      tags: [Tenant]
+      summary: テナント更新 (SaaS Admin)
+      operationId: updateTenant
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantUpdateRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- テナント内ユーザー管理 (Tenant Admin) ---
+  /api/users/me:
+    get:
+      tags: [User]
+      summary: 自身のプロフィール取得(既存usersから読み取り)
+      operationId: getMyProfile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserProfile" }
+
+  /api/tenant/users:
+    get:
+      tags: [User]
+      summary: 現在のテナント内ユーザー一覧
+      description: "認可: Tenant内のMember以上"
+      operationId: listTenantUsers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TenantUser" }
+
+  /api/tenant/users/invite:
+    post:
+      tags: [User]
+      summary: ユーザー招待 (Tenant Admin)
+      description: "認可: Tenant Admin のみ。oidc_subが既存usersに登録済みの場合、user_tenants に紐付け"
+      operationId: inviteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserInviteRequest" }
+      responses:
+        "201": { description: Created }
+        "400": { $ref: "#/components/responses/Validation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: 既に所属済み / 既存usersに該当oidc_subなし
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/tenant/users/{userId}/role:
+    put:
+      tags: [User]
+      summary: ロール変更 (Tenant Admin)
+      operationId: updateRole
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [TENANT_ADMIN, MEMBER] }
+      responses:
+        "200": { description: OK }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # --- タスク ---
+  /api/tasks:
+    get:
+      tags: [Task]
+      summary: タスク一覧(認可フィルタ済み)
+      description: |
+        認可フィルタは以下を AND で結合:
+        - tenant_id = X-Tenant-Id (Hibernate Filterで自動付与)
+        - deleted_at IS NULL
+        - visibility による絞込:
+          - visibility=TENANT: 全員参照可
+          - visibility=STAKEHOLDERS: owner_id=me OR assignee_id=me OR EXISTS (task_stakeholders WHERE user_id=me)
+          - visibility=PRIVATE: owner_id=me
+          - Tenant Admin は visibility 制限を受けない
+      operationId: listTasks
+      parameters:
+        - { name: targetDate,     in: query, schema: { type: string, format: date }, description: "表示対象日(省略時は当日 TODAY)" }
+        - { name: includeOverdue, in: query, schema: { type: boolean, default: true }, description: "期限切れ未完了タスクを含める" }
+        - { name: status,         in: query, schema: { type: string }, description: "カンマ区切りで複数指定可" }
+        - { name: ownerId,        in: query, schema: { type: integer, format: int64 } }
+        - { name: assigneeId,     in: query, schema: { type: integer, format: int64 } }
+        - { name: priority,       in: query, schema: { type: string, enum: [HIGH, MEDIUM, LOW] } }
+        - { name: visibility,     in: query, schema: { type: string, enum: [TENANT, STAKEHOLDERS, PRIVATE] } }
+        - { name: keyword,        in: query, schema: { type: string }, description: "タイトル/説明部分一致" }
+        - { name: page,           in: query, schema: { type: integer, default: 0 } }
+        - { name: size,           in: query, schema: { type: integer, default: 50, maximum: 100 } }
+        - { name: sort,           in: query, schema: { type: string, default: "dueDate,asc" } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskPage" }
+    post:
+      tags: [Task]
+      summary: タスク作成
+      description: |
+        認可: Tenant内のMember以上。
+        tenant_id, owner_id は認証コンテキストから自動付与する(リクエストボディから受け取らない)。
+        due_date は必須。visibility が STAKEHOLDERS のとき stakeholderUserIds を指定可能。
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskCreateRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/Validation" }
+
+  /api/tasks/{id}:
+    get:
+      tags: [Task]
+      summary: タスク詳細取得
+      description: "認可: 一覧と同じ参照認可ルール。違反時は404を返す(リソース存在を漏らさない)"
+      operationId: getTask
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Task]
+      summary: タスク更新
+      description: "認可: 所有者のみ(または Tenant Admin)。違反時は403"
+      operationId: updateTask
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskUpdateRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Task]
+      summary: タスク論理削除
+      description: "認可: 所有者または Tenant Admin"
+      operationId: deleteTask
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: No Content }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/tasks/{id}/status:
+    patch:
+      tags: [Task]
+      summary: ステータス変更
+      description: "認可: 所有者・担当者・Tenant Admin"
+      operationId: changeStatus
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/TaskStatus" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+
+  /api/tasks/{id}/visibility:
+    patch:
+      tags: [Task]
+      summary: 公開範囲変更
+      description: "認可: 所有者のみ"
+      operationId: changeVisibility
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [visibility]
+              properties:
+                visibility: { $ref: "#/components/schemas/Visibility" }
+                stakeholderUserIds:
+                  type: array
+                  items: { type: integer, format: int64 }
+                  description: "visibility=STAKEHOLDERS のとき指定。既存の関係者は置換される"
+      responses:
+        "200": { description: OK }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # --- 関係者 ---
+  /api/tasks/{id}/stakeholders:
+    get:
+      tags: [Stakeholder]
+      summary: 関係者一覧
+      description: "認可: タスク参照可能なユーザー"
+      operationId: listStakeholders
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Stakeholder" }
+    post:
+      tags: [Stakeholder]
+      summary: 関係者追加(所有者のみ)
+      operationId: addStakeholder
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: integer, format: int64 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stakeholder" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/tasks/{taskId}/stakeholders/{userId}:
+    delete:
+      tags: [Stakeholder]
+      summary: 関係者削除(所有者のみ)
+      operationId: removeStakeholder
+      parameters:
+        - { name: taskId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: userId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: No Content }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # --- ダッシュボード ---
+  /api/dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: ダッシュボード集計
+      description: "認可: テナント内ユーザー(自分が参照可能なタスク範囲で集計)"
+      operationId: getDashboardSummary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+
+  # --- 監査ログ ---
+  /api/audit-logs:
+    get:
+      tags: [Audit]
+      summary: 監査ログ参照 (Tenant Admin)
+      operationId: listAuditLogs
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to,   in: query, schema: { type: string, format: date-time } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditLog" }
+                  totalElements: { type: integer, format: int64 }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+# ======================================================================
+# コンポーネント
+# ======================================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: KeycloakがOIDCで発行するJWT
+    tenantHeader:
+      type: apiKey
+      in: header
+      name: X-Tenant-Id
+      description: アクティブテナントのID
+
+  responses:
+    Unauthorized:
+      description: 未認証 / トークン無効
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: 権限なし
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: リソース未存在
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Validation:
+      description: 入力検証エラー
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    # --- 共通 ---
+    Error:
+      type: object
+      required: [timestamp, status, code, message, path]
+      properties:
+        timestamp: { type: string, format: date-time }
+        status:    { type: integer, example: 400 }
+        error:     { type: string, example: "Bad Request" }
+        code:      { type: string, example: "E_VALIDATION", description: "業務エラーコード" }
+        message:   { type: string }
+        path:      { type: string }
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:   { type: string }
+              message: { type: string }
+
+    # --- 列挙 ---
+    TaskStatus:
+      type: string
+      enum: [NOT_STARTED, IN_PROGRESS, DONE, ON_HOLD]
+    Priority:
+      type: string
+      enum: [HIGH, MEDIUM, LOW]
+    Visibility:
+      type: string
+      enum: [TENANT, STAKEHOLDERS, PRIVATE]
+    Role:
+      type: string
+      enum: [TENANT_ADMIN, MEMBER]
+
+    # --- ユーザー / テナント ---
+    UserProfile:
+      type: object
+      properties:
+        id:             { type: integer, format: int64 }
+        email:          { type: string, format: email }
+        fullName:       { type: string }
+        fullNameKana:   { type: string }
+        departmentName: { type: string, nullable: true }
+
+    TenantSummary:
+      type: object
+      properties:
+        id:   { type: integer, format: int64 }
+        code: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+
+    MeResponse:
+      type: object
+      properties:
+        user:           { $ref: "#/components/schemas/UserProfile" }
+        tenants:
+          type: array
+          items: { $ref: "#/components/schemas/TenantSummary" }
+        activeTenantId: { type: integer, format: int64, nullable: true }
+
+    Tenant:
+      type: object
+      properties:
+        id:        { type: integer, format: int64 }
+        code:      { type: string }
+        name:      { type: string }
+        plan:      { type: string, enum: [FREE, STANDARD, ENTERPRISE] }
+        status:    { type: string, enum: [ACTIVE, SUSPENDED, DELETED] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    TenantCreateRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, maxLength: 50, pattern: "^[a-z0-9-]+$" }
+        name: { type: string, maxLength: 255 }
+        plan: { type: string, enum: [FREE, STANDARD, ENTERPRISE], default: STANDARD }
+
+    TenantUpdateRequest:
+      type: object
+      properties:
+        name:   { type: string, maxLength: 255 }
+        plan:   { type: string, enum: [FREE, STANDARD, ENTERPRISE] }
+        status: { type: string, enum: [ACTIVE, SUSPENDED] }
+
+    TenantUser:
+      type: object
+      properties:
+        userId:         { type: integer, format: int64 }
+        email:          { type: string, format: email }
+        fullName:       { type: string }
+        departmentName: { type: string, nullable: true }
+        role:           { $ref: "#/components/schemas/Role" }
+        status:         { type: string, enum: [ACTIVE, INVITED, DISABLED] }
+        joinedAt:       { type: string, format: date-time }
+
+    UserInviteRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string, format: email }
+        role:  { $ref: "#/components/schemas/Role" }
+
+    # --- タスク ---
+    UserSummary:
+      type: object
+      properties:
+        id:       { type: integer, format: int64 }
+        fullName: { type: string }
+
+    Task:
+      type: object
+      properties:
+        id:          { type: integer, format: int64 }
+        title:       { type: string }
+        description: { type: string, nullable: true }
+        status:      { $ref: "#/components/schemas/TaskStatus" }
+        priority:    { $ref: "#/components/schemas/Priority" }
+        visibility:  { $ref: "#/components/schemas/Visibility" }
+        owner:       { $ref: "#/components/schemas/UserSummary" }
+        assignee:    { $ref: "#/components/schemas/UserSummary", nullable: true }
+        dueDate:     { type: string, format: date }
+        completedAt: { type: string, format: date-time, nullable: true }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
+        # 認可結果(クライアント側UI制御用)
+        editable:    { type: boolean, description: "ログインユーザーが編集可能か" }
+        deletable:   { type: boolean }
+
+    TaskDetail:
+      allOf:
+        - $ref: "#/components/schemas/Task"
+        - type: object
+          properties:
+            stakeholders:
+              type: array
+              items: { $ref: "#/components/schemas/Stakeholder" }
+
+    TaskCreateRequest:
+      type: object
+      required: [title, dueDate, priority, visibility]
+      properties:
+        title:       { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 2000, nullable: true }
+        priority:    { $ref: "#/components/schemas/Priority" }
+        visibility:  { $ref: "#/components/schemas/Visibility" }
+        assigneeId:  { type: integer, format: int64, nullable: true }
+        dueDate:     { type: string, format: date }
+        stakeholderUserIds:
+          type: array
+          items: { type: integer, format: int64 }
+          description: "visibility=STAKEHOLDERS のとき指定可能"
+
+    TaskUpdateRequest:
+      type: object
+      properties:
+        title:       { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 2000, nullable: true }
+        priority:    { $ref: "#/components/schemas/Priority" }
+        assigneeId:  { type: integer, format: int64, nullable: true }
+        dueDate:     { type: string, format: date }
+
+    TaskPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/Task" }
+        totalElements: { type: integer, format: int64 }
+        totalPages:    { type: integer }
+        number:        { type: integer, description: "現在のページ番号(0始まり)" }
+        size:          { type: integer }
+        overdueCount:  { type: integer, description: "期限切れ未完了タスク件数(参考)" }
+
+    Stakeholder:
+      type: object
+      properties:
+        userId:   { type: integer, format: int64 }
+        fullName: { type: string }
+        email:    { type: string, format: email }
+        addedAt:  { type: string, format: date-time }
+
+    # --- ダッシュボード ---
+    DashboardSummary:
+      type: object
+      properties:
+        todayDueCount:      { type: integer, description: "本日期限のタスク件数" }
+        overdueCount:       { type: integer, description: "期限切れ未完了件数" }
+        completedTodayCount: { type: integer, description: "本日完了したタスク件数" }
+        myOpenCount:        { type: integer, description: "自分が所有する未完了件数" }
+        statusBreakdown:
+          type: object
+          additionalProperties: { type: integer }
+          example: { NOT_STARTED: 12, IN_PROGRESS: 5, DONE: 30, ON_HOLD: 2 }
+        priorityBreakdown:
+          type: object
+          additionalProperties: { type: integer }
+          example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
+
+    # --- 監査ログ ---
+    AuditLog:
+      type: object
+      properties:
+        id:         { type: integer, format: int64 }
+        userId:     { type: integer, format: int64, nullable: true }
+        action:     { type: string }
+        entityType: { type: string, nullable: true }
+        entityId:   { type: integer, format: int64, nullable: true }
+        detail:     { type: object, additionalProperties: true }
+        ipAddress:  { type: string, nullable: true }
+        createdAt:  { type: string, format: date-time }
