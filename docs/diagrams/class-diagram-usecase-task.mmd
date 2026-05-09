@@ -1,0 +1,102 @@
+%% ====================================================================
+%% UseCase 層 (タスク関連) クラス図
+%% タスク管理システム v1.2
+%% ====================================================================
+classDiagram
+  direction TB
+
+  class CreateTaskUseCase {
+    <<usecase>>
+    -TaskRepository taskRepository
+    -StakeholderRepository stakeholderRepository
+    -UserTenantRepository userTenantRepository
+    -AuditLogger auditLogger
+    -Clock clock
+    +execute(CreateTaskCommand) Task
+  }
+  class CreateTaskCommand {
+    +TenantId tenantId
+    +UserId ownerId (=ログインユーザー)
+    +Title title
+    +Description description
+    +DueDate dueDate
+    +Priority priority
+    +Visibility visibility
+    +UserId assigneeId
+    +List~UserId~ stakeholderUserIds
+  }
+
+  class ListTasksUseCase {
+    <<usecase>>
+    -TaskRepository taskRepository
+    -StakeholderRepository stakeholderRepository
+    -TaskAuthorizationDomainService authService
+    +execute(ListTasksQuery) TaskPage
+  }
+  class ListTasksQuery {
+    +TenantId tenantId
+    +UserId currentUserId
+    +Role currentRole
+    +LocalDate targetDate
+    +boolean includeOverdue
+    +TaskFilters filters
+    +Pageable pageable
+  }
+
+  class GetTaskUseCase {
+    <<usecase>>
+    +execute(TaskId, ViewContext) Task
+  }
+  class UpdateTaskUseCase {
+    <<usecase>>
+    +execute(UpdateTaskCommand) Task
+  }
+  class ChangeStatusUseCase {
+    <<usecase>>
+    +execute(TaskId, TaskStatus, ActorContext) Task
+  }
+  class ChangeVisibilityUseCase {
+    <<usecase>>
+    +execute(TaskId, Visibility, List~UserId~, ActorContext) Task
+  }
+  class DeleteTaskUseCase {
+    <<usecase>>
+    +execute(TaskId, ActorContext) void
+  }
+  class AddStakeholderUseCase {
+    <<usecase>>
+    +execute(TaskId, UserId, ActorContext) TaskStakeholder
+  }
+  class RemoveStakeholderUseCase {
+    <<usecase>>
+    +execute(TaskId, UserId, ActorContext) void
+  }
+
+  class ActorContext {
+    <<value>>
+    +TenantId tenantId
+    +UserId userId
+    +Role role
+  }
+
+  class AuditLogger {
+    <<port>>
+    +log(AuditAction, ActorContext, EntityRef, JsonDiff) void
+  }
+  class Clock {
+    <<port>>
+    +now() Instant
+  }
+
+  CreateTaskUseCase ..> CreateTaskCommand
+  ListTasksUseCase ..> ListTasksQuery
+  CreateTaskUseCase --> "TaskRepository (Domain I/F)"
+  CreateTaskUseCase --> "StakeholderRepository (Domain I/F)"
+  CreateTaskUseCase --> AuditLogger
+  ListTasksUseCase --> "TaskAuthorizationDomainService"
+  UpdateTaskUseCase --> "TaskAuthorizationDomainService"
+  ChangeStatusUseCase --> "TaskAuthorizationDomainService"
+  ChangeVisibilityUseCase --> "TaskAuthorizationDomainService"
+  DeleteTaskUseCase --> "TaskAuthorizationDomainService"
+  AddStakeholderUseCase --> "TaskAuthorizationDomainService"
+  RemoveStakeholderUseCase --> "TaskAuthorizationDomainService"

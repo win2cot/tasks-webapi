@@ -1,0 +1,47 @@
+%% ====================================================================
+%% シーケンス図 01: OIDCログイン (Keycloak連携 + 既存users突合)
+%% タスク管理システム v1.2
+%% ====================================================================
+sequenceDiagram
+  autonumber
+  actor User as ユーザー
+  participant Browser as ブラウザ
+  participant AP as Spring Boot AP<br/>(ECS Fargate)
+  participant KC as Keycloak<br/>(ECS Fargate)
+  participant LegacyUsers as 既存users DB<br/>(ReadOnlyレプリカ)
+  participant AppDB as アプリDB<br/>(MySQL)
+
+  User->>Browser: アクセス /
+  Browser->>AP: GET /
+  AP->>AP: 未認証セッションを検出
+  AP-->>Browser: 302 Location: Keycloak /auth (state, code_challenge)
+  Browser->>KC: GET /realms/taskflow/protocol/openid-connect/auth
+  KC->>User: ログイン画面を表示
+  User->>KC: メール / パスワード入力 (+ 任意でMFA)
+  KC->>KC: 認証成功 → 認可コード発行
+  KC-->>Browser: 302 Location: AP /callback?code=...
+  Browser->>AP: GET /callback?code=xxx&state=yyy
+  AP->>KC: POST /token (code, code_verifier, client_id, client_secret)
+  KC-->>AP: 200 { access_token (JWT), id_token, refresh_token }
+  AP->>AP: JWT検証 (署名/iss/aud/exp)
+  AP->>LegacyUsers: SELECT id, email, full_name, full_name_kana, department_name<br/>FROM users WHERE oidc_sub = :sub
+  alt oidc_subが存在しない
+    LegacyUsers-->>AP: (0件)
+    AP-->>Browser: 403 E_USER_NOT_REGISTERED<br/>"管理者にユーザー登録を依頼してください"
+  else 存在する
+    LegacyUsers-->>AP: { id, email, full_name, ... }
+    AP->>AppDB: SELECT tenant_id, role FROM user_tenants<br/>WHERE user_id = :userId AND status='ACTIVE'
+    AppDB-->>AP: 所属テナント+ロール一覧
+    alt 所属テナント0件
+      AP-->>Browser: 403 E_NO_TENANT
+    else 1件
+      AP->>AP: アクティブテナント = 唯一のテナント
+      AP->>AppDB: INSERT audit_logs (action='LOGIN', user_id, tenant_id, ip, hash_chain)
+      AP-->>Browser: Set-Cookie SESSION + 302 /dashboard
+    else 2件以上
+      AP->>AP: アクティブテナント未設定
+      AP-->>Browser: 302 /tenants/select (テナント選択画面)
+    end
+  end
+
+  Note over AP,AppDB: 以降のAPI呼出は<br/>Authorization: Bearer {access_token}<br/>+ X-Tenant-Id: {tenant_id}

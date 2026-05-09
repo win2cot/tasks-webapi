@@ -1,0 +1,53 @@
+%% ====================================================================
+%% シーケンス図 04: タスク編集 (所有者チェック + 権限違反時のエラー)
+%% タスク管理システム v1.2
+%% ====================================================================
+sequenceDiagram
+  autonumber
+  actor User as ユーザー
+  participant Browser as ブラウザ
+  participant Sec as Spring Security
+  participant Filter as TenantContextFilter
+  participant Ctrl as TaskController
+  participant UC as UpdateTaskUseCase
+  participant AuthZ as TaskAuthorizationDomainService
+  participant TaskRepo as TaskRepositoryImpl
+  participant Audit as AuditLogger
+  participant DB as MySQL
+
+  User->>Browser: 編集ボタン押下 → フィールド変更 → 保存
+  Browser->>Sec: PUT /api/tasks/101
+  Sec->>Filter: 認証OK (userId=2, role=MEMBER)
+  Filter->>Ctrl: forward (TenantContext set)
+  Ctrl->>Ctrl: @Valid TaskUpdateRequest
+  Ctrl->>UC: execute(UpdateTaskCommand)
+
+  UC->>TaskRepo: findById(taskId=101, tenantId=11)
+  TaskRepo->>DB: SELECT * FROM tasks WHERE id=101 AND tenant_id=11
+  DB-->>TaskRepo: task (owner_id=1)
+  TaskRepo-->>UC: Task
+
+  UC->>AuthZ: assertEditable(task, userId=2, role=MEMBER)
+  AuthZ->>AuthZ: task.ownerId == 2 ? → false<br/>role == TENANT_ADMIN ? → false
+
+  alt 認可失敗 (所有者でも Admin でもない)
+    AuthZ-->>UC: throw TaskOwnershipException
+    UC->>Audit: log(UPDATE_TASK_DENIED, actor, taskId=101)
+    Audit->>DB: INSERT audit_logs (action='UPDATE_TASK_DENIED')
+    UC-->>Ctrl: TaskOwnershipException
+    Ctrl-->>Browser: 403 E_FORBIDDEN<br/>"タスクの編集は所有者のみ可能です"
+    Browser-->>User: エラー表示
+  else 認可成功 (ownerId=2 のケース、または role=TENANT_ADMIN)
+    AuthZ-->>UC: ✓
+    UC->>UC: task.rename(newTitle)<br/>task.reschedule(newDueDate)<br/>task.changePriority(newPriority)<br/>... (Domain メソッドで不変条件チェック)
+    UC->>TaskRepo: save(task)
+    TaskRepo->>DB: UPDATE tasks SET title=..., due_date=..., updated_at=NOW()<br/>WHERE id=101 AND tenant_id=11
+    DB-->>TaskRepo: 1 row affected
+    UC->>Audit: log(UPDATE_TASK, actor, taskId=101, diff={title:[old,new], ...})
+    Audit->>DB: INSERT audit_logs
+    UC-->>Ctrl: Task
+    Ctrl-->>Browser: 200 OK + 更新後 Task JSON
+    Browser-->>User: 一覧/詳細を再描画
+  end
+
+  Note over AuthZ,Audit: 認可違反は audit_logs に必ず記録<br/>(NIST AC-3: アクセス制御の監査)
