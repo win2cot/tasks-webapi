@@ -28,7 +28,7 @@ info:
     - `403 Forbidden` — テナント越境、ロール権限不足、編集系で所有者でない 等
     - `404 Not Found` — リソース不在、または **参照系で参照権限不足**(リソース存在を漏らさない方針)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.3.0"
+  version: "1.3.1"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -59,7 +59,13 @@ paths:
     get:
       tags: [Auth]
       summary: ログイン中ユーザー情報・所属テナント一覧
+      description: |
+        ログインユーザーの基本情報と所属テナント一覧を返す。
+        テナント未選択状態(初回ログイン直後・テナント切替前)でも呼び出されるため、
+        グローバルセキュリティから `tenantHeader` をオーバーライドで除外する。
       operationId: getMe
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -86,7 +92,12 @@ paths:
     post:
       tags: [Auth]
       summary: ログアウト(Keycloakセッション終了)
+      description: |
+        Keycloakのセッションを終了する。テナント未選択状態でも呼び出し可能なため、
+        グローバルセキュリティから `tenantHeader` をオーバーライドで除外する。
       operationId: logout
+      security:
+        - bearerAuth: []
       responses:
         "204": { description: No Content }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -368,8 +379,14 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: タスク不在 or 参照権限なし(リソース存在を漏らさない方針)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/tasks/{id}/visibility:
     patch:
@@ -440,8 +457,19 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Stakeholder" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: タスク不在 or 参照権限なし
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: 既に関係者として登録済み
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/tasks/{taskId}/stakeholders/{userId}:
     delete:
@@ -802,6 +830,22 @@ components:
           type: object
           additionalProperties: { type: integer }
           example: { NOT_STARTED: 12, IN_PROGRESS: 5, DONE: 30, ON_HOLD: 2 }
+        priorityBreakdown:
+          type: object
+          additionalProperties: { type: integer }
+          example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
+
+    AuditLog:
+      type: object
+      properties:
+        id:         { type: integer, format: int64 }
+        userId:     { type: integer, format: int64, nullable: true }
+        action:     { type: string }
+        entityType: { type: string, nullable: true }
+        entityId:   { type: integer, format: int64, nullable: true }
+        detail:     { type: object, additionalProperties: true }
+        ipAddress:  { type: string, nullable: true }
+        createdAt:  { type: string, format: date-time }
         priorityBreakdown:
           type: object
           additionalProperties: { type: integer }

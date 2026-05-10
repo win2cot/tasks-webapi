@@ -1,6 +1,6 @@
 # PR #76 レビューコメント
 
-_最終取得: 2026-05-10T13:01:24Z_
+_最終取得: 2026-05-10T13:21:41Z_
 
 ## 概要
 title:	docs: 詳細設計成果物 (v1.2 仕様書、OpenAPI、Mermaid図、レビュー報告) の初期投入
@@ -13,7 +13,7 @@ projects:
 milestone:	
 number:	76
 url:	https://github.com/win2cot/tasks-webapi/pull/76
-additions:	4347
+additions:	4476
 deletions:	0
 auto-merge:	disabled
 --
@@ -43,9 +43,9 @@ auto-merge:	disabled
  8 suites ±0    0 💤 ±0 
  8 files   ±0    0 ❌ ±0 
 
-Results for commit 22f95983. ± Comparison against base commit 5aa287a0.
+Results for commit 68d13118. ± Comparison against base commit 5aa287a0.
 
-[test-results]:data:application/gzip;base64,H4sIAOV/AGoC/12Myw6CMBBFf4V07WJoRYo/Y8rAJBMeNX2siP9uQa3A7p5zk7MI4rH34l7oSyF85JChi84EtnNCVSVOT1g/qX7w8BHxZAZ+JgNZkOHxIHrnrPsaF+dcXPch+BH/3sa73Mb7Gtpp4pBASElN1WglsQQE0FBrQ4QtdYquBFTeQLc1KPF6Az9Dp0kAAQAA
+[test-results]:data:application/gzip;base64,H4sIAJ+FAGoC/12Myw6DIBQFf8Ww7kJAEPozzRUkualKw2Nl+u9F21Lt7sycZFbicBojuTbq0pCYMVWwOUBCvxTkonB50vYx/oVbzMb8mTs+immrcIDTSYwh+PAxIS+1uO1T8C1+vZ0PuZ2PNePnGVMBIpWlnFIlemF6qZUFGGwL2qlOO8OAskFwLTvyfAFDgXkuAAEAAA==
 
 :recycle: This comment has been updated with latest results.
 
@@ -366,6 +366,137 @@ responses:
 - 22エンドポイント / 22スキーマの数量整合性を確認済み
 - `scaffold ↔ 設計書` のギャップ分析が整備されており、Sprint 0 着手に向けた実装コストが見積もりやすい
 - セルフレビュー報告書の品質が高く、レビュアーの追加確認コストを大幅に削減できている
+
+### claude (2026-05-10T13:20:40Z)
+
+## コードレビュー
+
+**レビュー対象**: PR #76 — 詳細設計成果物 (v1.2 仕様書、OpenAPI、Mermaid図、レビュー報告) の初期投入
+**レビュー観点**: 正確性・Null安全性・テストカバレッジ・コード品質
+
+> ℹ️ 本PRはドキュメント（設計書・OpenAPI仕様・Mermaid図）のみの追加です。ソースコード変更がないため、**Null安全性**および**テストカバレッジ**の観点は対象外とします。
+
+---
+
+### 前回レビューからの改善確認
+
+前回の自動レビュー（必須対応6件）に基づく改善を確認しました。
+
+| 項目 | 状態 |
+|---|---|
+| `sort` パラメータの有効値・pattern 明示 | ✅ 対応済（`pattern: "^(dueDate\|priority\|...)$"` 追加） |
+| `Stakeholder` スキーマに `addedBy` を追加 | ✅ 対応済 |
+| `/api/users/me/notification-settings` エンドポイント追加 | ✅ 対応済 |
+| SaaS Admin 認可モデルの OpenAPI 記載 | ✅ 対応済（info.description に3階層説明追加） |
+
+---
+
+### 🔴 必須対応（マージ前に修正を推奨）
+
+#### 1. `PATCH /api/tasks/{id}/status` に `404` レスポンスが未定義
+
+`api/openapi.yaml` の `changeStatus` オペレーション（`PATCH /api/tasks/{id}/status`）に定義されているレスポンスは `200`, `401`, `403` のみです。
+
+- **問題**: タスクが存在しない、またはアクティブテナント外にある場合のレスポンスが未定義。
+- **方針矛盾**: 設計書 §6.2.1「参照系(GET)で参照不可 → 404」に従えば、ステータス変更操作の前提となるタスク取得でも `404` を返すべき。また担当者・所有者以外の編集試行は `403` が正しいが、タスク不在と権限不足を区別できる形にする必要がある。
+- **提案**: `404: { $ref: "#/components/responses/NotFound" }` を追加し、description に「タスク不在 or 参照権限なし(リソース存在を漏らさない)」と明記。
+
+#### 2. `POST /api/tasks/{id}/stakeholders` に `404` レスポンスが未定義
+
+関係者追加エンドポイントにも同様の問題があります。対象タスクが存在しない or 参照権限外の場合のレスポンスが定義されていません。
+
+- **提案**: `404: { $ref: "#/components/responses/NotFound" }` を追加。
+
+#### 3. グローバル `tenantHeader` セキュリティと認証エンドポイントの不整合
+
+グローバルセキュリティ定義:
+```yaml
+security:
+  - bearerAuth: []
+    tenantHeader: []
+```
+
+`/api/auth/me` および `/api/auth/logout` はテナント選択前（`X-Tenant-Id` が存在しない状態）でも呼び出されます。特に `/api/auth/me` はテナント一覧を返すためのエンドポイントであり、テナント未選択状態での使用が前提です。
+
+- **問題**: グローバル設定により `X-Tenant-Id` が必須扱いになっているが、これらエンドポイントでは不要。
+- **提案**: 該当エンドポイントにオーバーライドを追加:
+  ```yaml
+  /api/auth/me:
+    get:
+      security:
+        - bearerAuth: []   # tenantHeader 不要
+  /api/auth/logout:
+    post:
+      security:
+        - bearerAuth: []
+  ```
+
+---
+
+### 🟡 推奨対応（別Issueでの対応でも可）
+
+#### 4. `PATCH /api/tasks/{id}/visibility` の `200` レスポンスにボディスキーマが未定義
+
+```yaml
+responses:
+  "200": { description: OK }
+```
+
+更新後の状態を返すのか `204 No Content` にするのかが不明です。他の PATCH エンドポイント（`/status`）は `Task` スキーマを返すため、一貫性のためにもスキーマを明示すべきです。
+
+- **提案**: `Task` を返す場合は `content: { application/json: { schema: { $ref: "#/components/schemas/Task" } } }` を追加。または `204 No Content` に変更。
+
+#### 5. シーケンス図03: N+1クエリリスクが設計に未言及
+
+`sequence-03-task-list-authz.mmd` のループ処理:
+```
+loop 各 task について
+    UC->>AuthZ: assertViewable(task, userId=1, role=MEMBER, stakeholders)
+```
+
+`STAKEHOLDERS` visibility のタスクに対して `assertViewable` が各タスクのステークホルダーリストを必要とする場合、タスクごとに DB クエリが発生するN+1問題が生じます。
+
+- **問題**: 30件のタスク一覧取得で最大30件の追加クエリが実行される可能性がある。
+- **提案**: シーケンス図に「ループ前に `StakeholderRepository.findTaskIdsByUser(userId, tenantId)` で一括取得」のステップを追加し、実装ガイドとして「事前一括フェッチ必須」を明記する。
+
+#### 6. `GET /api/audit-logs` の `size` パラメータに上限制約なし
+
+`GET /api/tasks` は `maximum: 100` で制限されていますが、`GET /api/audit-logs` には上限がありません。監査ログは長期蓄積で大量レコードになる可能性があります。
+
+- **提案**: `size` パラメータに `maximum: 100`（または適切な上限）を追加。
+
+#### 7. `docs/reviews/create-issues-pr76.sh` の格納場所
+
+GitHub Issues 自動作成用の操作スクリプトが `docs/reviews/` にコミットされています。
+
+- **問題**: 操作スクリプトは開発環境(`gh auth`済み)に依存し、リポジトリに永続するドキュメントとは性格が異なります。過去の Issue 作成手順の記録としては理解できますが、誤実行リスクや保守コストが生じます。
+- **提案**: スクリプトをリポジトリから削除し、実行手順を `docs/reviews/issues-to-create-pr76.md` の末尾にコマンド例として記載する形に変更することを検討してください。または `.gitignore` で除外。
+
+---
+
+### ✅ 良い点
+
+- セルフレビュー報告書（`2026-05-06-detailed-design-review.md`）が同梱されており、指摘事項のステータスが明確で追跡しやすい
+- Scaffold ↔ 設計書ギャップ分析（`2026-05-10-scaffold-vs-design-gap-analysis.md`）が詳細で、Sprint 0 着手時の実装判断を的確に支援できる内容
+- クリーンアーキテクチャの4層構造が Mermaid クラス図で明確に可視化されている（内側依存の矢印方向も正確）
+- `Error` スキーマに `fieldErrors` 配列を持つ共通定義があり、実装時のバリデーションエラーレスポンスの一貫性が確保しやすい
+- `TaskCreateRequest.description` にダッシュボード集計の認可スコープ（NIST AC-4 準拠）が明記されており、情報フロー制御の意図が明確
+- シーケンス図が OIDC ログインから監査ログ書き込みまで網羅的に記述されており、実装の指針として十分な品質
+
+---
+
+### まとめ
+
+| 優先度 | 件数 |
+|--------|------|
+| 🔴 必須対応（マージ前） | 3件 |
+| 🟡 推奨対応（別Issue可） | 4件 |
+| ✅ 良い点 | 6点 |
+
+**特に #1・#2（404 レスポンス欠落）と #3（tenantHeader オーバーライド）** はAPIクライアントの実装時に仕様の誤解を招くため、マージ前に対応することを推奨します。
+
+---
+*このレビューは Claude Code (claude-sonnet-4-6) により自動生成されました。*
 
 
 ## レビュースレッドの個別指摘 (path:line)
