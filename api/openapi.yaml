@@ -252,7 +252,17 @@ paths:
         - { name: keyword,        in: query, schema: { type: string }, description: "タイトル/説明部分一致" }
         - { name: page,           in: query, schema: { type: integer, default: 0 } }
         - { name: size,           in: query, schema: { type: integer, default: 50, maximum: 100 } }
-        - { name: sort,           in: query, schema: { type: string, default: "dueDate,asc" } }
+        - name: sort
+          in: query
+          description: |
+            ソート指定。形式 `<field>,<asc|desc>`(`,asc|desc` 省略時は `asc`)。
+            有効フィールド: `dueDate` / `priority` / `createdAt` / `updatedAt` / `title`。
+            複数キー指定は本フェーズでは未サポート。
+          schema:
+            type: string
+            default: "dueDate,asc"
+            pattern: "^(dueDate|priority|createdAt|updatedAt|title)(,(asc|desc))?$"
+            example: "priority,desc"
       responses:
         "200":
           description: OK
@@ -384,7 +394,9 @@ paths:
                   description: "visibility=STAKEHOLDERS のとき指定。既存の関係者は置換される"
       responses:
         "200": { description: OK }
+        "400": { $ref: "#/components/responses/Validation" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # --- 関係者 ---
@@ -406,6 +418,7 @@ paths:
                 items: { $ref: "#/components/schemas/Stakeholder" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     post:
       tags: [Stakeholder]
       summary: 関係者追加(所有者のみ)
@@ -598,6 +611,7 @@ components:
     # --- ユーザー / テナント ---
     UserProfile:
       type: object
+      required: [id, email, fullName, fullNameKana]
       properties:
         id:             { type: integer, format: int64 }
         email:          { type: string, format: email }
@@ -669,6 +683,7 @@ components:
     # --- タスク ---
     UserSummary:
       type: object
+      required: [id, fullName]
       properties:
         id:       { type: integer, format: int64 }
         fullName: { type: string }
@@ -728,7 +743,11 @@ components:
         - 公開範囲(visibility)変更: PATCH /api/tasks/{id}/visibility を使用
         - 関係者の追加/削除: POST/DELETE /api/tasks/{id}/stakeholders/... を使用
         - ステータス変更: PATCH /api/tasks/{id}/status を使用
+
+        全フィールドが任意だが、少なくとも 1 つのフィールド指定が必須(minProperties: 1)。
+        空のリクエストボディはバリデーションエラー(400)で拒否する。
       type: object
+      minProperties: 1
       properties:
         title:       { type: string, maxLength: 100 }
         description: { type: string, maxLength: 2000, nullable: true }
