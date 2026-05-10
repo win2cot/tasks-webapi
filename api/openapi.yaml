@@ -548,7 +548,7 @@ paths:
         - { name: to,   in: query, schema: { type: string, format: date-time } }
         - { name: action, in: query, schema: { type: string } }
         - { name: page, in: query, schema: { type: integer, default: 0 } }
-        - { name: size, in: query, schema: { type: integer, default: 50 } }
+        - { name: size, in: query, schema: { type: integer, default: 50, maximum: 100 } }
       responses:
         "200":
           description: OK
@@ -830,22 +830,6 @@ components:
           type: object
           additionalProperties: { type: integer }
           example: { NOT_STARTED: 12, IN_PROGRESS: 5, DONE: 30, ON_HOLD: 2 }
-        priorityBreakdown:
-          type: object
-          additionalProperties: { type: integer }
-          example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
-
-    AuditLog:
-      type: object
-      properties:
-        id:         { type: integer, format: int64 }
-        userId:     { type: integer, format: int64, nullable: true }
-        action:     { type: string }
-        entityType: { type: string, nullable: true }
-        entityId:   { type: integer, format: int64, nullable: true }
-        detail:     { type: object, additionalProperties: true }
-        ipAddress:  { type: string, nullable: true }
-        createdAt:  { type: string, format: date-time }
         priorityBreakdown:
           type: object
           additionalProperties: { type: integer }
