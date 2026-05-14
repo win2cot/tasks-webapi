@@ -238,7 +238,11 @@ paths:
               properties:
                 role: { type: string, enum: [TENANT_ADMIN, MEMBER] }
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantUser" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
