@@ -767,9 +767,11 @@ components:
       allOf:
         - $ref: "#/components/schemas/Task"
         - type: object
+          required: [stakeholders]
           properties:
             stakeholders:
               type: array
+              nullable: false
               items: { $ref: "#/components/schemas/Stakeholder" }
 
     TaskCreateRequest:
