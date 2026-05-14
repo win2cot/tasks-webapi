@@ -38,7 +38,7 @@ CREATE TABLE tasks (
     tenant_id    BIGINT                                              NOT NULL,
     title        VARCHAR(100)                                        NOT NULL,
     description  TEXT                                                NULL,
-    status       ENUM('INCOMPLETE','COMPLETE')                       NOT NULL,
+    status       ENUM('NOT_STARTED','IN_PROGRESS','DONE','ON_HOLD')  NOT NULL,
     priority     ENUM('HIGH','MEDIUM','LOW')                         NOT NULL,
     visibility   ENUM('TENANT','STAKEHOLDERS','PRIVATE')             NOT NULL DEFAULT 'TENANT',
     owner_id     BIGINT                                              NOT NULL,
