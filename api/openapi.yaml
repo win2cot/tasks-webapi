@@ -664,7 +664,8 @@ components:
         email:          { type: string, format: email }
         fullName:       { type: string }
         fullNameKana:   { type: string }
-        departmentName: { type: string, nullable: true }
+        departmentName:
+          type: [string, 'null']
 
     TenantSummary:
       type: object
@@ -683,7 +684,9 @@ components:
         tenants:
           type: array
           items: { $ref: "#/components/schemas/TenantSummary" }
-        activeTenantId: { type: integer, format: int64, nullable: false }
+        activeTenantId:
+          type: [integer, 'null']
+          format: int64
 
     Tenant:
       type: object
@@ -724,7 +727,8 @@ components:
         userId:         { type: integer, format: int64 }
         email:          { type: string, format: email }
         fullName:       { type: string }
-        departmentName: { type: string, nullable: true }
+        departmentName:
+          type: [string, 'null']
         role:           { $ref: "#/components/schemas/Role" }
         status:         { type: string, enum: [ACTIVE, INVITED, DISABLED] }
         joinedAt:       { type: string, format: date-time }
@@ -750,14 +754,20 @@ components:
       properties:
         id:          { type: integer, format: int64 }
         title:       { type: string }
-        description: { type: string, nullable: true }
+        description:
+          type: [string, 'null']
         status:      { $ref: "#/components/schemas/TaskStatus" }
         priority:    { $ref: "#/components/schemas/Priority" }
         visibility:  { $ref: "#/components/schemas/Visibility" }
         owner:       { $ref: "#/components/schemas/UserSummary" }
-        assignee:    { $ref: "#/components/schemas/UserSummary", nullable: true }
+        assignee:
+          oneOf:
+            - $ref: "#/components/schemas/UserSummary"
+            - type: 'null'
         dueDate:     { type: string, format: date }
-        completedAt: { type: string, format: date-time, nullable: true }
+        completedAt:
+          type: [string, 'null']
+          format: date-time
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
         # 認可結果(クライアント側UI制御用)
@@ -772,7 +782,6 @@ components:
           properties:
             stakeholders:
               type: array
-              nullable: false
               items: { $ref: "#/components/schemas/Stakeholder" }
 
     TaskCreateRequest:
@@ -785,10 +794,14 @@ components:
       required: [title, dueDate, priority, visibility]
       properties:
         title:       { type: string, maxLength: 100 }
-        description: { type: string, maxLength: 2000, nullable: true }
+        description:
+          type: [string, 'null']
+          maxLength: 2000
         priority:    { $ref: "#/components/schemas/Priority" }
         visibility:  { $ref: "#/components/schemas/Visibility" }
-        assigneeId:  { type: integer, format: int64, nullable: true }
+        assigneeId:
+          type: [integer, 'null']
+          format: int64
         dueDate:     { type: string, format: date }
         stakeholderUserIds:
           type: array
@@ -809,9 +822,13 @@ components:
       minProperties: 1
       properties:
         title:       { type: string, maxLength: 100 }
-        description: { type: string, maxLength: 2000, nullable: true }
+        description:
+          type: [string, 'null']
+          maxLength: 2000
         priority:    { $ref: "#/components/schemas/Priority" }
-        assigneeId:  { type: integer, format: int64, nullable: true }
+        assigneeId:
+          type: [integer, 'null']
+          format: int64
         dueDate:     { type: string, format: date }
 
     TaskPage:
@@ -874,10 +891,16 @@ components:
       required: [id, action, detail, createdAt]
       properties:
         id:         { type: integer, format: int64 }
-        userId:     { type: integer, format: int64, nullable: true }
+        userId:
+          type: [integer, 'null']
+          format: int64
         action:     { type: string }
-        entityType: { type: string, nullable: true }
-        entityId:   { type: integer, format: int64, nullable: true }
+        entityType:
+          type: [string, 'null']
+        entityId:
+          type: [integer, 'null']
+          format: int64
         detail:     { type: object, additionalProperties: true }
-        ipAddress:  { type: string, nullable: true }
+        ipAddress:
+          type: [string, 'null']
         createdAt:  { type: string, format: date-time }
