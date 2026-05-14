@@ -486,8 +486,13 @@ paths:
         - { name: userId, in: path, required: true, schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: タスク不在 or 指定ユーザーが関係者として登録されていない
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   # --- ダッシュボード ---
   /api/dashboard/summary:
@@ -759,7 +764,7 @@ components:
         タスク作成リクエスト。
         - `tenant_id` / `owner_id` は認証コンテキストから自動付与する(リクエストボディからは受け取らない)。
         - `dueDate` は必須(F-08 期限必須化)。
-        - `status` は省略可。省略時は `NOT_STARTED` で作成される。
+        - `status` は本リクエストで指定できない(常に `NOT_STARTED` で作成される)。ステータス変更は `PATCH /api/tasks/{id}/status` を使用。
       type: object
       required: [title, dueDate, priority, visibility]
       properties:
