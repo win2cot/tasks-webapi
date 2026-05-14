@@ -142,13 +142,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Tenant" }
         "400": { $ref: "#/components/responses/Validation" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409":
-          description: tenants.code が一意制約違反
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/tenants/{id}:
     put:
@@ -218,13 +214,10 @@ paths:
       responses:
         "201": { description: Created }
         "400": { $ref: "#/components/responses/Validation" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409":
-          description: "招待対象が既に user_tenants に登録済み、または招待メールアドレスに対応する oidc_sub が users テーブルに未登録"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableContent" }
 
   /api/tenant/users/{userId}/role:
     put:
@@ -484,11 +477,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409":
-          description: 指定ユーザーが既に同タスクの関係者として登録済み
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/tasks/{taskId}/stakeholders/{userId}:
     delete:
@@ -618,6 +607,16 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     Validation:
       description: 入力検証エラー
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: リソースの競合状態
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableContent:
+      description: 処理不能エンティティ(前提リソース不在など)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
