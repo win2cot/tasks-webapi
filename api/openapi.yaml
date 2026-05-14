@@ -689,7 +689,12 @@ components:
         plan: { type: string, enum: [FREE, STANDARD, ENTERPRISE], default: STANDARD }
 
     TenantUpdateRequest:
+      description: |
+        テナント更新リクエスト(SaaS Admin のみ実行可能)。
+        全フィールド任意だが、少なくとも 1 つのフィールド指定が必須(minProperties: 1)。
+        空リクエストはバリデーションエラー(400)で拒否する。
       type: object
+      minProperties: 1
       properties:
         name:   { type: string, maxLength: 255 }
         plan:   { type: string, enum: [FREE, STANDARD, ENTERPRISE] }

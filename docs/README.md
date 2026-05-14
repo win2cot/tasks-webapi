@@ -14,11 +14,11 @@
 | 基本設計書 v1.2 | `specs/基本設計書.md` | アーキ・画面・DB・API・セキュリティ |
 | 開発計画書 v1.2 | `specs/開発計画書.md` | 体制・スケジュール・リスク・GitHub運用マッピング |
 
-### Flyway初期スキーマ
+### Flyway 初期スキーマ(本PRには未含、Sprint 0 で投入予定)
 
-| ファイル | 内容 |
-|---|---|
-| `../db/migrations/V1__create_initial_schema.sql` | 7テーブル(tenants/user_tenants/tasks/task_stakeholders/audit_logs/notification_settings/shedlock)、tenant_id複合インデックス、論理FKコメント付き |
+設計書 §4.2 に基づく Flyway マイグレーション(7テーブル: tenants / user_tenants / tasks / task_stakeholders / audit_logs / user_notification_settings / shedlock、tenant_id 複合インデックス、論理FKコメント付き)は、既存 `src/main/resources/db/migration/V1.0.0_01__create_tables.sql` との整合確認を行ったうえで別PRで投入する。
+
+詳細は [scaffold ↔ 設計書 v1.3 整合性ギャップ分析](reviews/2026-05-10-scaffold-vs-design-gap-analysis.md) §G-2 / §G-3、および対応Issue(Sprint 0 候補 N1 / N2)を参照。
 
 ### API仕様
 
@@ -79,7 +79,7 @@ VS Code拡張: "Mermaid Preview"
 ## 次ステップ
 
 - 詳細設計レビュー(GitHub PRで `/docs` に提案 → 指摘収集)
-- Sprint 0 着手判断
+- Sprint 0 着手判定
 - Spring Boot プロジェクト雛形作成(クリーンアーキの空骨組 + ArchUnit)
 - Terraform で ECS Fargate 基盤 IaC
 - Keycloak Realm 定義 JSON のエクスポート
