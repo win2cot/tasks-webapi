@@ -55,8 +55,9 @@ CREATE TABLE tasks (
     KEY idx_tasks_tenant_status_due (tenant_id, status, due_date),
     KEY idx_tasks_tenant_visibility (tenant_id, visibility),
     KEY idx_tasks_tenant_deleted    (tenant_id, deleted_at),
-    CONSTRAINT fk_tasks_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_tasks_owner  FOREIGN KEY (owner_id)  REFERENCES users(id)   ON DELETE RESTRICT
+    CONSTRAINT fk_tasks_tenant    FOREIGN KEY (tenant_id)   REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_owner     FOREIGN KEY (owner_id)    REFERENCES users(id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_assignee  FOREIGN KEY (assignee_id) REFERENCES users(id)   ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE task_stakeholders (
@@ -67,9 +68,10 @@ CREATE TABLE task_stakeholders (
     added_at  DATETIME NOT NULL,
     PRIMARY KEY (task_id, user_id),
     KEY idx_ts_user_tenant (user_id, tenant_id),
-    CONSTRAINT fk_ts_task     FOREIGN KEY (task_id)  REFERENCES tasks(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ts_user     FOREIGN KEY (user_id)  REFERENCES users(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_ts_added_by FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE RESTRICT
+    CONSTRAINT fk_ts_task     FOREIGN KEY (task_id)   REFERENCES tasks(id)   ON DELETE CASCADE,
+    CONSTRAINT fk_ts_user     FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_ts_tenant   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ts_added_by FOREIGN KEY (added_by)  REFERENCES users(id)   ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE audit_logs (
