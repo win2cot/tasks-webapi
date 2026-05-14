@@ -497,11 +497,7 @@ paths:
         "204": { description: No Content }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-        "404":
-          description: タスク不在 or 指定ユーザーが関係者として登録されていない
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # --- ダッシュボード ---
   /api/dashboard/summary:
