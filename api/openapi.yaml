@@ -667,6 +667,7 @@ components:
 
     TenantSummary:
       type: object
+      required: [id, code, name, role]
       properties:
         id:   { type: integer, format: int64 }
         code: { type: string }
@@ -675,15 +676,17 @@ components:
 
     MeResponse:
       type: object
+      required: [user, tenants, activeTenantId]
       properties:
         user:           { $ref: "#/components/schemas/UserProfile" }
         tenants:
           type: array
           items: { $ref: "#/components/schemas/TenantSummary" }
-        activeTenantId: { type: integer, format: int64, nullable: true }
+        activeTenantId: { type: integer, format: int64, nullable: false }
 
     Tenant:
       type: object
+      required: [id, code, name, plan, status, createdAt, updatedAt]
       properties:
         id:        { type: integer, format: int64 }
         code:      { type: string }
@@ -715,6 +718,7 @@ components:
 
     TenantUser:
       type: object
+      required: [userId, email, fullName, role, status, joinedAt]
       properties:
         userId:         { type: integer, format: int64 }
         email:          { type: string, format: email }
@@ -741,6 +745,7 @@ components:
 
     Task:
       type: object
+      required: [id, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
       properties:
         id:          { type: integer, format: int64 }
         title:       { type: string }
@@ -762,9 +767,11 @@ components:
       allOf:
         - $ref: "#/components/schemas/Task"
         - type: object
+          required: [stakeholders]
           properties:
             stakeholders:
               type: array
+              nullable: false
               items: { $ref: "#/components/schemas/Stakeholder" }
 
     TaskCreateRequest:
@@ -808,6 +815,7 @@ components:
 
     TaskPage:
       type: object
+      required: [content, totalElements, totalPages, number, size, overdueCount]
       properties:
         content:
           type: array
@@ -820,6 +828,7 @@ components:
 
     Stakeholder:
       type: object
+      required: [userId, fullName, email, addedBy, addedAt]
       properties:
         userId:   { type: integer, format: int64 }
         fullName: { type: string }
@@ -844,6 +853,7 @@ components:
         ダッシュボード集計。集計対象は §6.2.1 のタスク参照認可フィルタを適用した後の集合に限定する(NIST AC-4 / 基本設計書 §6.2.2)。
         即ち PRIVATE タスクは所有者にのみ加算、STAKEHOLDERS は所有者・担当者・関係者にのみ加算、Tenant Admin は visibility 制限なし。
       type: object
+      required: [todayDueCount, overdueCount, completedTodayCount, myOpenCount, statusBreakdown, priorityBreakdown]
       properties:
         todayDueCount:       { type: integer, description: "本日期限のタスク件数" }
         overdueCount:        { type: integer, description: "期限切れ未完了件数" }
@@ -860,6 +870,7 @@ components:
 
     AuditLog:
       type: object
+      required: [id, action, detail, createdAt]
       properties:
         id:         { type: integer, format: int64 }
         userId:     { type: integer, format: int64, nullable: true }
