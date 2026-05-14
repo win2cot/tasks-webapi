@@ -1,7 +1,7 @@
 # ADR-0001: アーキテクチャ意思決定を ADR で記録する
 
 - **Status**: Accepted
-- **Date**: 2026-05-15
+- **Date**: 2026-05-14
 - **Deciders**: 開発チーム
 - **Tags**: process, documentation
 
