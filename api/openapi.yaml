@@ -682,7 +682,7 @@ components:
         tenants:
           type: array
           items: { $ref: "#/components/schemas/TenantSummary" }
-        activeTenantId: { type: integer, format: int64, nullable: true }
+        activeTenantId: { type: integer, format: int64, nullable: false }
 
     Tenant:
       type: object
