@@ -120,7 +120,7 @@ GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publish
   - `adapter.{web, persistence, external}` — REST Controller、JPA Entity、Keycloak/SES クライアント
   - `infra` — feature 固有の Spring 設定
 - feature 間連携は Spring Modulith の `@ApplicationModuleListener`(イベント)または `@NamedInterface` で公開した型のみ。他 feature の `internal` 配下を直接参照しない。
-- ArchUnit による静的検証の導入は **ADR-NNNN で検討中**(未採用)。
+- ArchUnit による静的検証の導入は **ADR-0002 により当面保留**(`ApplicationModules.verify()` に集約)。
 
 実行基盤は **AWS ECS on Fargate**(EC2 不使用)。認証は **Keycloak**(本プロジェクトで構築)。
 

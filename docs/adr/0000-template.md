@@ -10,6 +10,7 @@
 - 新規 ADR は `docs/adr/NNNN-<kebab-case-title>.md` のファイル名で作成する(`NNNN` は4桁連番)。
 - 採用すると決まった ADR は **不変**。後で覆す場合は新規 ADR(Status: Supersedes ADR-NNNN)を立てる。
 - 本書のコメント(`<...>` プレースホルダ)は埋めた後に削除する。
+- **本セクション(§0)は実 ADR には不要なので、テンプレからコピーした直後にこのセクション全体を削除する**。参照実装として、`docs/adr/0001-record-architecture-decisions.md` は §0 を削除した状態で `§1. コンテキスト` から始まっているため、書き出しはそれに倣う。
 
 ## 1. コンテキスト(Context)
 
