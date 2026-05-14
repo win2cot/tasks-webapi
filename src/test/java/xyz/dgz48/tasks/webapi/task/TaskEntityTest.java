@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
+import xyz.dgz48.tasks.webapi.tenant.Tenant;
 import xyz.dgz48.tasks.webapi.user.User;
 
 @SpringBootTest
@@ -42,33 +44,57 @@ class TaskEntityTest {
 
   @Test
   void canPersistTask() {
+    var tenant = new Tenant("TENANT-001", "テスト株式会社");
+    entityManager.persist(tenant);
+    entityManager.flush();
+
     var user = new User("sub-003", "owner@example.com", "田中 一郎", "タナカ イチロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 
-    var task = new Task(TaskStatus.INCOMPLETE, user.getId(), "タスク1", "タスクの詳細");
+    var task =
+        new Task(
+            tenant.getId(),
+            user.getId(),
+            "タスク1",
+            "タスクの詳細",
+            TaskStatus.NOT_STARTED,
+            Priority.MEDIUM,
+            LocalDate.of(2026, 12, 31));
     entityManager.persist(task);
     entityManager.flush();
 
     assertThat(task.getId()).isNotNull();
-    assertThat(task.getStatus()).isEqualTo(TaskStatus.INCOMPLETE);
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.NOT_STARTED);
     assertThat(task.getOwnerId()).isEqualTo(user.getId());
     assertThat(task.getTitle()).isEqualTo("タスク1");
-    assertThat(task.getBody()).isEqualTo("タスクの詳細");
+    assertThat(task.getDescription()).isEqualTo("タスクの詳細");
   }
 
   @Test
-  void canPersistTaskWithoutBody() {
+  void canPersistTaskWithoutDescription() {
+    var tenant = new Tenant("TENANT-002", "別テスト株式会社");
+    entityManager.persist(tenant);
+    entityManager.flush();
+
     var user = new User("sub-004", "owner2@example.com", "佐藤 次郎", "サトウ ジロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 
-    var task = new Task(TaskStatus.COMPLETE, user.getId(), "完了タスク", null);
+    var task =
+        new Task(
+            tenant.getId(),
+            user.getId(),
+            "完了タスク",
+            null,
+            TaskStatus.DONE,
+            Priority.HIGH,
+            LocalDate.of(2026, 12, 31));
     entityManager.persist(task);
     entityManager.flush();
 
     assertThat(task.getId()).isNotNull();
-    assertThat(task.getStatus()).isEqualTo(TaskStatus.COMPLETE);
-    assertThat(task.getBody()).isNull();
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
+    assertThat(task.getDescription()).isNull();
   }
 }

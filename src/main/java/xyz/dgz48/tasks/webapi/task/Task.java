@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,24 +26,69 @@ public class Task {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
+  @Column(name = "tenant_id", nullable = false)
+  private Long tenantId;
+
+  @Column(nullable = false, length = 100)
+  private String title;
+
+  @Nullable
+  @Column(columnDefinition = "TEXT")
+  private String description;
+
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, columnDefinition = "ENUM('INCOMPLETE','COMPLETE')")
+  @Column(nullable = false, columnDefinition = "ENUM('NOT_STARTED','IN_PROGRESS','DONE','ON_HOLD')")
   private TaskStatus status;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, columnDefinition = "ENUM('HIGH','MEDIUM','LOW')")
+  private Priority priority;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, columnDefinition = "ENUM('TENANT','STAKEHOLDERS','PRIVATE')")
+  private Visibility visibility;
 
   @Column(name = "owner_id", nullable = false)
   private Long ownerId;
 
-  @Column(nullable = false, length = 255)
-  private String title;
+  @Nullable
+  @Column(name = "assignee_id")
+  private Long assigneeId;
+
+  @Column(name = "due_date", nullable = false)
+  private LocalDate dueDate;
 
   @Nullable
-  @Column(columnDefinition = "LONGTEXT")
-  private String body;
+  @Column(name = "completed_at")
+  private LocalDateTime completedAt;
 
-  public Task(TaskStatus status, Long ownerId, String title, @Nullable String body) {
-    this.status = status;
+  @Nullable
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
+
+  @Column(name = "created_at", nullable = false)
+  private LocalDateTime createdAt;
+
+  @Column(name = "updated_at", nullable = false)
+  private LocalDateTime updatedAt;
+
+  public Task(
+      Long tenantId,
+      Long ownerId,
+      String title,
+      @Nullable String description,
+      TaskStatus status,
+      Priority priority,
+      LocalDate dueDate) {
+    this.tenantId = tenantId;
     this.ownerId = ownerId;
     this.title = title;
-    this.body = body;
+    this.description = description;
+    this.status = status;
+    this.priority = priority;
+    this.visibility = Visibility.TENANT;
+    this.dueDate = dueDate;
+    this.createdAt = LocalDateTime.now();
+    this.updatedAt = LocalDateTime.now();
   }
 }

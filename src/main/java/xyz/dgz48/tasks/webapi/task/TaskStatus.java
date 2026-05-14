@@ -1,6 +1,8 @@
 package xyz.dgz48.tasks.webapi.task;
 
 public enum TaskStatus {
-  INCOMPLETE,
-  COMPLETE
+  NOT_STARTED,
+  IN_PROGRESS,
+  DONE,
+  ON_HOLD
 }
