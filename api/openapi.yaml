@@ -400,11 +400,7 @@ paths:
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-        "404":
-          description: タスク不在 or 参照権限なし(リソース存在を漏らさない方針)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/tasks/{id}/visibility:
     patch:
@@ -482,11 +478,7 @@ paths:
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-        "404":
-          description: タスク不在 or 参照権限なし
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: 既に関係者として登録済み
           content:
@@ -619,7 +611,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     NotFound:
-      description: リソース未存在
+      description: リソース未存在、または参照権限不足(リソース存在を漏らさない方針)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
