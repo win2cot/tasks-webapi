@@ -24,7 +24,7 @@
 
 | ファイル | 内容 |
 |---|---|
-| `../api/openapi.yaml` | OpenAPI 3.1。22エンドポイント・22スキーマ・認可ルール記述・エラーレスポンス共通定義 |
+| `../api/openapi.yaml` | OpenAPI 3.1。24エンドポイント・23スキーマ・認可ルール記述・エラーレスポンス共通定義 |
 
 ### クラス図 / シーケンス図(Mermaid)
 
@@ -72,7 +72,7 @@ VS Code拡張: "Mermaid Preview"
 
 ## 整合性メモ
 
-- API操作数(基本設計書) と OpenAPI operations: ともに **22**
+- API操作数(基本設計書) と OpenAPI operations: ともに **24** (A-01〜A-24、A-23/A-24 は通知設定 v1.3.1 で追加)
 - DDLのテーブル数とER図上の業務テーブル数: ともに **5(+運用2)**
 - 認可ルールはシーケンス図(03/04/05)と OpenAPI の `description` で重複記述。実装時は `TaskAuthorizationDomainService` に1箇所で集約
 
