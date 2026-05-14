@@ -80,7 +80,12 @@ paths:
     post:
       tags: [Auth]
       summary: アクティブテナント切替
+      description: |
+        アクティブテナントを設定する。テナント未選択状態でも呼び出されるため、
+        グローバルセキュリティから `tenantHeader` をオーバーライドで除外する。
       operationId: selectTenant
+      security:
+        - bearerAuth: []
       parameters:
         - { name: tenantId, in: path, required: true, schema: { type: integer, format: int64 } }
       responses:
