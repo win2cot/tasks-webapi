@@ -271,6 +271,7 @@ paths:
           description: "絞込ステータス(複数指定可、カンマ区切り: status=NOT_STARTED,IN_PROGRESS)"
           schema:
             type: array
+            minItems: 1
             items:
               $ref: "#/components/schemas/TaskStatus"
         - { name: ownerId,        in: query, schema: { type: integer, format: int64 } }
