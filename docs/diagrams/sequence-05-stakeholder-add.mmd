@@ -1,0 +1,77 @@
+%% ====================================================================
+%% シーケンス図 05: 関係者追加 (公開範囲=STAKEHOLDERS への昇格を含む)
+%% タスク管理システム v1.2
+%% ====================================================================
+sequenceDiagram
+  autonumber
+  actor Owner as 所有者
+  participant Browser as ブラウザ
+  participant Sec as Spring Security
+  participant Filter as TenantContextFilter
+  participant Ctrl as TaskController
+  participant UC as AddStakeholderUseCase
+  participant AuthZ as TaskAuthorizationDomainService
+  participant UserDir as LegacyUserDirectory<br/>(既存users)
+  participant UTRepo as UserTenantRepository
+  participant TaskRepo as TaskRepositoryImpl
+  participant SHRepo as StakeholderRepositoryImpl
+  participant Audit as AuditLogger
+  participant DB as MySQL
+
+  Owner->>Browser: タスク詳細 → 「関係者を追加」ボタン
+  Browser->>Sec: POST /api/tasks/101/stakeholders<br/>{ "userId": 5 }
+  Sec->>Filter: 認証OK (userId=1, role=MEMBER)
+  Filter->>Ctrl: forward (TenantContext set)
+  Ctrl->>UC: execute(taskId=101, userId=5, actor)
+
+  UC->>TaskRepo: findById(101, tenantId=11)
+  TaskRepo->>DB: SELECT * FROM tasks ...
+  TaskRepo-->>UC: task (owner_id=1)
+
+  UC->>AuthZ: assertVisibilityChangeable(task, userId=1)
+  AuthZ->>AuthZ: task.ownerId == 1 ? → true
+  AuthZ-->>UC: ✓ (所有者なので関係者操作可)
+
+  Note over UC,UTRepo: 追加対象ユーザーが同テナント所属か検証
+  UC->>UTRepo: findByUserAndTenant(userId=5, tenantId=11)
+  UTRepo->>DB: SELECT FROM user_tenants WHERE user_id=5 AND tenant_id=11
+  alt 所属していない
+    DB-->>UTRepo: 0件
+    UTRepo-->>UC: empty
+    UC-->>Ctrl: throw NotInTenantException
+    Ctrl-->>Browser: 400 E_VALIDATION<br/>"指定ユーザーはテナントに所属していません"
+  else 所属
+    DB-->>UTRepo: { user_id:5, role:MEMBER, status:ACTIVE }
+    UTRepo-->>UC: ✓
+  end
+
+  Note over UC: 既存users から表示名を取得 (UI返却用)
+  UC->>UserDir: findById(5)
+  UserDir->>DB: SELECT id, full_name, email FROM users WHERE id=5<br/>(ReadOnly レプリカ)
+  UserDir-->>UC: { id:5, fullName:"佐藤", ... }
+
+  alt 現在の visibility が STAKEHOLDERS でない
+    UC->>UC: 自動的に visibility を STAKEHOLDERS に昇格
+    UC->>TaskRepo: save(task with visibility=STAKEHOLDERS)
+    TaskRepo->>DB: UPDATE tasks SET visibility='STAKEHOLDERS' WHERE id=101
+  end
+
+  UC->>SHRepo: add(TaskStakeholder(taskId=101, userId=5, addedBy=1))
+  SHRepo->>DB: INSERT INTO task_stakeholders<br/>(task_id, user_id, tenant_id, added_by, added_at)
+  alt 既に登録済み (重複)
+    DB-->>SHRepo: SQLIntegrityConstraintViolation
+    SHRepo-->>UC: throw AlreadyStakeholderException
+    UC-->>Ctrl: 409 Conflict
+  else 新規追加
+    DB-->>SHRepo: OK
+    SHRepo-->>UC: TaskStakeholder
+  end
+
+  UC->>Audit: log(ADD_STAKEHOLDER, actor, taskId=101, addedUserId=5)
+  Audit->>DB: INSERT audit_logs
+
+  UC-->>Ctrl: Stakeholder
+  Ctrl-->>Browser: 201 + Stakeholder JSON
+  Browser-->>Owner: 関係者リストに追加表示<br/>(ユーザー5に通知メール送信予約)
+
+  Note over UC,Audit: 関係者追加は所有者のみ実施可能 (NIST AC-3)<br/>visibility が自動昇格する場合は監査ログにも記録

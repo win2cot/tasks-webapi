@@ -1,0 +1,54 @@
+%% ====================================================================
+%% シーケンス図 02: タスク作成 (期限必須・公開範囲・関係者付き)
+%% タスク管理システム v1.2
+%% ====================================================================
+sequenceDiagram
+  autonumber
+  actor User as ユーザー (所有者)
+  participant Browser as ブラウザ
+  participant Sec as Spring Security<br/>(OAuth2 RS)
+  participant Filter as TenantContextFilter
+  participant Ctrl as TaskController<br/>(adapter.web)
+  participant UC as CreateTaskUseCase<br/>(usecase.task)
+  participant Domain as Task / DomainService<br/>(domain)
+  participant TaskRepo as TaskRepositoryImpl<br/>(adapter.persistence)
+  participant SHRepo as StakeholderRepositoryImpl
+  participant Audit as AuditLogger
+  participant DB as MySQL
+
+  User->>Browser: 期限必須フォーム入力<br/>(public=STAKEHOLDERS、関係者2名指定)
+  Browser->>Sec: POST /api/tasks<br/>Authorization: Bearer JWT<br/>X-Tenant-Id: 11
+  Sec->>Sec: JWT署名検証 + クレーム抽出
+  Sec->>Filter: 認証済 Principal を渡す
+  Filter->>Filter: TenantContext.set(tenantId=11, userId=1, role=MEMBER)<br/>(以降のSQLにHibernate Filterで自動付与)
+  Filter->>Ctrl: forward
+  Ctrl->>Ctrl: @Valid TaskCreateRequest (Bean Validation)<br/>title必須, dueDate必須, priority必須, visibility必須
+  Ctrl->>UC: execute(CreateTaskCommand)
+
+  UC->>UC: ownerId, tenantId は ActorContext から自動取得<br/>(リクエストボディは無視)
+  UC->>Domain: new Task(title, dueDate, priority, visibility, ownerId, ...)
+  Domain->>Domain: 不変条件チェック<br/>(dueDate≠null, title 1..100文字)
+  Domain-->>UC: Task インスタンス
+
+  alt visibility = STAKEHOLDERS
+    UC->>UC: stakeholderUserIds 検証<br/>(同テナント内の有効ユーザーか)
+  else
+    Note over UC: stakeholders は無視
+  end
+
+  UC->>TaskRepo: save(task)
+  TaskRepo->>DB: INSERT INTO tasks<br/>(tenant_id, owner_id, title, due_date, priority, visibility, ...)
+  DB-->>TaskRepo: id=101
+  alt visibility = STAKEHOLDERS
+    UC->>SHRepo: replaceAll(taskId=101, [3, 5], addedBy=1)
+    SHRepo->>DB: INSERT task_stakeholders ×2
+  end
+
+  UC->>Audit: log(CREATE_TASK, actor, taskId=101, diff)
+  Audit->>DB: INSERT audit_logs (hash_chain = SHA256(prev || payload))
+
+  UC-->>Ctrl: Task
+  Ctrl-->>Browser: 201 Created + Task JSON
+  Browser-->>User: 一覧画面へ遷移 (新規タスクが当日セクションに表示)
+
+  Note over Filter,DB: テナント分離: 全SQLに WHERE tenant_id=11 が<br/>Hibernate Filterによって自動付与される

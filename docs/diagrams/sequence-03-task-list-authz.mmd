@@ -1,0 +1,65 @@
+%% ====================================================================
+%% シーケンス図 03: タスク一覧取得 (当日表示 + 期限切れ常時表示 + 認可フィルタ)
+%% タスク管理システム v1.2
+%% ====================================================================
+sequenceDiagram
+  autonumber
+  actor User as Member ユーザー
+  participant Browser as ブラウザ
+  participant Sec as Spring Security
+  participant Filter as TenantContextFilter
+  participant Ctrl as TaskController
+  participant UC as ListTasksUseCase
+  participant AuthZ as TaskAuthorizationDomainService
+  participant TaskRepo as TaskRepositoryImpl
+  participant DB as MySQL
+
+  User->>Browser: ダッシュボード表示
+  Browser->>Ctrl: GET /api/tasks?targetDate=2026-05-12&includeOverdue=true<br/>(Bearer + X-Tenant-Id: 11)
+  Sec->>Filter: 認証OK
+  Filter->>Filter: TenantContext.set(tenantId=11, userId=1, role=MEMBER)
+  Filter->>Ctrl: forward
+  Ctrl->>UC: execute(ListTasksQuery)
+
+  Note over UC,DB: --- 期限切れ未完了タスク取得 ---
+  UC->>TaskRepo: findOverdueOpen(tenantId=11, today=2026-05-12)
+  TaskRepo->>DB: SELECT * FROM tasks<br/>WHERE tenant_id=11 AND deleted_at IS NULL<br/>AND due_date < '2026-05-12'<br/>AND status != 'DONE'
+  DB-->>TaskRepo: 期限切れタスク 7件
+  TaskRepo-->>UC: List<Task>
+
+  Note over UC,DB: --- 当日タスク取得 ---
+  UC->>TaskRepo: findByTenantAndDate(tenantId=11, date=2026-05-12)
+  TaskRepo->>DB: SELECT * FROM tasks<br/>WHERE tenant_id=11 AND deleted_at IS NULL<br/>AND due_date = '2026-05-12'<br/>ORDER BY due_date, priority
+  DB-->>TaskRepo: 本日タスク 23件
+  TaskRepo-->>UC: List<Task>
+
+  Note over UC: --- 公開範囲フィルタを適用 ---
+  loop 各 task について
+    UC->>AuthZ: assertViewable(task, userId=1, role=MEMBER, stakeholders)
+    alt visibility = TENANT
+      AuthZ-->>UC: ✓ 参照可
+    else visibility = STAKEHOLDERS
+      AuthZ->>AuthZ: ownerId == 1 OR assigneeId == 1<br/>OR userId IN stakeholders ?
+      alt 該当する
+        AuthZ-->>UC: ✓ 参照可
+      else
+        AuthZ-->>UC: ✗ 除外
+      end
+    else visibility = PRIVATE
+      AuthZ->>AuthZ: ownerId == 1 ?
+      alt 該当する
+        AuthZ-->>UC: ✓ 参照可
+      else
+        AuthZ-->>UC: ✗ 除外
+      end
+    end
+  end
+
+  Note over UC: --- 各タスクに editable / deletable フラグ付与 ---
+  loop 各 visibleTask
+    UC->>AuthZ: canEdit(task, userId, role) → boolean
+  end
+
+  UC-->>Ctrl: TaskPage(content, overdueCount=7, ...)
+  Ctrl-->>Browser: 200 OK + JSON
+  Browser-->>User: 期限切れ7件 + 本日タスクを表示<br/>(編集ボタンは所有者のみ表示)

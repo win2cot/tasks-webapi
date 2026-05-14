@@ -1,0 +1,105 @@
+%% ====================================================================
+%% クリーンアーキテクチャ層構成 概要図
+%% タスク管理システム v1.2
+%% 依存方向: Adapter → UseCase → Domain (内側に向かってのみ)
+%% Infrastructure は全層に配線(DIコンテナ)
+%% ====================================================================
+flowchart TB
+
+  subgraph Infrastructure["Infrastructure 層"]
+    direction TB
+    SpringApp[/"@SpringBootApplication<br/>TaskFlowApplication"/]
+    SecConfig["SecurityConfig<br/>(OAuth2 ResourceServer)"]
+    DSConfig["DataSourceConfig<br/>(MySQL接続)"]
+    JpaConfig["JpaConfig<br/>(Hibernate Filter登録)"]
+  end
+
+  subgraph Adapter["Adapter 層"]
+    direction TB
+    subgraph Web["adapter.web (REST入力)"]
+      TaskController["TaskController<br/>@RestController"]
+      AuthController["AuthController"]
+      TenantController["TenantController"]
+      UserController["UserController"]
+      DashboardController["DashboardController"]
+      AuditController["AuditController"]
+    end
+    subgraph Persistence["adapter.persistence (DB出力)"]
+      TaskRepoImpl["TaskRepositoryImpl<br/>(implements TaskRepository)"]
+      TenantRepoImpl["TenantRepositoryImpl"]
+      UserTenantRepoImpl["UserTenantRepositoryImpl"]
+      StakeholderRepoImpl["StakeholderRepositoryImpl"]
+      AuditLogRepoImpl["AuditLogRepositoryImpl"]
+      JpaTaskEntity[/"TaskJpaEntity<br/>@Entity (JPA)"/]
+    end
+    subgraph External["adapter.external (外部I/O)"]
+      KeycloakClient["KeycloakAdminClient"]
+      MailSender["SesMailSender<br/>(implements MailPort)"]
+      UserDirectory["LegacyUserDirectory<br/>(既存users参照)"]
+    end
+  end
+
+  subgraph UseCase["UseCase (Application) 層"]
+    direction TB
+    subgraph TaskUC["task"]
+      CreateTaskUC["CreateTaskUseCase"]
+      GetTaskUC["GetTaskUseCase"]
+      ListTasksUC["ListTasksUseCase"]
+      UpdateTaskUC["UpdateTaskUseCase"]
+      ChangeStatusUC["ChangeStatusUseCase"]
+      ChangeVisibilityUC["ChangeVisibilityUseCase"]
+      DeleteTaskUC["DeleteTaskUseCase"]
+    end
+    subgraph StakeholderUC["stakeholder"]
+      AddStakeholderUC["AddStakeholderUseCase"]
+      RemoveStakeholderUC["RemoveStakeholderUseCase"]
+    end
+    subgraph TenantUC["tenant"]
+      SwitchTenantUC["SwitchTenantUseCase"]
+      InviteUserUC["InviteUserUseCase"]
+    end
+    Ports["Port 定義<br/>(Repository / Service / Mail のI/F)"]
+  end
+
+  subgraph Domain["Domain 層 (Spring非依存)"]
+    direction TB
+    subgraph Entities["エンティティ"]
+      TaskAgg["Task (集約ルート)"]
+      Stakeholder["TaskStakeholder"]
+      Tenant["Tenant"]
+      UserTenant["UserTenant"]
+    end
+    subgraph VO["値オブジェクト"]
+      TaskId["TaskId"]
+      TenantId["TenantId"]
+      UserId["UserId"]
+      Title["Title (≦100)"]
+      DueDate["DueDate (必須)"]
+    end
+    subgraph DomEnum["enum"]
+      Visibility["Visibility<br/>TENANT/STAKEHOLDERS/PRIVATE"]
+      Priority["Priority<br/>HIGH/MEDIUM/LOW"]
+      TaskStatus["TaskStatus<br/>NOT_STARTED/IN_PROGRESS/DONE/ON_HOLD"]
+      Role["Role<br/>TENANT_ADMIN/MEMBER"]
+    end
+    DomService["TaskAuthorizationDomainService<br/>(参照可否・編集可否のドメインルール)"]
+    RepoIF["RepositoryInterface<br/>TaskRepository / TenantRepository<br/>UserTenantRepository / StakeholderRepository"]
+  end
+
+  Web -->|呼び出し| UseCase
+  UseCase -->|参照| Domain
+  Persistence -.実装.-> RepoIF
+  External -.実装.-> Ports
+  TaskRepoImpl -->|JPA| JpaTaskEntity
+  Infrastructure -.設定注入.-> Adapter
+  Infrastructure -.設定注入.-> UseCase
+
+  classDef domainStyle fill:#FFF8DC,stroke:#8B7500,color:#000
+  classDef ucStyle fill:#E0F2FE,stroke:#0369A1,color:#000
+  classDef adapterStyle fill:#DCFCE7,stroke:#15803D,color:#000
+  classDef infraStyle fill:#FEE2E2,stroke:#B91C1C,color:#000
+
+  class Domain,Entities,VO,DomEnum,DomService,RepoIF domainStyle
+  class UseCase,TaskUC,StakeholderUC,TenantUC,Ports ucStyle
+  class Adapter,Web,Persistence,External adapterStyle
+  class Infrastructure infraStyle

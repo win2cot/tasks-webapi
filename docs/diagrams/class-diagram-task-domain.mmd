@@ -1,0 +1,124 @@
+%% ====================================================================
+%% Task 集約 ドメインモデル詳細
+%% タスク管理システム v1.2
+%% ====================================================================
+classDiagram
+  direction LR
+
+  class Task {
+    -TaskId id
+    -TenantId tenantId
+    -Title title
+    -Description description
+    -TaskStatus status
+    -Priority priority
+    -Visibility visibility
+    -UserId ownerId
+    -UserId assigneeId (nullable)
+    -DueDate dueDate
+    -Instant completedAt (nullable)
+    -Instant deletedAt (nullable)
+    -Instant createdAt
+    -Instant updatedAt
+    +rename(Title) void
+    +reschedule(DueDate) void
+    +reassign(UserId) void
+    +changePriority(Priority) void
+    +changeVisibility(Visibility, List~UserId~) void
+    +start() void
+    +complete() void
+    +hold() void
+    +reopen() void
+    +softDelete() void
+    +canBeViewedBy(UserId, Role, List~UserId~ stakeholders) boolean
+    +canBeEditedBy(UserId, Role) boolean
+  }
+
+  class TaskStakeholder {
+    -TaskId taskId
+    -UserId userId
+    -TenantId tenantId
+    -UserId addedBy
+    -Instant addedAt
+  }
+
+  class TaskAuthorizationDomainService {
+    +assertViewable(Task, UserId, Role, List~UserId~ stakeholders) void
+    +assertEditable(Task, UserId, Role) void
+    +assertDeletable(Task, UserId, Role) void
+    +assertVisibilityChangeable(Task, UserId) void
+    +assertStatusChangeable(Task, UserId, Role) void
+  }
+
+  class TaskRepository {
+    <<interface>>
+    +findById(TaskId, TenantId) Optional~Task~
+    +findByTenantAndDate(TenantId, LocalDate, boolean includeOverdue) List~Task~
+    +findOverdueOpen(TenantId, LocalDate) List~Task~
+    +save(Task) Task
+    +softDelete(TaskId, TenantId, Instant) void
+  }
+
+  class StakeholderRepository {
+    <<interface>>
+    +findByTask(TaskId) List~TaskStakeholder~
+    +findTaskIdsByUser(UserId, TenantId) List~TaskId~
+    +add(TaskStakeholder) void
+    +remove(TaskId, UserId) void
+    +replaceAll(TaskId, List~UserId~, UserId addedBy) void
+  }
+
+  class TaskId
+  class TenantId
+  class UserId
+  class Title {
+    -String value
+    +constructor(String) (length 1..100)
+  }
+  class Description {
+    -String value (≦2000)
+  }
+  class DueDate {
+    -LocalDate value (NOT NULL)
+  }
+
+  class Visibility {
+    <<enumeration>>
+    TENANT
+    STAKEHOLDERS
+    PRIVATE
+  }
+  class Priority {
+    <<enumeration>>
+    HIGH
+    MEDIUM
+    LOW
+  }
+  class TaskStatus {
+    <<enumeration>>
+    NOT_STARTED
+    IN_PROGRESS
+    DONE
+    ON_HOLD
+  }
+  class Role {
+    <<enumeration>>
+    TENANT_ADMIN
+    MEMBER
+  }
+
+  Task "1" *-- "1" TaskId
+  Task "1" *-- "1" TenantId
+  Task "1" *-- "1" Title
+  Task "1" o-- "0..1" Description
+  Task "1" *-- "1" DueDate
+  Task "1" *-- "1" Visibility
+  Task "1" *-- "1" Priority
+  Task "1" *-- "1" TaskStatus
+  Task "1" o-- "*" TaskStakeholder : "via StakeholderRepository"
+  TaskStakeholder "*" --> "1" UserId
+  TaskAuthorizationDomainService ..> Task : evaluates
+  TaskAuthorizationDomainService ..> Visibility
+  TaskAuthorizationDomainService ..> Role
+  TaskRepository ..> Task : returns
+  StakeholderRepository ..> TaskStakeholder : returns
