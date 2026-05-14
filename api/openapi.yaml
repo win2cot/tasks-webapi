@@ -28,7 +28,7 @@ info:
     - `403 Forbidden` — テナント越境、ロール権限不足、編集系で所有者でない 等
     - `404 Not Found` — リソース不在、または **参照系で参照権限不足**(リソース存在を漏らさない方針)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.3.3"
+  version: "1.3.2"
   contact:
     name: 開発チーム
     email: dev@example.com
