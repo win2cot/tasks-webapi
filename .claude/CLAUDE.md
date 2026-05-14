@@ -53,6 +53,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 All code under `xyz.dgz48.*` must be null-safe. Each package requires a `package-info.java` annotated with `@NullMarked`. Parameters, return types, and fields are non-null by default; use `@Nullable` explicitly where null is permitted.
 
+## Conventions (must read before editing code)
+
+Before making non-trivial code or design changes, read the following Japanese-Markdown convention docs. They are the authoritative ruleset; this file only summarizes a tiny subset.
+
+- `docs/specs/設計規約.md` — architecture (Spring Modulith + per-feature clean layers), package layout, multi-tenant rules, auth response policy (404 for read denial, 403 for write denial, 401 unauth), Flyway naming, OpenAPI-first, error response schema.
+- `docs/specs/コーディング規約.md` — Java/Spring style, null-safety, allowed Lombok annotations, JPA entity pattern, DTO records, exception hierarchy, tests (Testcontainers MySQL 8.4, no H2), logging, naming.
+
+Architecture-level decisions are recorded as ADRs under `docs/adr/` (template: `docs/adr/0000-template.md`; index starts at `docs/adr/0001-record-architecture-decisions.md`). When a change introduces a new library, a new framework-level pattern, or revises an existing convention, open an ADR in the same PR.
+
 ## CI/CD
 
 GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publishes test results and JaCoCo coverage reports. Automated Claude Code reviews run on PRs via `claude-code-review.yml`. CI environment uses `LANG=ja_JP.UTF-8` and `TZ=Asia/Tokyo`.
@@ -102,12 +111,16 @@ GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publish
 
 ### Architecture
 
-クリーンアーキ 4 層(依存方向は外→内のみ、ArchUnit で検証):
+**Spring Modulith による feature-by-package + 各 feature 内部でクリーンアーキ 4 層** のハイブリッド方式を採用する(詳細は `docs/specs/設計規約.md` §1)。
 
-- `domain` — POJO のみ、Spring 非依存、JPA アノテーション禁止
-- `usecase` — ユースケース・Port 定義・トランザクション境界
-- `adapter.{web, persistence, external}` — REST Controller、JPA Entity、Keycloak/SES クライアント
-- `infra` — Spring Boot 設定、起動クラス
+- **外側(モジュール境界)**: feature 単位パッケージ(`xyz.dgz48.tasks.webapi.<feature>` 例: `task` / `user` / `security` / `tenant` / `notification` / `audit` / `dashboard` / `shared`)。feature 間の不正参照は `ModularityTests` の `ApplicationModules.verify()` が CI で検知。
+- **内側(各 feature 内部)**: 依存方向は外→内のみ。
+  - `domain` — POJO のみ、Spring 非依存、JPA アノテーション禁止
+  - `usecase` — ユースケース・Port 定義・トランザクション境界(`@Transactional` はここ)
+  - `adapter.{web, persistence, external}` — REST Controller、JPA Entity、Keycloak/SES クライアント
+  - `infra` — feature 固有の Spring 設定
+- feature 間連携は Spring Modulith の `@ApplicationModuleListener`(イベント)または `@NamedInterface` で公開した型のみ。他 feature の `internal` 配下を直接参照しない。
+- ArchUnit による静的検証の導入は **ADR-0002 により当面保留**(`ApplicationModules.verify()` に集約)。
 
 実行基盤は **AWS ECS on Fargate**(EC2 不使用)。認証は **Keycloak**(本プロジェクトで構築)。
 
