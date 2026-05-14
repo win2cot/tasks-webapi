@@ -415,7 +415,11 @@ paths:
                   items: { type: integer, format: int64 }
                   description: "visibility=STAKEHOLDERS のとき指定。既存の関係者は置換される"
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
         "400": { $ref: "#/components/responses/Validation" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
