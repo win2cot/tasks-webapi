@@ -7,8 +7,13 @@ import xyz.dgz48.tasks.webapi.task.Visibility;
 /**
  * タスクごとの認可判定 SSOT — 基本設計書 §6.2.1 参照。
  *
- * <p>Spring 非依存の純粋関数。各メソッドは boolean を返し、UseCase 層が false 時に TaskNotViewableException(404) または
- * TaskOwnershipException(403) を throw する。
+ * <p>Spring 非依存の純粋関数。UseCase 層で {@code new TaskAuthorizationDomainService()} により インスタンス化するか、feature
+ * の infra 設定クラスで {@code @Bean} 登録する。各メソッドは boolean を返し、 UseCase 層が false 時に
+ * TaskNotViewableException(404) または TaskOwnershipException(403) を throw する。
+ *
+ * <p>TODO: {@link Task} は JPA エンティティ({@code @Entity})であり、Domain 層の純粋性を損なっている。 将来的には {@code
+ * task.domain} に JPA 非依存のドメインモデルを分離し、{@link Task} エンティティは {@code task.adapter.persistence}
+ * へ移動することが推奨される(技術的負債)。
  */
 public class TaskAuthorizationDomainService {
 
@@ -19,12 +24,12 @@ public class TaskAuthorizationDomainService {
    *   <li>TENANT: テナント全員参照可
    *   <li>STAKEHOLDERS: 所有者 / 担当者 / task_stakeholders 登録ユーザーのみ
    *   <li>PRIVATE: 所有者のみ
-   *   <li>Tenant Admin は visibility 制限なし
+   *   <li>Tenant Admin / SaaS Admin は visibility 制限なし
    * </ul>
    */
   public boolean canBeViewedBy(
       Task task, Long userId, TenantRole role, List<Long> stakeholderUserIds) {
-    if (role == TenantRole.TENANT_ADMIN) {
+    if (role.isAdmin()) {
       return true;
     }
     Visibility visibility = task.getVisibility();
@@ -38,24 +43,28 @@ public class TaskAuthorizationDomainService {
     };
   }
 
-  /** 編集可否を返す。所有者のみ可。Tenant Admin は強制編集可(監査ログ記録は UseCase 側の責務)。 */
+  /** 編集可否を返す。所有者のみ可。Admin は強制編集可(監査ログ記録は UseCase 側の責務)。 */
   public boolean canBeEditedBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
+    return task.getOwnerId().equals(userId) || role.isAdmin();
   }
 
-  /** 削除可否を返す。所有者または Tenant Admin。 */
+  /**
+   * 削除可否を返す。所有者または Admin。
+   *
+   * <p>現仕様では {@link #canBeEditedBy} と同一だが、削除ポリシーが独立して変更される可能性があるため 意図的に分離している。
+   */
   public boolean canBeDeletedBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
+    return task.getOwnerId().equals(userId) || role.isAdmin();
   }
 
-  /** ステータス変更可否を返す。所有者・担当者・Tenant Admin。 */
+  /** ステータス変更可否を返す。所有者・担当者・Admin。 */
   public boolean canChangeStatusBy(Task task, Long userId, TenantRole role) {
     return task.getOwnerId().equals(userId)
         || userId.equals(task.getAssigneeId())
-        || role == TenantRole.TENANT_ADMIN;
+        || role.isAdmin();
   }
 
-  /** 公開範囲変更・関係者編集可否を返す。所有者のみ。 */
+  /** 公開範囲変更・関係者編集可否を返す。所有者のみ(Admin も不可)。 */
   public boolean canChangeVisibilityBy(Task task, Long userId) {
     return task.getOwnerId().equals(userId);
   }
