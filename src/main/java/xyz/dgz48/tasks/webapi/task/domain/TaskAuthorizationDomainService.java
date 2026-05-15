@@ -43,18 +43,18 @@ public class TaskAuthorizationDomainService {
     };
   }
 
-  /** 編集可否を返す。所有者のみ可。Admin は強制編集可(監査ログ記録は UseCase 側の責務)。 */
+  /** 編集可否を返す。所有者または Tenant Admin のみ可(SaaS Admin は不可)。監査ログ記録は UseCase 側の責務。 */
   public boolean canBeEditedBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId) || role.isAdmin();
+    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
   }
 
   /**
-   * 削除可否を返す。所有者または Admin。
+   * 削除可否を返す。所有者または Tenant Admin のみ可(SaaS Admin は不可)。
    *
    * <p>現仕様では {@link #canBeEditedBy} と同一だが、削除ポリシーが独立して変更される可能性があるため 意図的に分離している。
    */
   public boolean canBeDeletedBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId) || role.isAdmin();
+    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
   }
 
   /** ステータス変更可否を返す。所有者・担当者・Admin。 */

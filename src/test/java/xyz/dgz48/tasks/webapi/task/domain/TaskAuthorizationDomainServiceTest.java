@@ -106,9 +106,9 @@ class TaskAuthorizationDomainServiceTest {
     }
 
     @Test
-    void saasAdminCanEdit() {
+    void saasAdminCannotEdit() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeEditedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isTrue();
+      assertThat(service.canBeEditedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isFalse();
     }
 
     @Test
@@ -134,9 +134,9 @@ class TaskAuthorizationDomainServiceTest {
     }
 
     @Test
-    void saasAdminCanDelete() {
+    void saasAdminCannotDelete() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeDeletedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isTrue();
+      assertThat(service.canBeDeletedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isFalse();
     }
 
     @Test

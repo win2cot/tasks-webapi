@@ -37,7 +37,7 @@ sequenceDiagram
     UC-->>Ctrl: TaskOwnershipException
     Ctrl-->>Browser: 403 E_FORBIDDEN<br/>"タスクの編集は所有者のみ可能です"
     Browser-->>User: エラー表示
-  else 認可成功 (ownerId=2 のケース、または role=TENANT_ADMIN/SAAS_ADMIN)
+  else 認可成功 (ownerId=2 のケース、または role=TENANT_ADMIN)
     AuthZ-->>UC: ✓
     UC->>UC: task.rename(newTitle)<br/>task.reschedule(newDueDate)<br/>task.changePriority(newPriority)<br/>... (Domain メソッドで不変条件チェック)
     UC->>TaskRepo: save(task)
