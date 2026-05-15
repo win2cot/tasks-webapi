@@ -72,8 +72,8 @@ GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publish
 
 ### Design Versions
 
-- 要件定義書: v1.2(v1.3 更新は計画中)
-- 基本設計書: **v1.3.2** ← Single Source of Truth
+- 要件定義書: v1.3
+- 基本設計書: **v1.3.4** ← Single Source of Truth
 - 開発計画書: v1.2
 - OpenAPI: **v1.3.1**(24 operations / 23 schemas)
 
