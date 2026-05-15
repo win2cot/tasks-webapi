@@ -250,14 +250,11 @@ paths:
       tags: [Task]
       summary: タスク一覧(認可フィルタ済み)
       description: |
-        認可フィルタは以下を AND で結合:
-        - tenant_id = X-Tenant-Id (Hibernate Filterで自動付与)
+        認可フィルタ済みのタスク一覧を返す。参照認可ルールの詳細は基本設計書 §6.2.1 参照。
+        実装の SSOT は TaskAuthorizationDomainService (Domain 層)。
+        - tenant_id = X-Tenant-Id (Hibernate Filter で自動付与)
         - deleted_at IS NULL
-        - visibility による絞込:
-          - visibility=TENANT: 全員参照可
-          - visibility=STAKEHOLDERS: owner_id=me OR assignee_id=me OR EXISTS (task_stakeholders WHERE user_id=me)
-          - visibility=PRIVATE: owner_id=me
-          - Tenant Admin は visibility 制限を受けない
+        - visibility による参照認可が適用される(Tenant Admin は制限なし)
       operationId: listTasks
       parameters:
         - { name: targetDate,     in: query, schema: { type: string, format: date }, description: "表示対象日(省略時は当日 TODAY)" }
