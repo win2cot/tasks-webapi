@@ -1,0 +1,62 @@
+package xyz.dgz48.tasks.webapi.task.domain;
+
+import java.util.List;
+import xyz.dgz48.tasks.webapi.task.Task;
+import xyz.dgz48.tasks.webapi.task.Visibility;
+
+/**
+ * タスクごとの認可判定 SSOT — 基本設計書 §6.2.1 参照。
+ *
+ * <p>Spring 非依存の純粋関数。各メソッドは boolean を返し、UseCase 層が false 時に TaskNotViewableException(404) または
+ * TaskOwnershipException(403) を throw する。
+ */
+public class TaskAuthorizationDomainService {
+
+  /**
+   * 参照可否を返す。
+   *
+   * <ul>
+   *   <li>TENANT: テナント全員参照可
+   *   <li>STAKEHOLDERS: 所有者 / 担当者 / task_stakeholders 登録ユーザーのみ
+   *   <li>PRIVATE: 所有者のみ
+   *   <li>Tenant Admin は visibility 制限なし
+   * </ul>
+   */
+  public boolean canBeViewedBy(
+      Task task, Long userId, TenantRole role, List<Long> stakeholderUserIds) {
+    if (role == TenantRole.TENANT_ADMIN) {
+      return true;
+    }
+    Visibility visibility = task.getVisibility();
+    return switch (visibility) {
+      case TENANT -> true;
+      case STAKEHOLDERS ->
+          task.getOwnerId().equals(userId)
+              || userId.equals(task.getAssigneeId())
+              || stakeholderUserIds.contains(userId);
+      case PRIVATE -> task.getOwnerId().equals(userId);
+    };
+  }
+
+  /** 編集可否を返す。所有者のみ可。Tenant Admin は強制編集可(監査ログ記録は UseCase 側の責務)。 */
+  public boolean canBeEditedBy(Task task, Long userId, TenantRole role) {
+    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
+  }
+
+  /** 削除可否を返す。所有者または Tenant Admin。 */
+  public boolean canBeDeletedBy(Task task, Long userId, TenantRole role) {
+    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
+  }
+
+  /** ステータス変更可否を返す。所有者・担当者・Tenant Admin。 */
+  public boolean canChangeStatusBy(Task task, Long userId, TenantRole role) {
+    return task.getOwnerId().equals(userId)
+        || userId.equals(task.getAssigneeId())
+        || role == TenantRole.TENANT_ADMIN;
+  }
+
+  /** 公開範囲変更・関係者編集可否を返す。所有者のみ。 */
+  public boolean canChangeVisibilityBy(Task task, Long userId) {
+    return task.getOwnerId().equals(userId);
+  }
+}

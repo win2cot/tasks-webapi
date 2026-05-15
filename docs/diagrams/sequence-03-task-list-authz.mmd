@@ -33,26 +33,11 @@ sequenceDiagram
   DB-->>TaskRepo: 本日タスク 23件
   TaskRepo-->>UC: List<Task>
 
-  Note over UC: --- 公開範囲フィルタを適用 ---
+  Note over UC,AuthZ: --- 公開範囲フィルタを適用 ---
+  Note over AuthZ: 参照認可の詳細ルールは TaskAuthorizationDomainService が SSOT<br/>(基本設計書 §6.2.1 参照)
   loop 各 task について
     UC->>AuthZ: assertViewable(task, userId=1, role=MEMBER, stakeholders)
-    alt visibility = TENANT
-      AuthZ-->>UC: ✓ 参照可
-    else visibility = STAKEHOLDERS
-      AuthZ->>AuthZ: ownerId == 1 OR assigneeId == 1<br/>OR userId IN stakeholders ?
-      alt 該当する
-        AuthZ-->>UC: ✓ 参照可
-      else
-        AuthZ-->>UC: ✗ 除外
-      end
-    else visibility = PRIVATE
-      AuthZ->>AuthZ: ownerId == 1 ?
-      alt 該当する
-        AuthZ-->>UC: ✓ 参照可
-      else
-        AuthZ-->>UC: ✗ 除外
-      end
-    end
+    AuthZ-->>UC: ✓ 参照可 / ✗ 除外
   end
 
   Note over UC: --- 各タスクに editable / deletable フラグ付与 ---

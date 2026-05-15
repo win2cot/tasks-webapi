@@ -28,7 +28,7 @@ sequenceDiagram
   TaskRepo-->>UC: Task
 
   UC->>AuthZ: assertEditable(task, userId=2, role=MEMBER)
-  AuthZ->>AuthZ: task.ownerId == 2 ? → false<br/>role == TENANT_ADMIN ? → false
+  Note over AuthZ: 編集権限の詳細ルールは TaskAuthorizationDomainService が SSOT<br/>(基本設計書 §6.2.1 参照)
 
   alt 認可失敗 (所有者でも Admin でもない)
     AuthZ-->>UC: throw TaskOwnershipException
