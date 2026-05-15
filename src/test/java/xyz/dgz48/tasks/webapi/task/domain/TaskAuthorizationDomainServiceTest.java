@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import xyz.dgz48.tasks.webapi.task.Task;
@@ -19,7 +20,7 @@ class TaskAuthorizationDomainServiceTest {
   private static final Long STAKEHOLDER_ID = 3L;
   private static final Long OTHER_ID = 4L;
 
-  private Task mockTask(Visibility visibility, Long ownerId, Long assigneeId) {
+  private Task mockTask(Visibility visibility, Long ownerId, @Nullable Long assigneeId) {
     Task task = mock(Task.class);
     when(task.getVisibility()).thenReturn(visibility);
     when(task.getOwnerId()).thenReturn(ownerId);
