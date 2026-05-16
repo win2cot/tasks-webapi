@@ -35,7 +35,7 @@ info:
     - `403 Forbidden` — テナント越境、ロール権限不足、編集系で所有者でない 等
     - `404 Not Found` — リソース不在、または **参照系で参照権限不足**(リソース存在を漏らさない方針)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.4.1"
+  version: "1.4.2"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -1072,6 +1072,16 @@ components:
           example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
 
     AuditLog:
+      description: |
+        監査ログのレスポンス表現。`audit_logs` テーブル(基本設計書 v1.4.1 §4.2.6)に対応するが、
+        **以下の DDL 列は API レスポンスに含めない**(内部分離キー / 内部実装 / 重複情報のため):
+
+        - `tenant_id` — `/api/audit-logs` は Tenant Admin が自テナントの監査ログを参照する API であり、
+          レスポンスは常に呼び出し時の `X-Tenant-Id` ヘッダ値と一致する。内部分離キーであり返却不要(Issue #107、方針 B)。
+        - `actor_sub` — Keycloak `sub` クレーム。JIT プロビジョニング(基本設計書 §3.2.1 / §4.2 冒頭)により
+          `userId` (`users.id`) に対応する `users.oidc_sub` に転写されているため、`userId` 経由で取得可能。重複情報。
+        - `hash_chain` — 監査ログ改ざん検知用の SHA-256 ハッシュ(基本設計書 §6.7)。API では公開せず、
+          改ざん検知ロジック自体を露出させない方針。
       type: object
       required: [id, action, detail, createdAt]
       properties:
