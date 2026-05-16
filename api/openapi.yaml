@@ -2,23 +2,30 @@ openapi: 3.1.0
 info:
   title: タスク管理システム API
   description: |
-    マルチテナントSaaS型タスク管理システムのREST API仕様(v1.2準拠)。
+    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4 / 要件定義書 v1.4 準拠)。
 
     認証はKeycloak経由のOIDC、本APIはJWTを Spring Security OAuth2 Resource Server で検証する。
     全リクエストには `Authorization: Bearer {access_token}` を付与し、
-    アクティブテナントは `X-Tenant-Id` ヘッダで送出する。
+    業務 API ではアクティブテナントを `X-Tenant-Id` ヘッダで送出する。
+    プラットフォーム運用 API(`/api/auth/*` の一部・`/api/tenants` 系 SaaS Admin 操作・セルフサインアップ・`/api/platform/*`)は `X-Tenant-Id` を要求しない。
 
-    認可は3階層: SaaS Admin / Tenant Admin / Member(参照のみのViewerは設けない)。
+    認可は**プラットフォーム軸**と**テナント軸**の 2 軸で直交する(参照のみの Viewer は設けない)。
     タスクごとの参照認可は visibility (TENANT/STAKEHOLDERS/PRIVATE) と所有者・関係者・担当者の関係で決定する。
 
-    ## 認可モデル詳細
+    ## 認可モデル詳細(2 軸直交)
 
-    - **SaaS Admin**: Keycloak realm role `APP_ADMIN` で管理する(本システムDBの `user_tenants.role` には保持しない)。
-      `/api/tenants/**` (テナント管理) のみ操作可能。Spring Security 上は `hasRole('APP_ADMIN')` で判定。
-    - **Tenant Admin**: 本システムDBの `user_tenants.role = TENANT_ADMIN` で管理。
+    - **プラットフォーム軸 / SaaS Admin**: Keycloak realm role `APP_ADMIN` で管理する(本システム DB には保持しない)。
+      テナント運営 API(`/api/tenants/**` 状態管理・`/api/platform/**` 監視)のみ操作可能。**業務 API(`/api/tasks/**`、`/api/dashboard/**`、`/api/tenant/users/**`、`/api/audit-logs` 等)には触れない**(呼び出された場合は 403)。Spring Security 上は `hasRole('APP_ADMIN')`。
+    - **テナント軸 / Tenant Admin**: 本システム DB の `user_tenants.role = TENANT_ADMIN` で管理。
       テナント内ユーザー管理、全タスク参照・編集・削除、監査ログ参照が可能。Spring Security 上は `hasRole('TENANT_ADMIN')`。
-    - **Member**: 本システムDBの `user_tenants.role = MEMBER` で管理。
-      タスクCRUD(編集・削除は所有者のみ)、テナント内タスク参照が可能。Spring Security 上は `hasRole('MEMBER')`。
+    - **テナント軸 / Member**: 本システム DB の `user_tenants.role = MEMBER` で管理。
+      タスク CRUD(編集・削除は所有者のみ)、テナント内タスク参照が可能。Spring Security 上は `hasRole('MEMBER')`。
+
+    両軸は包含関係ではなく直交する。SaaS Admin が業務 API を呼んでも自動的に Tenant Admin 権限を持つわけではない(同一の Keycloak ユーザーが両方の役割を兼ねている場合、それは別軸での個別の所属である)。
+
+    ## セルフサインアップ(モデル B)
+
+    テナント作成 `POST /api/tenants` は **認証済み(Keycloak ログイン済み)のユーザーが自分自身でテナントを作成**する。SaaS Admin 専用 API ではない。作成と同時に呼び出しユーザーが初代 Tenant Admin として `user_tenants` に登録される。レート制限・ドメイン制限・承認制等の濫用対策は Phase 2。
 
     ## 共通レスポンス
 
@@ -28,12 +35,28 @@ info:
     - `403 Forbidden` — テナント越境、ロール権限不足、編集系で所有者でない 等
     - `404 Not Found` — リソース不在、または **参照系で参照権限不足**(リソース存在を漏らさない方針)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.3.3"
+  version: "1.4.1"
   contact:
     name: 開発チーム
     email: dev@example.com
   license:
     name: Proprietary
+
+tags:
+  - name: Auth
+    description: 認証・セッション管理(Keycloak OIDC)
+  - name: Tenant
+    description: テナント管理(セルフサインアップ、状態管理、SaaS Admin 向け運営)
+  - name: Platform
+    description: プラットフォーム監視 API(SaaS Admin 専用)
+  - name: User
+    description: テナント内ユーザー管理(プロフィール / 通知設定 / 招待 / ロール)
+  - name: Task
+    description: タスク管理(可視性・関係者・ステータス)
+  - name: Dashboard
+    description: テナント内ダッシュボード集計
+  - name: Audit
+    description: 監査ログ参照(Tenant Admin)
 
 servers:
   - url: https://api.taskflow.example.com
@@ -108,13 +131,26 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  # --- テナント (SaaS Admin) ---
+  # --- テナント ---
   /api/tenants:
     get:
       tags: [Tenant]
       summary: テナント一覧 (SaaS Admin)
-      description: "認可: SaaS Admin のみ"
+      description: |
+        全テナントの一覧を返す(SaaS Admin 監視ダッシュボード S-13 用)。
+        認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
+
+        **HTTP ステータス**: 本エンドポイントは SaaS Admin 専用のコレクションリソースであり、認可違反時は `403` を返す。
+        個別リソース取得(`GET /api/tenants/{id}`)では「リソース存在を漏らさない」方針で `404` を返すが、
+        コレクション全体への列挙拒否では存在秘匿の必要がないため慣習どおり `403` を採用する。
+
+        **デフォルトソート順**: `createdAt DESC`(最近作成されたテナントを先頭)。
+
+        **ページネーション**: Phase 1 ではページネーション未対応(全件返却)。テナント数が増加した時点で
+        Phase 2 にて `page` / `size` パラメータの導入を検討する。
       operationId: listTenants
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -123,13 +159,26 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Tenant" }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Tenant]
-      summary: テナント作成 (SaaS Admin)
-      description: "認可: SaaS Admin のみ"
+      summary: テナント作成(セルフサインアップ、認証済みユーザー)
+      description: |
+        認証済み(Keycloak ログイン済み)のユーザーが自分自身でテナントを新規作成する(モデル B)。
+        作成と同時に呼び出しユーザーが初代 Tenant Admin として `user_tenants` に登録される(アトミック)。
+        `X-Tenant-Id` ヘッダは要求しない(テナント未所属状態で呼ぶ API のため)。
+
+        **JIT プロビジョニング前提**: 呼び出しユーザーの `users` 行は JWT 認証フィルタ層の JIT で
+        自動作成されているため、本ハンドラ到達時には必ず確保されている。仮に JIT が失敗した場合は
+        認証フィルタ層で `500` を返すため、本ハンドラは `users` 行不在を考慮しなくてよい。
+
+        **複数テナント作成**: 1 ユーザーが複数テナントを作成することは Phase 1 では制限しない
+        (コンサル等の兼務想定。`user_tenants` の複数テナント所属モデル §2.4 と整合)。
+        レート制限・ドメイン制限・承認制等の濫用対策は Phase 2 で導入する。
       operationId: createTenant
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -137,20 +186,48 @@ paths:
             schema: { $ref: "#/components/schemas/TenantCreateRequest" }
       responses:
         "201":
-          description: Created
+          description: Created。初代 Tenant Admin として登録された `user_tenants` 概要を含む。
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Tenant" }
+              schema: { $ref: "#/components/schemas/TenantCreatedResponse" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
 
   /api/tenants/{id}:
+    get:
+      tags: [Tenant]
+      summary: テナント単体取得
+      description: |
+        指定 ID のテナント情報を取得する。
+        認可: SaaS Admin は任意のテナントを取得可能。一般ユーザーは自分が所属するテナントのみ取得可能。
+        所属していないテナントを指定した場合・存在しない ID を指定した場合は、いずれも **404** を返す
+        (HTTP Status Policy: 参照系で参照不可は 404、NIST AC-4 リソース存在秘匿)。
+        `X-Tenant-Id` ヘッダ不要(クエリ対象テナントはパスパラメータで指定)。
+      operationId: getTenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Tenant]
-      summary: テナント更新 (SaaS Admin)
+      summary: テナント名更新 (SaaS Admin)
+      description: |
+        テナント名(表示名)を更新する。
+        認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要。
+        状態切替は `PATCH /api/tenants/{id}/status` を使用すること(本エンドポイントでは status を変更できない)。
+        プラン変更は Phase 2(契約管理機能)で実装する。
       operationId: updateTenant
+      security:
+        - bearerAuth: []
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
       requestBody:
@@ -164,9 +241,68 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Tenant" }
+        "400": { $ref: "#/components/responses/Validation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/tenants/{id}/status:
+    patch:
+      tags: [Tenant]
+      summary: テナント状態切替 (SaaS Admin)
+      description: |
+        テナントの状態を `ACTIVE` ⇄ `SUSPENDED` で切り替える。
+        `SUSPENDED` のテナントに所属するユーザーは、当該テナントへの業務 API アクセスが 403 で拒否される
+        (TenantContext 解決時に拒否。Keycloak ログイン自体は通る)。データは無傷で残る。
+        SaaS Admin は再度 `ACTIVE` に戻すことができる(復活可能)。
+        テナント解約(物理削除・データ凍結)は Phase 2 で扱う。
+
+        **冪等性**: 既に同じ状態のテナントに対して同一 `status` を指定した場合は、副作用なく `200` を返す
+        (no-op、監査ログには記録しない)。
+
+        認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
+        状態が実際に変更された場合のみ、監査ログに `TENANT_SUSPENDED` / `TENANT_REACTIVATED` として記録される。
+      operationId: updateTenantStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TenantStatusUpdateRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # --- プラットフォーム監視 (SaaS Admin) ---
+  /api/platform/metrics:
+    get:
+      tags: [Platform]
+      summary: プラットフォーム全体メトリクス (SaaS Admin)
+      description: |
+        プラットフォーム全体の数値メトリクスを返す(S-12 監視ダッシュボード用)。
+        認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
+        時系列グラフ用のトレンドデータは Phase 2 で追加する。
+      operationId: getPlatformMetrics
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformMetrics" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # --- テナント内ユーザー管理 (Tenant Admin) ---
   /api/users/me:
@@ -690,32 +826,84 @@ components:
       required: [id, code, name, plan, status, createdAt, updatedAt]
       properties:
         id:        { type: integer, format: int64 }
-        code:      { type: string }
-        name:      { type: string }
-        plan:      { type: string, enum: [FREE, STANDARD, ENTERPRISE] }
-        status:    { type: string, enum: [ACTIVE, SUSPENDED, DELETED] }
+        code:
+          type: string
+          maxLength: 50
+          pattern: "^[a-z0-9-]+$"
+          description: |
+            テナント識別コード(URL slug 等で使用、UNIQUE 制約)。サーバ側で `name` から自動生成される。
+            生成ルール: `name` を小文字化・空白/記号をハイフンに置換・連続ハイフンを 1 つに圧縮・先頭末尾のハイフンを除去。
+            最大 50 文字。衝突時はサフィックス `-2`, `-3` ... を付与してリトライする(設計上のリトライ上限は実装時に決定、超過時は 409)。
+        name:      { type: string, description: "テナント表示名" }
+        plan:      { type: string, enum: [FREE, STANDARD, ENTERPRISE], description: "本フェーズは `FREE` 固定。`STANDARD`/`ENTERPRISE` は Phase 2(契約管理)" }
+        status:    { type: string, enum: [ACTIVE, SUSPENDED], description: "`SUSPENDED` のテナントに所属するユーザーは業務 API へのアクセスが 403 で拒否される。物理削除(`DELETED`)は Phase 2" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
     TenantCreateRequest:
+      description: |
+        テナント新規作成リクエスト(セルフサインアップ、モデル B)。
+        呼び出しユーザーが初代 Tenant Admin として `user_tenants` に自動登録される。
+        `code` はサーバ側で `name` の slug から自動生成される(リクエストに含めない、生成ルールは `Tenant.code` 参照)。
+        `plan` は本フェーズでは `FREE` 固定(契約管理は Phase 2)。
       type: object
-      required: [code, name]
+      required: [name]
       properties:
-        code: { type: string, maxLength: 50, pattern: "^[a-z0-9-]+$" }
-        name: { type: string, maxLength: 255 }
-        plan: { type: string, enum: [FREE, STANDARD, ENTERPRISE], default: STANDARD }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: "\\S"
+          description: "テナント表示名。空白文字のみのリクエストは `pattern` 違反として 400 で拒否される。"
 
     TenantUpdateRequest:
       description: |
-        テナント更新リクエスト(SaaS Admin のみ実行可能)。
-        全フィールド任意だが、少なくとも 1 つのフィールド指定が必須(minProperties: 1)。
-        空リクエストはバリデーションエラー(400)で拒否する。
+        テナント名更新リクエスト(SaaS Admin のみ実行可能)。
+        状態切替は `PATCH /api/tenants/{id}/status` を使用すること。
+        プラン変更は Phase 2(契約管理機能)で実装する。
       type: object
-      minProperties: 1
+      required: [name]
       properties:
-        name:   { type: string, maxLength: 255 }
-        plan:   { type: string, enum: [FREE, STANDARD, ENTERPRISE] }
+        name: { type: string, minLength: 1, maxLength: 255 }
+
+    TenantStatusUpdateRequest:
+      description: |
+        テナント状態切替リクエスト(SaaS Admin のみ実行可能)。
+        `SUSPENDED` にすると所属ユーザーがログイン不可になる(データは無傷)。
+        物理削除(`DELETED`)は Phase 2。
+      type: object
+      required: [status]
+      properties:
         status: { type: string, enum: [ACTIVE, SUSPENDED] }
+
+    TenantCreatedResponse:
+      description: |
+        テナント新規作成 API の応答。作成されたテナント情報と、自動的に初代 Tenant Admin として登録された `user_tenants` 概要を含む。
+      type: object
+      required: [tenant, initialAdmin]
+      properties:
+        tenant:       { $ref: "#/components/schemas/Tenant" }
+        initialAdmin: { $ref: "#/components/schemas/TenantUser" }
+
+    PlatformMetrics:
+      description: |
+        プラットフォーム全体メトリクス(S-12 監視ダッシュボード用)。
+        本フェーズは数値カード表示用の集計のみ。時系列グラフ用のトレンドデータは Phase 2。
+      type: object
+      required: [totalTenants, activeTenants, suspendedTenants, totalUsers, totalTasks, newTenantsLast24h]
+      properties:
+        totalTenants:        { type: integer, format: int64, description: "総テナント数(ACTIVE + SUSPENDED)" }
+        activeTenants:       { type: integer, format: int64, description: "`ACTIVE` 状態のテナント数" }
+        suspendedTenants:    { type: integer, format: int64, description: "`SUSPENDED` 状態のテナント数" }
+        totalUsers:          { type: integer, format: int64, description: "登録ユーザー総数(`users` 行数)" }
+        totalTasks:          { type: integer, format: int64, description: "削除されていないタスク総数(`tasks.deleted_at IS NULL`)" }
+        newTenantsLast24h:
+          type: integer
+          format: int64
+          description: |
+            直近 24 時間で新規作成されたテナント数。
+            計算基準: ローリングウィンドウ(リクエスト時刻 -24h ≤ `tenants.created_at` ≤ リクエスト時刻)。
+            タイムゾーン: 比較は **UTC** で実施(`tenants.created_at` は DB に UTC で保存される前提)。
 
     TenantUser:
       type: object
