@@ -35,12 +35,28 @@ info:
     - `403 Forbidden` — テナント越境、ロール権限不足、編集系で所有者でない 等
     - `404 Not Found` — リソース不在、または **参照系で参照権限不足**(リソース存在を漏らさない方針)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.4.0"
+  version: "1.4.1"
   contact:
     name: 開発チーム
     email: dev@example.com
   license:
     name: Proprietary
+
+tags:
+  - name: Auth
+    description: 認証・セッション管理(Keycloak OIDC)
+  - name: Tenant
+    description: テナント管理(セルフサインアップ、状態管理、SaaS Admin 向け運営)
+  - name: Platform
+    description: プラットフォーム監視 API(SaaS Admin 専用)
+  - name: User
+    description: テナント内ユーザー管理(プロフィール / 通知設定 / 招待 / ロール)
+  - name: Task
+    description: タスク管理(可視性・関係者・ステータス)
+  - name: Dashboard
+    description: テナント内ダッシュボード集計
+  - name: Audit
+    description: 監査ログ参照(Tenant Admin)
 
 servers:
   - url: https://api.taskflow.example.com
@@ -121,8 +137,17 @@ paths:
       tags: [Tenant]
       summary: テナント一覧 (SaaS Admin)
       description: |
-        全テナントの一覧を返す。
+        全テナントの一覧を返す(SaaS Admin 監視ダッシュボード S-13 用)。
         認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
+
+        **HTTP ステータス**: 本エンドポイントは SaaS Admin 専用のコレクションリソースであり、認可違反時は `403` を返す。
+        個別リソース取得(`GET /api/tenants/{id}`)では「リソース存在を漏らさない」方針で `404` を返すが、
+        コレクション全体への列挙拒否では存在秘匿の必要がないため慣習どおり `403` を採用する。
+
+        **デフォルトソート順**: `createdAt DESC`(最近作成されたテナントを先頭)。
+
+        **ページネーション**: Phase 1 ではページネーション未対応(全件返却)。テナント数が増加した時点で
+        Phase 2 にて `page` / `size` パラメータの導入を検討する。
       operationId: listTenants
       security:
         - bearerAuth: []
@@ -142,9 +167,15 @@ paths:
       description: |
         認証済み(Keycloak ログイン済み)のユーザーが自分自身でテナントを新規作成する(モデル B)。
         作成と同時に呼び出しユーザーが初代 Tenant Admin として `user_tenants` に登録される(アトミック)。
-        呼び出しユーザーの `users` 行は初回ログイン時に JIT で自動作成されている前提。
         `X-Tenant-Id` ヘッダは要求しない(テナント未所属状態で呼ぶ API のため)。
-        レート制限・ドメイン制限・承認制等の濫用対策は Phase 2。
+
+        **JIT プロビジョニング前提**: 呼び出しユーザーの `users` 行は JWT 認証フィルタ層の JIT で
+        自動作成されているため、本ハンドラ到達時には必ず確保されている。仮に JIT が失敗した場合は
+        認証フィルタ層で `500` を返すため、本ハンドラは `users` 行不在を考慮しなくてよい。
+
+        **複数テナント作成**: 1 ユーザーが複数テナントを作成することは Phase 1 では制限しない
+        (コンサル等の兼務想定。`user_tenants` の複数テナント所属モデル §2.4 と整合)。
+        レート制限・ドメイン制限・承認制等の濫用対策は Phase 2 で導入する。
       operationId: createTenant
       security:
         - bearerAuth: []
@@ -161,12 +192,7 @@ paths:
               schema: { $ref: "#/components/schemas/TenantCreatedResponse" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "409":
-          description: |
-            テナント名から生成された `code` の一意制約違反(レアケース。同名テナントが既に存在し、衝突回避の連番付与でも解消できなかった場合)。
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/tenants/{id}:
     get:
@@ -174,7 +200,9 @@ paths:
       summary: テナント単体取得
       description: |
         指定 ID のテナント情報を取得する。
-        認可: SaaS Admin は任意のテナントを取得可能。一般ユーザーは自分が所属するテナントのみ取得可能(それ以外は **404**、リソース存在を漏らさない方針)。
+        認可: SaaS Admin は任意のテナントを取得可能。一般ユーザーは自分が所属するテナントのみ取得可能。
+        所属していないテナントを指定した場合・存在しない ID を指定した場合は、いずれも **404** を返す
+        (HTTP Status Policy: 参照系で参照不可は 404、NIST AC-4 リソース存在秘匿)。
         `X-Tenant-Id` ヘッダ不要(クエリ対象テナントはパスパラメータで指定)。
       operationId: getTenant
       security:
@@ -188,7 +216,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Tenant" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Tenant]
@@ -225,11 +252,16 @@ paths:
       summary: テナント状態切替 (SaaS Admin)
       description: |
         テナントの状態を `ACTIVE` ⇄ `SUSPENDED` で切り替える。
-        `SUSPENDED` のテナントは所属ユーザーがログイン不可となる(TenantContext 解決時に 403)が、データは無傷で残る。
+        `SUSPENDED` のテナントに所属するユーザーは、当該テナントへの業務 API アクセスが 403 で拒否される
+        (TenantContext 解決時に拒否。Keycloak ログイン自体は通る)。データは無傷で残る。
         SaaS Admin は再度 `ACTIVE` に戻すことができる(復活可能)。
         テナント解約(物理削除・データ凍結)は Phase 2 で扱う。
+
+        **冪等性**: 既に同じ状態のテナントに対して同一 `status` を指定した場合は、副作用なく `200` を返す
+        (no-op、監査ログには記録しない)。
+
         認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
-        操作は監査ログに `TENANT_SUSPENDED` / `TENANT_REACTIVATED` として記録される。
+        状態が実際に変更された場合のみ、監査ログに `TENANT_SUSPENDED` / `TENANT_REACTIVATED` として記録される。
       operationId: updateTenantStatus
       security:
         - bearerAuth: []
@@ -794,10 +826,17 @@ components:
       required: [id, code, name, plan, status, createdAt, updatedAt]
       properties:
         id:        { type: integer, format: int64 }
-        code:      { type: string, description: "テナント識別コード(URL slug 等で使用)。セルフサインアップ時はテナント名から自動生成され、衝突時は連番付与" }
+        code:
+          type: string
+          maxLength: 50
+          pattern: "^[a-z0-9-]+$"
+          description: |
+            テナント識別コード(URL slug 等で使用、UNIQUE 制約)。サーバ側で `name` から自動生成される。
+            生成ルール: `name` を小文字化・空白/記号をハイフンに置換・連続ハイフンを 1 つに圧縮・先頭末尾のハイフンを除去。
+            最大 50 文字。衝突時はサフィックス `-2`, `-3` ... を付与してリトライする(設計上のリトライ上限は実装時に決定、超過時は 409)。
         name:      { type: string, description: "テナント表示名" }
         plan:      { type: string, enum: [FREE, STANDARD, ENTERPRISE], description: "本フェーズは `FREE` 固定。`STANDARD`/`ENTERPRISE` は Phase 2(契約管理)" }
-        status:    { type: string, enum: [ACTIVE, SUSPENDED], description: "`SUSPENDED` のテナントは所属ユーザーがログイン不可。物理削除(`DELETED`)は Phase 2" }
+        status:    { type: string, enum: [ACTIVE, SUSPENDED], description: "`SUSPENDED` のテナントに所属するユーザーは業務 API へのアクセスが 403 で拒否される。物理削除(`DELETED`)は Phase 2" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -805,12 +844,17 @@ components:
       description: |
         テナント新規作成リクエスト(セルフサインアップ、モデル B)。
         呼び出しユーザーが初代 Tenant Admin として `user_tenants` に自動登録される。
-        `code` はサーバ側で `name` の slug から自動生成される(リクエストに含めない)。
+        `code` はサーバ側で `name` の slug から自動生成される(リクエストに含めない、生成ルールは `Tenant.code` 参照)。
         `plan` は本フェーズでは `FREE` 固定(契約管理は Phase 2)。
       type: object
       required: [name]
       properties:
-        name: { type: string, minLength: 1, maxLength: 255, description: "テナント表示名" }
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: "\\S"
+          description: "テナント表示名。空白文字のみのリクエストは `pattern` 違反として 400 で拒否される。"
 
     TenantUpdateRequest:
       description: |
@@ -848,12 +892,18 @@ components:
       type: object
       required: [totalTenants, activeTenants, suspendedTenants, totalUsers, totalTasks, newTenantsLast24h]
       properties:
-        totalTenants:        { type: integer, description: "総テナント数(ACTIVE + SUSPENDED)" }
-        activeTenants:       { type: integer, description: "`ACTIVE` 状態のテナント数" }
-        suspendedTenants:    { type: integer, description: "`SUSPENDED` 状態のテナント数" }
-        totalUsers:          { type: integer, description: "登録ユーザー総数(`users` 行数)" }
-        totalTasks:          { type: integer, description: "削除されていないタスク総数(`tasks.deleted_at IS NULL`)" }
-        newTenantsLast24h:   { type: integer, description: "直近 24 時間で新規作成されたテナント数" }
+        totalTenants:        { type: integer, format: int64, description: "総テナント数(ACTIVE + SUSPENDED)" }
+        activeTenants:       { type: integer, format: int64, description: "`ACTIVE` 状態のテナント数" }
+        suspendedTenants:    { type: integer, format: int64, description: "`SUSPENDED` 状態のテナント数" }
+        totalUsers:          { type: integer, format: int64, description: "登録ユーザー総数(`users` 行数)" }
+        totalTasks:          { type: integer, format: int64, description: "削除されていないタスク総数(`tasks.deleted_at IS NULL`)" }
+        newTenantsLast24h:
+          type: integer
+          format: int64
+          description: |
+            直近 24 時間で新規作成されたテナント数。
+            計算基準: ローリングウィンドウ(リクエスト時刻 -24h ≤ `tenants.created_at` ≤ リクエスト時刻)。
+            タイムゾーン: 比較は **UTC** で実施(`tenants.created_at` は DB に UTC で保存される前提)。
 
     TenantUser:
       type: object
