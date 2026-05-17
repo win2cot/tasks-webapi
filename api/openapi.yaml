@@ -918,7 +918,7 @@ components:
         status:
           type: string
           enum: [ACTIVE, INVITED, DISABLED]
-          description: |
+          description: |-
             ユーザーの所属状態(`user_tenants.status` に対応):
             - `INVITED` — 招待済だが初回ログイン未完了(招待トークン照合待ち)
             - `ACTIVE`  — 初回ログイン完了し利用中
