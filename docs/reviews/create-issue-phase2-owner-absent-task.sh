@@ -12,7 +12,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-REPO=$(git config --get remote.origin.url | sed -E 's|.*github.com[:/]([^/]+/[^.]+)\.git|\1|')
+# gh repo view で確実に取得(`.git` サフィックスなしの HTTPS URL でも動作)
+REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+if [ -z "${REPO}" ]; then
+  echo "ERROR: failed to detect repo via gh CLI. Run 'gh auth login' first." >&2
+  exit 1
+fi
 PARENT_PHASE2=162
 
 echo "Target repo: ${REPO}"

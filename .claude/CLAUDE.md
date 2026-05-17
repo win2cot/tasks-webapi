@@ -103,7 +103,7 @@ GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publish
 - 編集 / 論理削除 / 公開範囲変更: 所有者のみ
 - ステータス変更 / 関係者追加・削除: 所有者・担当者
 - 物理削除: MVP 未提供(解約 #167 で統合)
-- 関係者リストへの登録: visibility 非依存(参照は STAKEHOLDERS のみ、ただし TENANT は誰でも参照可)
+- 関係者リストへの登録: visibility に関係なく可能。ただし**関係者であることが参照権限として機能する**のは visibility = STAKEHOLDERS のときのみ(visibility = TENANT のときはテナントメンバー全員、PRIVATE のときは所有者・担当者のみが参照可)
 
 認可ロジックは `TaskAuthorizationDomainService`(Domain 層)に SSOT として集約する設計。
 
