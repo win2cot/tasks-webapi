@@ -508,7 +508,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+            なお**更新権限**(所有者または Tenant Admin)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [Task]
@@ -524,7 +524,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+            なお**削除権限**(所有者または Tenant Admin)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/tasks/{id}/status:
@@ -557,7 +557,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+            なお**ステータス変更権限**(所有者・担当者・Tenant Admin)不足の場合は 403 を返す(基本設計書 §6.2.1)。
 
   /api/tasks/{id}/visibility:
     patch:
@@ -592,7 +592,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+            なお**公開範囲変更権限**(所有者のみ、Tenant Admin は強制変更可)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # --- 関係者 ---
@@ -645,7 +645,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+            なお**関係者追加権限**(所有者のみ、Tenant Admin は強制操作可)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "409":
           $ref: "#/components/responses/Conflict"
           description: 指定ユーザーが既に同タスクの関係者として登録済み(重複追加)。
@@ -666,7 +666,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。または対象ユーザーが当該タスクの関係者として登録されていない。
-            なお**編集権限**(所有者または Tenant Admin)不足の場合は 403 を返す。
+            なお**関係者削除権限**(所有者のみ、Tenant Admin は強制操作可)不足の場合は 403 を返す(基本設計書 §6.2.1)。
 
   # --- ダッシュボード ---
   /api/dashboard/summary:
