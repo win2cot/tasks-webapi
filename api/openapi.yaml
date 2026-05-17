@@ -733,7 +733,7 @@ paths:
         - name: action
           in: query
           description: "監査ログ action 値による完全一致フィルタ。`AuditLog.action` と同じ命名規約に従う(設計規約 §2.5)。"
-          schema: { type: string, minLength: 5, pattern: "^[A-Z][A-Z0-9_]*$" }
+          schema: { type: string, pattern: "^[A-Z][A-Z0-9_]*$" }
         - { name: page, in: query, schema: { type: integer, default: 0 } }
         - { name: size, in: query, schema: { type: integer, default: 50, maximum: 100 } }
       responses:
@@ -1128,7 +1128,7 @@ components:
 
     AuditLog:
       description: |
-        監査ログのレスポンス表現。`audit_logs` テーブル(基本設計書 v1.4.2 §4.2.6)に対応するが、
+        監査ログのレスポンス表現。`audit_logs` テーブル(基本設計書 v1.4.3 §4.2.6)に対応するが、
         **以下の DDL 列は API レスポンスに含めない**(内部分離キー / 内部実装 / 重複情報のため):
 
         - `tenant_id` — `/api/audit-logs` は Tenant Admin が自テナントの監査ログを参照する API であり、
@@ -1152,14 +1152,14 @@ components:
             - システム起因のバッチ処理(ShedLock 経由のスケジューラ等、人間の操作主体が存在しないイベント)
         action:
           type: string
-          minLength: 5
           pattern: "^[A-Z][A-Z0-9_]*$"
           description: |-
             監査対象の業務操作種別。命名規約は大文字始まり、英数字・アンダースコアのみ(設計規約 §2.5)。
-            `minLength: 5` は現状の標準値(下記)の最短が `LOGIN` (5 文字)であることに合わせた下限。将来 3〜4 文字の action 値を追加したくなった場合は本制約と命名規約を併せて見直す。
-            本フェーズで定義されている標準値(基本設計書 v1.4.2 §4.2.6 ベース。`LOGIN_FAILED` は認証失敗追跡用に OpenAPI 側で追記、設計書への正式取り込みは #180 で確認予定):
+            本フェーズで定義されている標準値(基本設計書 v1.4.3 §4.2.6):
             `LOGIN` / `LOGIN_FAILED` / `CREATE` / `UPDATE` / `DELETE` / `TENANT_CREATED` / `TENANT_SUSPENDED` / `TENANT_REACTIVATED`。
+            `LOGIN_FAILED` は JWT 検証失敗 / 未認証アクセス試行を記録(`userId` が NULL になるイベントの代表例)。`*_DENIED`(認可違反)も §6.2.3 の方針に基づき記録する。
             将来エンドポイント追加時に新しい action 値が増える可能性があるため、enum ではなく pattern で命名規約のみを制約する。
+            `minLength` は意図的に設定しない:現状の標準値の最短は `LOGIN`(5 文字)だが、将来 3〜4 文字の action 値(例: `VIEW`、`SEND`)が追加された場合のクライアント側破壊的変更を避けるため。
         entityType:
           type: [string, 'null']
         entityId:
