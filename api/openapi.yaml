@@ -35,7 +35,7 @@ info:
     - `403 Forbidden` — テナント越境、ロール権限不足、編集系で所有者でない 等
     - `404 Not Found` — リソース不在、または **参照系で参照権限不足**(リソース存在を漏らさない方針)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.4.2"
+  version: "1.4.3"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -915,7 +915,17 @@ components:
         departmentName:
           type: [string, 'null']
         role:           { $ref: "#/components/schemas/Role" }
-        status:         { type: string, enum: [ACTIVE, INVITED, DISABLED] }
+        status:
+          type: string
+          enum: [ACTIVE, INVITED, DISABLED]
+          description: |-
+            ユーザーの所属状態(`user_tenants.status` に対応):
+            - `INVITED` — 招待済だが初回ログイン未完了(招待トークン照合待ち)
+            - `ACTIVE`  — 初回ログイン完了し利用中
+            - `DISABLED` — テナント管理者により無効化(本フェーズではこの状態への**遷移 API は提供しない**、Phase 2 / Issue #111)
+
+            本フェーズで発生する状態遷移は `INVITED → ACTIVE` のみ(招待後の初回ログイン)。
+            `DISABLED` への遷移は将来フェーズで専用 API(例: `PATCH /api/tenant/users/{userId}/status`)を追加して対応する。
         joinedAt:       { type: string, format: date-time }
 
     UserInviteRequest:
