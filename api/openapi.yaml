@@ -592,7 +592,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**公開範囲変更権限**(所有者のみ、Tenant Admin は強制変更可)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**公開範囲変更権限**(所有者のみ)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # --- 関係者 ---
@@ -645,7 +645,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**関係者追加権限**(所有者のみ、Tenant Admin は強制操作可)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**関係者追加権限**(所有者のみ)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "409":
           $ref: "#/components/responses/Conflict"
           description: 指定ユーザーが既に同タスクの関係者として登録済み(重複追加)。
@@ -666,7 +666,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。または対象ユーザーが当該タスクの関係者として登録されていない。
-            なお**関係者削除権限**(所有者のみ、Tenant Admin は強制操作可)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**関係者削除権限**(所有者のみ)不足の場合は 403 を返す(基本設計書 §6.2.1)。
 
   # --- ダッシュボード ---
   /api/dashboard/summary:
@@ -1149,11 +1149,12 @@ components:
             - システム起因のバッチ処理(ShedLock 経由のスケジューラ等、人間の操作主体が存在しないイベント)
         action:
           type: string
+          minLength: 2
           pattern: "^[A-Z][A-Z0-9_]*$"
           description: |-
             監査対象の業務操作種別。命名規約は大文字始まり、英数字・アンダースコアのみ(設計規約 §2.5)。
             本フェーズで定義されている標準値(基本設計書 v1.4.2 §4.2.6):
-            `LOGIN` / `LOGIN_FAILED` / `CREATE` / `UPDATE` / `DELETE` / `TENANT_CREATED` / `TENANT_SUSPENDED` / `TENANT_REACTIVATED`。
+            `LOGIN` / `CREATE` / `UPDATE` / `DELETE` / `TENANT_CREATED` / `TENANT_SUSPENDED` / `TENANT_REACTIVATED`。
             将来エンドポイント追加時に新しい action 値が増える可能性があるため、enum ではなく pattern で命名規約のみを制約する。
         entityType:
           type: [string, 'null']
