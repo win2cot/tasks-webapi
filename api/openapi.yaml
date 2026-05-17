@@ -482,9 +482,7 @@ paths:
               schema: { $ref: "#/components/schemas/TaskDetail" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: |-
-            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+          description: タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     put:
@@ -618,9 +616,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: |-
-            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
+          description: タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
     post:
       tags: [Stakeholder]
       summary: 関係者追加(所有者のみ)
@@ -668,7 +664,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しないか参照権限なし、または対象ユーザーが当該タスクの関係者として登録されていない。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。または対象ユーザーが当該タスクの関係者として登録されていない。
+            なお**編集権限**(所有者または Tenant Admin)不足の場合は 403 を返す。
 
   # --- ダッシュボード ---
   /api/dashboard/summary:
