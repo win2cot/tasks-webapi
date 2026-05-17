@@ -94,11 +94,18 @@ GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publish
 
 タスクごとの可視性(`visibility` 列):
 
-- `TENANT`(デフォルト): テナント全員参照可
+- `TENANT`(デフォルト): テナント内全員(`TENANT_ADMIN` / `MEMBER` 区別なし)
 - `STAKEHOLDERS`: 所有者 + 担当者 + `task_stakeholders` 登録ユーザー
-- `PRIVATE`: 所有者のみ
+- `PRIVATE`: 所有者 + 担当者
 
-編集は所有者のみ(Tenant Admin は強制編集可、監査ログ記録)。認可ロジックは `TaskAuthorizationDomainService`(Domain層)に SSOT として集約する設計。
+タスク認可は**所有者・担当者・関係者の 3 役割のみで評価**する(ADR-0005)。Tenant Admin の業務タスク特権は撤廃済(編集・削除・ステータス変更・公開範囲変更・関係者編集における Tenant Admin 例外はすべてなし)。Tenant Admin はテナント運営権限(招待 / ロール管理 / 監査ログ参照 / S-15 テナント運営者向けダッシュボード参照)のみを持つ。
+
+- 編集 / 論理削除 / 公開範囲変更: 所有者のみ
+- ステータス変更 / 関係者追加・削除: 所有者・担当者
+- 物理削除: MVP 未提供(解約 #167 で統合)
+- 関係者リストへの登録: visibility 非依存(参照は STAKEHOLDERS のみ、ただし TENANT は誰でも参照可)
+
+認可ロジックは `TaskAuthorizationDomainService`(Domain 層)に SSOT として集約する設計。
 
 ### HTTP Status Policy
 
