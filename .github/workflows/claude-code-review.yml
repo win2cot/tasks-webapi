@@ -24,6 +24,8 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      TZ: Asia/Tokyo
     permissions:
       contents: read
       pull-requests: write
@@ -47,6 +49,7 @@ jobs:
             Focus on: correctness, null safety, test coverage, and code quality.
             Post the review result as a GitHub PR comment.
             Write all review comments in Japanese.
+            Treat all dates and times as Japan Standard Time (JST, UTC+9).
           claude_args: |
             --max-turns 20
             --allowed-tools Bash(gh pr comment *) Bash(gh pr view *) Bash(gh pr diff *) Bash(git diff *) Read Glob Grep LS
