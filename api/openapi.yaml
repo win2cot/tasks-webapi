@@ -482,7 +482,9 @@ paths:
               schema: { $ref: "#/components/schemas/TaskDetail" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     put:
@@ -506,7 +508,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [Task]
@@ -520,7 +524,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/tasks/{id}/status:
@@ -551,7 +557,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
 
   /api/tasks/{id}/visibility:
     patch:
@@ -584,7 +592,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # --- 関係者 ---
@@ -608,7 +618,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
     post:
       tags: [Stakeholder]
       summary: 関係者追加(所有者のみ)
@@ -635,7 +647,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
-          description: タスクが存在しない、または参照権限なし(リソース存在秘匿)。
+          description: |-
+            タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
+            なお**編集権限**(所有者・担当者・Tenant Admin 等)不足の場合は 403 を返す。
         "409":
           $ref: "#/components/responses/Conflict"
           description: 指定ユーザーが既に同タスクの関係者として登録済み(重複追加)。
@@ -1132,14 +1146,14 @@ components:
           type: [integer, 'null']
           format: int64
           description: |-
-            操作ユーザーの `users.id`。以下のシナリオで `null` になる(Issue #173):
+            操作ユーザーの `users.id`。以下のシナリオで `null` になる:
             - 認証失敗イベント(JWT 検証失敗 / 未認証で保護リソースへのアクセス試行)
             - システム起因のバッチ処理(ShedLock 経由のスケジューラ等、人間の操作主体が存在しないイベント)
         action:
           type: string
           pattern: "^[A-Z][A-Z0-9_]*$"
           description: |-
-            監査対象の業務操作種別。命名規約は大文字始まり、英数字・アンダースコアのみ(Issue #174、設計規約 §2.5)。
+            監査対象の業務操作種別。命名規約は大文字始まり、英数字・アンダースコアのみ(設計規約 §2.5)。
             本フェーズで定義されている標準値(基本設計書 v1.4.2 §4.2.6):
             `LOGIN` / `LOGIN_FAILED` / `CREATE` / `UPDATE` / `DELETE` / `TENANT_CREATED` / `TENANT_SUSPENDED` / `TENANT_REACTIVATED`。
             将来エンドポイント追加時に新しい action 値が増える可能性があるため、enum ではなく pattern で命名規約のみを制約する。
