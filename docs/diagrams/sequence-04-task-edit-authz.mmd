@@ -30,14 +30,14 @@ sequenceDiagram
   UC->>AuthZ: canBeEditedBy(task, userId=2, role=MEMBER)
   Note over AuthZ: 編集権限の詳細ルールは TaskAuthorizationDomainService が SSOT<br/>(基本設計書 §6.2.1 参照)
 
-  alt 認可失敗 (所有者でも Admin でもない)
+  alt 認可失敗 (所有者ではない、ADR-0005 で Tenant Admin 特権は撤廃済)
     AuthZ-->>UC: throw TaskOwnershipException
     UC->>Audit: log(UPDATE_TASK_DENIED, actor, taskId=101)
     Audit->>DB: INSERT audit_logs (action='UPDATE_TASK_DENIED')
     UC-->>Ctrl: TaskOwnershipException
     Ctrl-->>Browser: 403 E_FORBIDDEN<br/>"タスクの編集は所有者のみ可能です"
     Browser-->>User: エラー表示
-  else 認可成功 (ownerId=2 のケース、または role=TENANT_ADMIN)
+  else 認可成功 (userId=ownerId のケースのみ)
     AuthZ-->>UC: ✓
     UC->>UC: task.rename(newTitle)<br/>task.reschedule(newDueDate)<br/>task.changePriority(newPriority)<br/>... (Domain メソッドで不変条件チェック)
     UC->>TaskRepo: save(task)
