@@ -1,10 +1,14 @@
 %% ====================================================================
-%% シーケンス図 05: 関係者追加 (公開範囲=STAKEHOLDERS への昇格を含む)
-%% タスク管理システム v1.2
+%% シーケンス図 05: 関係者追加 (所有者または担当者が実施、ADR-0005)
+%% タスク管理システム v1.4.4
+%%
+%% ADR-0005 で関係者追加権限は「所有者 ∪ 担当者」に拡張。
+%% また、関係者指名は visibility 非依存(要件定義書 v1.4.3 §3.4.5)のため、
+%% 旧仕様にあった「visibility = STAKEHOLDERS への自動昇格」は撤廃する。
 %% ====================================================================
 sequenceDiagram
   autonumber
-  actor Owner as 所有者
+  actor Actor as 所有者または担当者
   participant Browser as ブラウザ
   participant Sec as Spring Security
   participant Filter as TenantContextFilter
@@ -18,19 +22,29 @@ sequenceDiagram
   participant Audit as AuditLogger
   participant DB as MySQL
 
-  Owner->>Browser: タスク詳細 → 「関係者を追加」ボタン
+  Actor->>Browser: タスク詳細 → 「関係者を追加」ボタン
   Browser->>Sec: POST /api/tasks/101/stakeholders<br/>{ "userId": 5 }
-  Sec->>Filter: 認証OK (userId=1, role=MEMBER)
+  Sec->>Filter: 認証OK (userId=1 または 2, role=MEMBER)
   Filter->>Ctrl: forward (TenantContext set)
   Ctrl->>UC: execute(taskId=101, userId=5, actor)
 
   UC->>TaskRepo: findById(101, tenantId=11)
   TaskRepo->>DB: SELECT * FROM tasks ...
-  TaskRepo-->>UC: task (owner_id=1)
+  TaskRepo-->>UC: task (owner_id=1, assignee_id=2)
 
-  UC->>AuthZ: assertVisibilityChangeable(task, userId=1)
-  AuthZ->>AuthZ: task.ownerId == 1 ? → true
-  AuthZ-->>UC: ✓ (所有者なので関係者操作可)
+  UC->>AuthZ: canManageStakeholders(task, actorUserId)
+  Note over AuthZ: 認可ルール: actor が所有者または担当者(ADR-0005)<br/>(基本設計書 §6.2.1「関係者の追加・削除」参照)
+  AuthZ->>AuthZ: actorUserId ∈ {task.ownerId, task.assigneeId} ?
+  alt 認可失敗 (所有者でも担当者でもない)
+    AuthZ-->>UC: throw TaskOwnershipException
+    UC->>Audit: log(ADD_STAKEHOLDER_DENIED, actor, taskId=101)
+    Audit->>DB: INSERT audit_logs (action='ADD_STAKEHOLDER_DENIED')
+    UC-->>Ctrl: TaskOwnershipException
+    Ctrl-->>Browser: 403 E_FORBIDDEN<br/>"関係者の追加は所有者または担当者のみ可能です"
+    Browser-->>Actor: エラー表示
+  else 認可成功 (actor が所有者または担当者)
+    AuthZ-->>UC: ✓
+  end
 
   Note over UC,UTRepo: 追加対象ユーザーが同テナント所属か検証
   UC->>UTRepo: findByUserAndTenant(userId=5, tenantId=11)
@@ -50,13 +64,9 @@ sequenceDiagram
   UserDir->>DB: SELECT id, full_name, email FROM users WHERE id=5<br/>(ReadOnly レプリカ)
   UserDir-->>UC: { id:5, fullName:"佐藤", ... }
 
-  alt 現在の visibility が STAKEHOLDERS でない
-    UC->>UC: 自動的に visibility を STAKEHOLDERS に昇格
-    UC->>TaskRepo: save(task with visibility=STAKEHOLDERS)
-    TaskRepo->>DB: UPDATE tasks SET visibility='STAKEHOLDERS' WHERE id=101
-  end
+  Note over UC,TaskRepo: visibility は変更しない(ADR-0005 §3.4 / 要件定義書 v1.4.3 §3.4.5)<br/>関係者指名は visibility 非依存に可能。参照権限が機能するのは<br/>visibility = STAKEHOLDERS のときのみ(visibility = TENANT のときは<br/>テナント全員が参照可、PRIVATE のときは所有者・担当者のみが参照可)
 
-  UC->>SHRepo: add(TaskStakeholder(taskId=101, userId=5, addedBy=1))
+  UC->>SHRepo: add(TaskStakeholder(taskId=101, userId=5, addedBy=actorUserId))
   SHRepo->>DB: INSERT INTO task_stakeholders<br/>(task_id, user_id, tenant_id, added_by, added_at)
   alt 既に登録済み (重複)
     DB-->>SHRepo: SQLIntegrityConstraintViolation
@@ -72,6 +82,6 @@ sequenceDiagram
 
   UC-->>Ctrl: Stakeholder
   Ctrl-->>Browser: 201 + Stakeholder JSON
-  Browser-->>Owner: 関係者リストに追加表示<br/>(ユーザー5に通知メール送信予約)
+  Browser-->>Actor: 関係者リストに追加表示
 
-  Note over UC,Audit: 関係者追加は所有者のみ実施可能 (NIST AC-3)<br/>visibility が自動昇格する場合は監査ログにも記録
+  Note over UC,Audit: 関係者追加・削除は所有者または担当者が実施可能(ADR-0005、NIST AC-3)<br/>関係者追加通知は MVP では実装しない(ADR-0005 §3.4、Phase 2 で整理)
