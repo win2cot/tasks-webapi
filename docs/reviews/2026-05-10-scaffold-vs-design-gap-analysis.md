@@ -18,7 +18,7 @@
 | `application.yml` | 🟡 最小構成 | OAuth2 issuer / DataSource / Flyway 設定追加 |
 | クリーンアーキテクチャ4層構造 | 🔴 未実装(scaffold は標準Spring構成) | Domain / UseCase / Adapter リファクタ |
 | その他テーブル(tenants/user_tenants/task_stakeholders/audit_logs/user_notification_settings/shedlock) | 🔴 未実装 | 新規 migration + Entity |
-| API実装(27 endpoints) | 🔴 未実装 | Controller + UseCase + Repository |
+| API実装(28 endpoints) | 🔴 未実装 | Controller + UseCase + Repository |
 
 ---
 
