@@ -1195,12 +1195,16 @@ components:
             基本設計書 §3.3.3 S-03「自分が所有するタスクの進捗グラフ」と整合。
         statusBreakdown:
           type: object
-          description: "ステータス別件数(未着手・進行中・完了・保留)"
+          description: |
+            ステータス別件数(未着手・進行中・完了・保留)。
+            集計対象は §6.2.1 の 3 役割評価で参照可能なタスク全体(所有・担当・関係者として加算条件を満たすタスク、ADR-0005)。
+            `myOpenCount`(所有のみ)とは集計スコープが異なる点に注意(例: PRIVATE で担当のみのタスクは本 breakdown には加算されるが `myOpenCount` には含まれない)。
           additionalProperties: { type: integer }
           example: { NOT_STARTED: 5, IN_PROGRESS: 3, DONE: 10, ON_HOLD: 1 }
         priorityBreakdown:
           type: object
-          description: "優先度別件数(高・中・低)"
+          description: |
+            優先度別件数(高・中・低)。集計対象は `statusBreakdown` と同一(§6.2.1 の 3 役割評価で参照可能なタスク全体)。
           additionalProperties: { type: integer }
           example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
 
@@ -1221,18 +1225,21 @@ components:
         completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
         statusBreakdown:
           type: object
-          description: "ステータス別件数(未着手・進行中・完了・保留)"
+          description: |
+            ステータス別件数(未着手・進行中・完了・保留)。集計対象は totalTaskCount と同じ(visibility ∈ {TENANT, STAKEHOLDERS}、PRIVATE 除外)。
+            `DONE` は完了ステータスのタスク全件数(累計)であり、`completedTodayCount`(本日完了分のみ)と重複する集計値である。
+            実装上は同一ベーステーブルから両指標を算出する想定。
           additionalProperties: { type: integer }
           example: { NOT_STARTED: 18, IN_PROGRESS: 9, DONE: 62, ON_HOLD: 3 }
         priorityBreakdown:
           type: object
-          description: "優先度別件数(高・中・低)"
+          description: "優先度別件数(高・中・低)。集計対象は statusBreakdown と同一(visibility ∈ {TENANT, STAKEHOLDERS}、PRIVATE 除外)"
           additionalProperties: { type: integer }
           example: { HIGH: 12, MEDIUM: 60, LOW: 20 }
         memberCount:
           type: integer
           minimum: 0
-          description: "テナントの全アクティブ所属ユーザー数(Tenant Admin を含む。`user_tenants.status = ACTIVE` のテナント所属人数)。アクティブなテナントを呼び出す前提では Tenant Admin が少なくとも 1 名存在するため通常は 1 以上だが、スキーマとしては非負整数を許容"
+          description: "テナントの全アクティブ所属ユーザー数(Tenant Admin を含む。`user_tenants.status = ACTIVE` のテナント所属人数)"
 
     AuditLog:
       description: |
