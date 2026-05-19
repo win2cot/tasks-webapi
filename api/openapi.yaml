@@ -740,7 +740,12 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/TenantDashboardSummary" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+          description: |-
+            Member が呼び出した場合は 403(認可: `hasRole('TENANT_ADMIN')` のみ許可、§6.2.1)。
+            業務 API のため SaaS Admin(`APP_ADMIN`)が呼び出した場合も 403(§6.2.1「SaaS Admin の扱い」)。
+            その他、テナント越境アクセスや `X-Tenant-Id` 不整合の場合も 403 を返す。
 
   # --- 通知設定 ---
   /api/users/me/notification-settings:
@@ -1182,16 +1187,16 @@ components:
         myOpenCount:
           type: integer
           description: |
-            自分が**所有する**未完了件数。担当・関係者として関与しているタスクは含まない。
-            基本設計書 §3.3.3 S-03 の「自分が所有するタスクの進捗グラフ」と整合させた所有者視点指標。
-            (注: 担当タスクの個別指標化は Phase 2 で扱う。本フィールドはダッシュボード件数集計(`todayDueCount` / `overdueCount` / `completedTodayCount`)と
-            は別軸であり、件数集計側は §6.2.1 の 3 役割評価で「自分に加算される条件」のタスクを集計する)
+            自分が**所有する**未完了件数(所有者視点指標)。担当タスク・関係者として関与しているタスクは含まない。
+            基本設計書 §3.3.3 S-03「自分が所有するタスクの進捗グラフ」と整合。
         statusBreakdown:
           type: object
+          description: "ステータス別件数(未着手・進行中・完了・保留)"
           additionalProperties: { type: integer }
           example: { NOT_STARTED: 12, IN_PROGRESS: 5, DONE: 30, ON_HOLD: 2 }
         priorityBreakdown:
           type: object
+          description: "優先度別件数(高・中・低)"
           additionalProperties: { type: integer }
           example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
 
