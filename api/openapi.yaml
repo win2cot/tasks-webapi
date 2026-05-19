@@ -607,7 +607,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**公開範囲変更権限**(所有者のみ)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**公開範囲変更権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   # --- 関係者 ---
@@ -713,7 +713,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DashboardSummary" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+          description: |-
+            業務 API のため SaaS Admin(`APP_ADMIN`)が呼び出した場合は 403(§6.2.1「SaaS Admin の扱い」)。
+            その他、テナント越境アクセスや `X-Tenant-Id` 不整合の場合も 403 を返す。
 
   /api/tenant/dashboard/summary:
     get:
@@ -1172,10 +1176,16 @@ components:
       type: object
       required: [todayDueCount, overdueCount, completedTodayCount, myOpenCount, statusBreakdown, priorityBreakdown]
       properties:
-        todayDueCount:       { type: integer, description: "本日期限のタスク件数" }
-        overdueCount:        { type: integer, description: "期限切れ未完了件数" }
-        completedTodayCount: { type: integer, description: "本日完了したタスク件数" }
-        myOpenCount:         { type: integer, description: "自分が所有する未完了件数" }
+        todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
+        overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
+        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`updated_at` が当日 00:00〜23:59 でステータス DONE)" }
+        myOpenCount:
+          type: integer
+          description: |
+            自分が**所有する**未完了件数。担当・関係者として関与しているタスクは含まない。
+            基本設計書 §3.3.3 S-03 の「自分が所有するタスクの進捗グラフ」と整合させた所有者視点指標。
+            (注: 担当タスクの個別指標化は Phase 2 で扱う。本フィールドはダッシュボード件数集計(`todayDueCount` / `overdueCount` / `completedTodayCount`)と
+            は別軸であり、件数集計側は §6.2.1 の 3 役割評価で「自分に加算される条件」のタスクを集計する)
         statusBreakdown:
           type: object
           additionalProperties: { type: integer }
@@ -1197,9 +1207,9 @@ components:
       required: [totalTaskCount, todayDueCount, overdueCount, completedTodayCount, statusBreakdown, priorityBreakdown, memberCount]
       properties:
         totalTaskCount:      { type: integer, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)" }
-        todayDueCount:       { type: integer, description: "当日期限のタスク件数" }
-        overdueCount:        { type: integer, description: "期限切れ未完了件数(`due_date < TODAY` かつ未完了)" }
-        completedTodayCount: { type: integer, description: "本日完了したタスク件数" }
+        todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
+        overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
+        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`updated_at` が当日 00:00〜23:59 でステータス DONE)" }
         statusBreakdown:
           type: object
           description: "ステータス別件数(未着手・進行中・完了・保留)"
@@ -1212,7 +1222,7 @@ components:
           example: { HIGH: 12, MEDIUM: 60, LOW: 20 }
         memberCount:
           type: integer
-          description: "所属メンバー数(`user_tenants.status = ACTIVE` のテナント所属人数)"
+          description: "テナントの全アクティブ所属ユーザー数(Tenant Admin を含む。`user_tenants.status = ACTIVE` のテナント所属人数)"
 
     AuditLog:
       description: |
