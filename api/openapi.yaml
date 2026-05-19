@@ -1185,11 +1185,12 @@ components:
       type: object
       required: [todayDueCount, overdueCount, completedTodayCount, myOpenCount, statusBreakdown, priorityBreakdown]
       properties:
-        todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
-        overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
-        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
+        todayDueCount:       { type: integer, minimum: 0, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
+        overdueCount:        { type: integer, minimum: 0, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
+        completedTodayCount: { type: integer, minimum: 0, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
         myOpenCount:
           type: integer
+          minimum: 0
           description: |
             自分が**所有する**未完了件数(所有者視点指標)。担当タスク・関係者として関与しているタスクは含まない。
             基本設計書 §3.3.3 S-03「自分が所有するタスクの進捗グラフ」と整合。
@@ -1219,10 +1220,10 @@ components:
       type: object
       required: [totalTaskCount, todayDueCount, overdueCount, completedTodayCount, statusBreakdown, priorityBreakdown, memberCount]
       properties:
-        totalTaskCount:      { type: integer, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)", example: 92 }
-        todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
-        overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
-        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
+        totalTaskCount:      { type: integer, minimum: 0, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)", example: 92 }
+        todayDueCount:       { type: integer, minimum: 0, description: "当日期限のタスク件数(visibility ∈ {TENANT, STAKEHOLDERS}、PRIVATE 除外。JST 基準、`due_date = TODAY`)" }
+        overdueCount:        { type: integer, minimum: 0, description: "期限切れ未完了件数(visibility ∈ {TENANT, STAKEHOLDERS}、PRIVATE 除外。JST 基準、`due_date < TODAY` かつ未完了)" }
+        completedTodayCount: { type: integer, minimum: 0, description: "本日完了したタスク件数(visibility ∈ {TENANT, STAKEHOLDERS}、PRIVATE 除外。JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
         statusBreakdown:
           type: object
           description: |
@@ -1239,6 +1240,7 @@ components:
         memberCount:
           type: integer
           minimum: 0
+          example: 8
           description: "テナントの全アクティブ所属ユーザー数(Tenant Admin を含む。`user_tenants.status = ACTIVE` のテナント所属人数)"
 
     AuditLog:
