@@ -483,7 +483,7 @@ paths:
     get:
       tags: [Task]
       summary: タスク詳細取得
-      description: "認可: 一覧と同じ参照認可ルール。違反時は404を返す(リソース存在を漏らさない)"
+      description: "認可: 一覧と同じ参照認可ルール(3 役割評価、Tenant Admin の特別権限なし、ADR-0005)。違反時は 404 を返す(リソース存在を漏らさない)"
       operationId: getTask
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -674,7 +674,11 @@ paths:
     delete:
       tags: [Stakeholder]
       summary: 関係者削除(所有者または担当者)
-      description: "認可: 所有者または担当者(ADR-0005、Tenant Admin の特別権限なし)"
+      description: |
+        認可: 所有者または担当者(ADR-0005、Tenant Admin の特別権限なし)。
+        副作用: 削除した結果として、対象ユーザーは `visibility = STAKEHOLDERS` のタスクに対する参照権限を失う
+        (`visibility = TENANT` のタスクは引き続きテナント全員が参照可、`PRIVATE` のタスクへの参照権限は元から関係者には付与されないため影響なし)。
+        本 API は visibility を**自動変更しない**(ADR-0005 §3.4 / 基本設計書 §6.2.1 / 要件定義書 §3.4.5)。
       operationId: removeStakeholder
       parameters:
         - { name: taskId, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -1193,7 +1197,7 @@ components:
           type: object
           description: "ステータス別件数(未着手・進行中・完了・保留)"
           additionalProperties: { type: integer }
-          example: { NOT_STARTED: 12, IN_PROGRESS: 5, DONE: 30, ON_HOLD: 2 }
+          example: { NOT_STARTED: 5, IN_PROGRESS: 3, DONE: 10, ON_HOLD: 1 }
         priorityBreakdown:
           type: object
           description: "優先度別件数(高・中・低)"
@@ -1211,7 +1215,7 @@ components:
       type: object
       required: [totalTaskCount, todayDueCount, overdueCount, completedTodayCount, statusBreakdown, priorityBreakdown, memberCount]
       properties:
-        totalTaskCount:      { type: integer, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)" }
+        totalTaskCount:      { type: integer, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)", example: 92 }
         todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
         overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
         completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
@@ -1227,7 +1231,8 @@ components:
           example: { HIGH: 12, MEDIUM: 60, LOW: 20 }
         memberCount:
           type: integer
-          description: "テナントの全アクティブ所属ユーザー数(Tenant Admin を含む。`user_tenants.status = ACTIVE` のテナント所属人数)"
+          minimum: 0
+          description: "テナントの全アクティブ所属ユーザー数(Tenant Admin を含む。`user_tenants.status = ACTIVE` のテナント所属人数)。アクティブなテナントを呼び出す前提では Tenant Admin が少なくとも 1 名存在するため通常は 1 以上だが、スキーマとしては非負整数を許容"
 
     AuditLog:
       description: |
