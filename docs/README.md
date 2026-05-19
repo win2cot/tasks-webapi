@@ -10,8 +10,8 @@
 
 | 文書 | パス | 内容 |
 |---|---|---|
-| 要件定義書 v1.2 | `specs/要件定義書.md` | 業務要件・機能要件・非機能要件・技術スタック |
-| 基本設計書 v1.2 | `specs/基本設計書.md` | アーキ・画面・DB・API・セキュリティ |
+| 要件定義書 v1.4.3 | `specs/要件定義書.md` | 業務要件・機能要件・非機能要件・技術スタック |
+| 基本設計書 v1.4.4 | `specs/基本設計書.md` | アーキ・画面・DB・API・セキュリティ |
 | 開発計画書 v1.2 | `specs/開発計画書.md` | 体制・スケジュール・リスク・GitHub運用マッピング |
 
 ### Flyway 初期スキーマ(本PRには未含、Sprint 0 で投入予定)
@@ -24,7 +24,7 @@
 
 | ファイル | 内容 |
 |---|---|
-| `../api/openapi.yaml` | OpenAPI 3.1。27エンドポイント・26スキーマ・認可ルール記述・エラーレスポンス共通定義 |
+| `../api/openapi.yaml` | OpenAPI 3.1(v1.4.5)。28エンドポイント・27スキーマ・認可ルール記述・エラーレスポンス共通定義 |
 
 ### クラス図 / シーケンス図(Mermaid)
 
@@ -37,7 +37,7 @@
 | `diagrams/sequence-02-task-create.mmd`      | タスク作成(認証→認可→ドメイン→永続化→監査) |
 | `diagrams/sequence-03-task-list-authz.mmd`  | 当日表示+期限切れ常時表示+visibilityフィルタ |
 | `diagrams/sequence-04-task-edit-authz.mmd`  | 所有者チェックと TaskOwnershipException |
-| `diagrams/sequence-05-stakeholder-add.mmd`  | 関係者追加(visibility自動昇格を含む) |
+| `diagrams/sequence-05-stakeholder-add.mmd`  | 関係者追加(所有者・担当者が実施、visibility 自動昇格なし、ADR-0005) |
 
 ## 利用方法
 
@@ -72,7 +72,7 @@ VS Code拡張: "Mermaid Preview"
 
 ## 整合性メモ
 
-- API操作数(基本設計書) と OpenAPI operations: ともに **24** (A-01〜A-24、A-23/A-24 は通知設定 v1.3.1 で追加)
+- API操作数(基本設計書) と OpenAPI operations: ともに **28**(A-01〜A-28)。A-23/A-24 は通知設定 v1.3.1 で追加、A-25/A-26/A-27 は SaaS Admin スコープで v1.4.1 で追加、A-28 は S-15 テナント運営者向けダッシュボードとして v1.4.5 で追加(ADR-0005)
 - DDLのテーブル数とER図上の業務テーブル数: ともに **5(+運用2)**
 - 認可ルールはシーケンス図(03/04/05)と OpenAPI の `description` で重複記述。実装時は `TaskAuthorizationDomainService` に1箇所で集約
 
