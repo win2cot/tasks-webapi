@@ -15,7 +15,7 @@ info:
     ## 認可モデル詳細(2 軸直交)
 
     - **プラットフォーム軸 / SaaS Admin**: Keycloak realm role `APP_ADMIN` で管理する(本システム DB には保持しない)。
-      テナント運営 API(`/api/tenants/**` 状態管理・`/api/platform/**` 監視)のみ操作可能。**業務 API(`/api/tasks/**`、`/api/dashboard/**`、`/api/tenant/users/**`、`/api/tenant/dashboard/**`、`/api/audit-logs` 等)には触れない**(呼び出された場合は 403)。Spring Security 上は `hasRole('APP_ADMIN')`。
+      テナント運営 API(`/api/tenants/**` 状態管理・`/api/platform/**` 監視)のみ操作可能。**業務 API(`/api/tasks/**`、`/api/dashboard/**`、`/api/tenant/users/**`、`/api/tenant/dashboard/**`(Tenant Admin 限定)、`/api/audit-logs`(Tenant Admin 限定)等)には触れない**(呼び出された場合は 403)。Spring Security 上は `hasRole('APP_ADMIN')`。
     - **テナント軸 / Tenant Admin**: 本システム DB の `user_tenants.role = TENANT_ADMIN` で管理。
       **テナント運営権限のみ**(ユーザー招待、ロール管理、監査ログ参照、テナント運営者向けダッシュボード `/api/tenant/dashboard/summary` 参照)。**業務タスクへの特別権限は持たない**(ADR-0005)。タスク操作は所有者・担当者・関係者の役割として通常ルール(下記)で行う。Spring Security 上は `hasRole('TENANT_ADMIN')`。
     - **テナント軸 / Member**: 本システム DB の `user_tenants.role = MEMBER` で管理。
@@ -1183,7 +1183,7 @@ components:
       properties:
         todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
         overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
-        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`updated_at` が当日 00:00〜23:59 でステータス DONE)" }
+        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
         myOpenCount:
           type: integer
           description: |
@@ -1214,7 +1214,7 @@ components:
         totalTaskCount:      { type: integer, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)" }
         todayDueCount:       { type: integer, description: "当日期限のタスク件数(JST 基準、`due_date = TODAY`)" }
         overdueCount:        { type: integer, description: "期限切れ未完了件数(JST 基準、`due_date < TODAY` かつ未完了)" }
-        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`updated_at` が当日 00:00〜23:59 でステータス DONE)" }
+        completedTodayCount: { type: integer, description: "本日完了したタスク件数(JST 基準、`completed_at` が当日 00:00〜23:59 JST)" }
         statusBreakdown:
           type: object
           description: "ステータス別件数(未着手・進行中・完了・保留)"
