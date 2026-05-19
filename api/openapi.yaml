@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: タスク管理システム API
   description: |
-    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4 / 要件定義書 v1.4 準拠)。
+    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4.4 / 要件定義書 v1.4.3 準拠)。
 
     認証はKeycloak経由のOIDC、本APIはJWTを Spring Security OAuth2 Resource Server で検証する。
     全リクエストには `Authorization: Bearer {access_token}` を付与し、
@@ -10,18 +10,29 @@ info:
     プラットフォーム運用 API(`/api/auth/*` の一部・`/api/tenants` 系 SaaS Admin 操作・セルフサインアップ・`/api/platform/*`)は `X-Tenant-Id` を要求しない。
 
     認可は**プラットフォーム軸**と**テナント軸**の 2 軸で直交する(参照のみの Viewer は設けない)。
-    タスクごとの参照認可は visibility (TENANT/STAKEHOLDERS/PRIVATE) と所有者・関係者・担当者の関係で決定する。
+    タスクごとの参照認可は visibility (TENANT/STAKEHOLDERS/PRIVATE) と所有者・担当者・関係者の関係で決定する(ADR-0005 / 基本設計書 §6.2.1)。
 
     ## 認可モデル詳細(2 軸直交)
 
     - **プラットフォーム軸 / SaaS Admin**: Keycloak realm role `APP_ADMIN` で管理する(本システム DB には保持しない)。
-      テナント運営 API(`/api/tenants/**` 状態管理・`/api/platform/**` 監視)のみ操作可能。**業務 API(`/api/tasks/**`、`/api/dashboard/**`、`/api/tenant/users/**`、`/api/audit-logs` 等)には触れない**(呼び出された場合は 403)。Spring Security 上は `hasRole('APP_ADMIN')`。
+      テナント運営 API(`/api/tenants/**` 状態管理・`/api/platform/**` 監視)のみ操作可能。**業務 API(`/api/tasks/**`、`/api/dashboard/**`、`/api/tenant/users/**`、`/api/tenant/dashboard/**`、`/api/audit-logs` 等)には触れない**(呼び出された場合は 403)。Spring Security 上は `hasRole('APP_ADMIN')`。
     - **テナント軸 / Tenant Admin**: 本システム DB の `user_tenants.role = TENANT_ADMIN` で管理。
-      テナント内ユーザー管理、全タスク参照・編集・削除、監査ログ参照が可能。Spring Security 上は `hasRole('TENANT_ADMIN')`。
+      **テナント運営権限のみ**(ユーザー招待、ロール管理、監査ログ参照、テナント運営者向けダッシュボード `/api/tenant/dashboard/summary` 参照)。**業務タスクへの特別権限は持たない**(ADR-0005)。タスク操作は所有者・担当者・関係者の役割として通常ルール(下記)で行う。Spring Security 上は `hasRole('TENANT_ADMIN')`。
     - **テナント軸 / Member**: 本システム DB の `user_tenants.role = MEMBER` で管理。
-      タスク CRUD(編集・削除は所有者のみ)、テナント内タスク参照が可能。Spring Security 上は `hasRole('MEMBER')`。
+      タスク CRUD(編集・論理削除・公開範囲変更は所有者のみ、ステータス変更と関係者の追加・削除は所有者・担当者、参照は visibility ルール)、テナント内タスクの可視性ルールに従う参照が可能。Spring Security 上は `hasRole('MEMBER')`。
 
-    両軸は包含関係ではなく直交する。SaaS Admin が業務 API を呼んでも自動的に Tenant Admin 権限を持つわけではない(同一の Keycloak ユーザーが両方の役割を兼ねている場合、それは別軸での個別の所属である)。
+    両軸は包含関係ではなく直交する。SaaS Admin が業務 API を呼んでも自動的に Tenant Admin 権限を持つわけではない(同一の Keycloak ユーザーが両方の役割を兼ねている場合、それは別軸での個別の所属である)。Tenant Admin と Member の区別はタスク認可には影響しない(両者ともテナント内ユーザーとして同等のタスク操作権限を持ち、所有者・担当者・関係者の役割に応じて操作可能、ADR-0005)。
+
+    ## タスク認可ルール(ADR-0005 / 基本設計書 §6.2.1)
+
+    タスク認可は **所有者(Owner)・担当者(Assignee)・関係者(Stakeholder)の 3 役割のみで評価**する。
+
+    - 参照: `TENANT` → 同テナント全員 / `STAKEHOLDERS` → 所有者 ∪ 担当者 ∪ `task_stakeholders` 登録者 / `PRIVATE` → 所有者 ∪ 担当者
+    - 編集(タイトル / 説明 / 期限 / 担当者 / 優先度 等): 所有者のみ
+    - 論理削除: 所有者のみ(物理削除は MVP 不実装、テナント解約 #167 / Phase 2 で扱う)
+    - ステータス変更: 所有者 ∪ 担当者
+    - 公開範囲変更: 所有者のみ
+    - 関係者の追加・削除: 所有者 ∪ 担当者(指名自体は visibility 非依存に可能。参照権限が機能するのは `visibility = STAKEHOLDERS` のときのみ)
 
     ## セルフサインアップ(モデル B)
 
@@ -37,7 +48,7 @@ info:
     - `409 Conflict` — リソースの競合状態(詳細は基本設計書 §5.4.1。エンドポイント個別のシナリオはレスポンス description 参照)
     - `422 Unprocessable Content` — 前提リソース未存在(招待時に Keycloak 未登録 等。詳細は基本設計書 §5.4.2)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.4.4"
+  version: "1.4.5"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -56,7 +67,9 @@ tags:
   - name: Task
     description: タスク管理(可視性・関係者・ステータス)
   - name: Dashboard
-    description: テナント内ダッシュボード集計
+    description: |
+      ダッシュボード集計。個人視点(S-03 / `GET /api/dashboard/summary`)とテナント運営者視点(S-15 / `GET /api/tenant/dashboard/summary`)の 2 種類を提供する。
+      いずれも NIST AC-4 整合のため、他者の `PRIVATE` タスクの存在を集計値経由で推定できない設計(個人視点は所有者・担当者のみ加算、テナント運営者視点は `PRIVATE` を集計対象外)。
   - name: Audit
     description: 監査ログ参照(Tenant Admin)
 
@@ -402,7 +415,7 @@ paths:
         実装の SSOT は TaskAuthorizationDomainService (Domain 層)。
         - tenant_id = X-Tenant-Id (Hibernate Filter で自動付与)
         - deleted_at IS NULL
-        - visibility による参照認可が適用される(Tenant Admin は制限なし)
+        - visibility による参照認可が適用される(3 役割評価、Tenant Admin の特別権限なし、ADR-0005)
       operationId: listTasks
       parameters:
         - { name: targetDate,     in: query, schema: { type: string, format: date }, description: "表示対象日(省略時は当日 TODAY)" }
@@ -488,7 +501,7 @@ paths:
     put:
       tags: [Task]
       summary: タスク更新
-      description: "認可: 所有者のみ(または Tenant Admin)。違反時は403"
+      description: "認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403"
       operationId: updateTask
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -508,12 +521,14 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**更新権限**(所有者または Tenant Admin)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**更新権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [Task]
-      summary: タスク論理削除
-      description: "認可: 所有者または Tenant Admin"
+      summary: タスク論理削除(所有者のみ)
+      description: |
+        認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403。
+        物理削除は MVP では提供しない(完全削除はテナント解約 #167 / Phase 2 で扱う)。
       operationId: deleteTask
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -524,14 +539,14 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**削除権限**(所有者または Tenant Admin)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**論理削除権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/tasks/{id}/status:
     patch:
       tags: [Task]
       summary: ステータス変更
-      description: "認可: 所有者・担当者・Tenant Admin"
+      description: "認可: 所有者または担当者(Tenant Admin の特別権限なし、ADR-0005)"
       operationId: changeStatus
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -557,7 +572,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**ステータス変更権限**(所有者・担当者・Tenant Admin)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**ステータス変更権限**(所有者・担当者、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
 
   /api/tasks/{id}/visibility:
     patch:
@@ -619,7 +634,12 @@ paths:
           description: タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
     post:
       tags: [Stakeholder]
-      summary: 関係者追加(所有者のみ)
+      summary: 関係者追加(所有者または担当者)
+      description: |
+        認可: 所有者または担当者(ADR-0005、Tenant Admin の特別権限なし)。
+        関係者指名は visibility 非依存に可能(参照権限が機能するのは `visibility = STAKEHOLDERS` のときのみ。
+        `visibility = TENANT` のときはテナント全員が参照可、`PRIVATE` のときは所有者・担当者のみが参照可)。
+        本 API は visibility を**自動変更しない**(ADR-0005 §3.4 / 基本設計書 §6.2.1 / 要件定義書 §3.4.5)。
       operationId: addStakeholder
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -645,7 +665,7 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-            なお**関係者追加権限**(所有者のみ)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**関係者追加権限**(所有者・担当者、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
         "409":
           $ref: "#/components/responses/Conflict"
           description: 指定ユーザーが既に同タスクの関係者として登録済み(重複追加)。
@@ -653,7 +673,8 @@ paths:
   /api/tasks/{taskId}/stakeholders/{userId}:
     delete:
       tags: [Stakeholder]
-      summary: 関係者削除(所有者のみ)
+      summary: 関係者削除(所有者または担当者)
+      description: "認可: 所有者または担当者(ADR-0005、Tenant Admin の特別権限なし)"
       operationId: removeStakeholder
       parameters:
         - { name: taskId, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -666,14 +687,24 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。または対象ユーザーが当該タスクの関係者として登録されていない。
-            なお**関係者削除権限**(所有者のみ)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+            なお**関係者削除権限**(所有者・担当者、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
 
   # --- ダッシュボード ---
   /api/dashboard/summary:
     get:
       tags: [Dashboard]
-      summary: ダッシュボード集計
-      description: "認可: テナント内ユーザー(自分が参照可能なタスク範囲で集計)"
+      summary: 個人視点ダッシュボード集計(S-03)
+      description: |
+        ログイン中ユーザーの個人視点ダッシュボード集計。
+        §6.2.1 のタスク参照認可フィルタ(3 役割評価、ADR-0005)を適用した後のタスク集合に対して件数集計を行う。
+
+        - `PRIVATE` タスクは **所有者・担当者** のダッシュボードでのみ加算される
+        - `STAKEHOLDERS` タスクは「所有者・担当者・関係者リスト登録ユーザー」にのみ加算される
+        - `TENANT` タスクはテナント全員に同一件数で加算される
+
+        **Tenant Admin であっても通常の参照認可フィルタが適用される**(特別権限なし、ADR-0005)。
+        テナント運営者視点での集計は別エンドポイント `GET /api/tenant/dashboard/summary`(S-15)を参照。
+        根拠: NIST AC-4(情報フロー保護)。集計件数からも他者の PRIVATE タスクの存在を推定させない。
       operationId: getDashboardSummary
       responses:
         "200":
@@ -681,6 +712,28 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DashboardSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/tenant/dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: テナント運営者向けダッシュボード集計(S-15、Tenant Admin)
+      description: |
+        Tenant Admin によるテナント運営視点のダッシュボード集計(S-15、ADR-0005 §3.5 / 基本設計書 §3.3.4 / §6.2.2.2)。
+
+        - 認可: `hasRole('TENANT_ADMIN')`。Member は 403、SaaS Admin は業務 API 不可で 403(§6.2.1「SaaS Admin の扱い」)
+        - 集計対象: 自テナント内の `visibility ∈ {TENANT, STAKEHOLDERS}` のタスクのみ
+        - **`PRIVATE` タスクは件数も含めて集計対象外**。Tenant Admin であっても PRIVATE タスクの存在を集計値経由で推定できない(NIST AC-4 整合)
+
+        S-03 個人視点(`GET /api/dashboard/summary`)とは認可スコープと集計対象が異なる。本エンドポイントは「テナント全体で共有または関係者限定で動いている業務量」までを把握する運営者視点。
+      operationId: getTenantDashboardSummary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantDashboardSummary" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
@@ -1050,11 +1103,11 @@ components:
 
     TaskUpdateRequest:
       description: |
-        タスク更新リクエスト(所有者または Tenant Admin のみ実行可能)。
+        タスク更新リクエスト(**所有者のみ**実行可能。Tenant Admin の特別権限なし、ADR-0005)。
         本リクエストでは visibility および関係者リストは変更できない。
-        - 公開範囲(visibility)変更: PATCH /api/tasks/{id}/visibility を使用
-        - 関係者の追加/削除: POST/DELETE /api/tasks/{id}/stakeholders/... を使用
-        - ステータス変更: PATCH /api/tasks/{id}/status を使用
+        - 公開範囲(visibility)変更: PATCH /api/tasks/{id}/visibility を使用(所有者のみ)
+        - 関係者の追加/削除: POST/DELETE /api/tasks/{id}/stakeholders/... を使用(所有者・担当者)
+        - ステータス変更: PATCH /api/tasks/{id}/status を使用(所有者・担当者)
 
         全フィールドが任意だが、少なくとも 1 つのフィールド指定が必須(minProperties: 1)。
         空のリクエストボディはバリデーションエラー(400)で拒否する。
@@ -1108,8 +1161,13 @@ components:
 
     DashboardSummary:
       description: |
-        ダッシュボード集計。集計対象は §6.2.1 のタスク参照認可フィルタを適用した後の集合に限定する(NIST AC-4 / 基本設計書 §6.2.2)。
-        即ち PRIVATE タスクは所有者にのみ加算、STAKEHOLDERS は所有者・担当者・関係者にのみ加算、Tenant Admin は visibility 制限なし。
+        個人視点ダッシュボード集計(S-03 / `GET /api/dashboard/summary`)のレスポンス。
+        集計対象は §6.2.1 のタスク参照認可フィルタ(3 役割評価、ADR-0005)を適用した後のタスク集合に限定する(NIST AC-4 / 基本設計書 §6.2.2.1)。
+
+        - `PRIVATE` タスクは **所有者・担当者** のダッシュボードでのみ加算される(ADR-0005 で PRIVATE 参照は所有者・担当者に拡張済)
+        - `STAKEHOLDERS` タスクは「所有者・担当者・関係者リスト登録ユーザー」にのみ加算される
+        - `TENANT` タスクはテナント全員に同一件数で加算される
+        - Tenant Admin であっても通常の参照認可フィルタが適用される(特別権限なし、ADR-0005)
       type: object
       required: [todayDueCount, overdueCount, completedTodayCount, myOpenCount, statusBreakdown, priorityBreakdown]
       properties:
@@ -1125,6 +1183,35 @@ components:
           type: object
           additionalProperties: { type: integer }
           example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
+
+    TenantDashboardSummary:
+      description: |
+        テナント運営者向けダッシュボード集計(S-15 / `GET /api/tenant/dashboard/summary`)のレスポンス。
+        Tenant Admin がテナント運営視点で把握する集計(基本設計書 §3.3.4 / §6.2.2.2、ADR-0005 §3.5)。
+
+        - 集計対象: 自テナント内の `visibility ∈ {TENANT, STAKEHOLDERS}` のタスクのみ
+        - **`PRIVATE` タスクは件数も含めて集計対象外**(NIST AC-4 整合、Tenant Admin であっても存在を集計値経由で推定できない)
+        - メンバー別稼働状況・個人特定可能な指標は MVP 対象外(ADR-0005 §3.5)。時系列グラフも MVP 対象外(将来検討)
+      type: object
+      required: [totalTaskCount, todayDueCount, overdueCount, completedTodayCount, statusBreakdown, priorityBreakdown, memberCount]
+      properties:
+        totalTaskCount:      { type: integer, description: "集計可能タスク総数(visibility ∈ {TENANT, STAKEHOLDERS}、deleted_at IS NULL)" }
+        todayDueCount:       { type: integer, description: "当日期限のタスク件数" }
+        overdueCount:        { type: integer, description: "期限切れ未完了件数(`due_date < TODAY` かつ未完了)" }
+        completedTodayCount: { type: integer, description: "本日完了したタスク件数" }
+        statusBreakdown:
+          type: object
+          description: "ステータス別件数(未着手・進行中・完了・保留)"
+          additionalProperties: { type: integer }
+          example: { NOT_STARTED: 18, IN_PROGRESS: 9, DONE: 62, ON_HOLD: 3 }
+        priorityBreakdown:
+          type: object
+          description: "優先度別件数(高・中・低)"
+          additionalProperties: { type: integer }
+          example: { HIGH: 12, MEDIUM: 60, LOW: 20 }
+        memberCount:
+          type: integer
+          description: "所属メンバー数(`user_tenants.status = ACTIVE` のテナント所属人数)"
 
     AuditLog:
       description: |
