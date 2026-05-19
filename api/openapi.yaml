@@ -578,7 +578,7 @@ paths:
     patch:
       tags: [Task]
       summary: 公開範囲変更
-      description: "認可: 所有者のみ"
+      description: "認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403"
       operationId: changeVisibility
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -637,7 +637,7 @@ paths:
       summary: 関係者追加(所有者または担当者)
       description: |
         認可: 所有者または担当者(ADR-0005、Tenant Admin の特別権限なし)。
-        関係者指名は visibility 非依存に可能(参照権限が機能するのは `visibility = STAKEHOLDERS` のときのみ。
+        関係者指名は visibility 非依存に可能(参照権限として機能するのは `visibility = STAKEHOLDERS` のときのみ、
         `visibility = TENANT` のときはテナント全員が参照可、`PRIVATE` のときは所有者・担当者のみが参照可)。
         本 API は visibility を**自動変更しない**(ADR-0005 §3.4 / 基本設計書 §6.2.1 / 要件定義書 §3.4.5)。
       operationId: addStakeholder
@@ -723,6 +723,7 @@ paths:
         Tenant Admin によるテナント運営視点のダッシュボード集計(S-15、ADR-0005 §3.5 / 基本設計書 §3.3.4 / §6.2.2.2)。
 
         - 認可: `hasRole('TENANT_ADMIN')`。Member は 403、SaaS Admin は業務 API 不可で 403(§6.2.1「SaaS Admin の扱い」)
+        - `X-Tenant-Id` ヘッダ必須(業務 API、グローバルセキュリティ `tenantHeader` 適用)
         - 集計対象: 自テナント内の `visibility ∈ {TENANT, STAKEHOLDERS}` のタスクのみ
         - **`PRIVATE` タスクは件数も含めて集計対象外**。Tenant Admin であっても PRIVATE タスクの存在を集計値経由で推定できない(NIST AC-4 整合)
 
