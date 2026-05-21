@@ -1,0 +1,32 @@
+# Claude Impl shim
+# claude:ready ラベル付与で実装 Claude を起動。
+# 本体は win2cot/claude-automation の reusable-impl.yml@v1。
+
+name: Claude Impl
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+# 同一 Issue への重複起動防止(claude-automation 側 reusable にも concurrency はあるが、
+# shim 側でも明示することで予測可能性を高める)
+concurrency:
+  group: claude-impl-shim-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  impl:
+    if: github.event.label.name == 'claude:ready'
+    uses: win2cot/claude-automation/.github/workflows/reusable-impl.yml@v1
+    # secrets は必要なものだけ明示(secrets: inherit は外部リポジトリへの全 secrets 漏洩リスクのため不使用)
+    secrets:
+      CLAUDE_IMPL_APP_ID: ${{ secrets.CLAUDE_IMPL_APP_ID }}
+      CLAUDE_IMPL_PRIVATE_KEY: ${{ secrets.CLAUDE_IMPL_PRIVATE_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

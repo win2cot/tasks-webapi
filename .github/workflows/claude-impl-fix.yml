@@ -1,0 +1,36 @@
+# Claude Impl Fix shim
+# レビュー指摘を受けて実装 Claude が修正コミット + 対応完了レポート投稿。
+# 本体は win2cot/claude-automation の reusable-impl-fix.yml@v1。
+
+name: Claude Impl Fix
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: claude-impl-fix-shim-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  impl-fix:
+    # 起動条件:
+    # (1) review が changes_requested で submit された(人 or レビュワ bot どちらでも)
+    # (2) PR レビューコメントが投稿された かつ 投稿者が impl bot 自身でない(自己ループ防止)
+    if: |
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested') ||
+      (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login != 'claude-automation-impl[bot]')
+    uses: win2cot/claude-automation/.github/workflows/reusable-impl-fix.yml@v1
+    secrets:
+      CLAUDE_IMPL_APP_ID: ${{ secrets.CLAUDE_IMPL_APP_ID }}
+      CLAUDE_IMPL_PRIVATE_KEY: ${{ secrets.CLAUDE_IMPL_PRIVATE_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

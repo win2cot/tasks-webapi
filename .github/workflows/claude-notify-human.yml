@@ -1,0 +1,30 @@
+# Claude Notify Human shim
+# needs-human-decision ラベル付与で @win2cot メンション + auto-merge 保険無効化。
+# 本体は win2cot/claude-automation の reusable-notify-human.yml@v1。
+
+name: Claude Notify Human
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+# contents:write は不要(コメント投稿と auto-merge 無効化のみ。最小権限原則)
+permissions:
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: claude-notify-shim-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: github.event.label.name == 'needs-human-decision'
+    uses: win2cot/claude-automation/.github/workflows/reusable-notify-human.yml@v1
+    secrets:
+      CLAUDE_IMPL_APP_ID: ${{ secrets.CLAUDE_IMPL_APP_ID }}
+      CLAUDE_IMPL_PRIVATE_KEY: ${{ secrets.CLAUDE_IMPL_PRIVATE_KEY }}
+    with:
+      mention: '@win2cot'

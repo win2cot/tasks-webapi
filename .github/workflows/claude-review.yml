@@ -1,0 +1,37 @@
+# Claude Review shim
+# PR ready 化・対応完了レポートコメントでレビュワ Claude を起動。
+# 本体は win2cot/claude-automation の reusable-review.yml@v1。
+
+name: Claude Review
+
+on:
+  pull_request:
+    types: [ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: claude-review-shim-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    # 起動条件:
+    # (1) PR が ready_for_review になった
+    # (2) issue_comment が PR に投稿された かつ 投稿者が claude-automation-impl[bot] かつ
+    #     本文に signal: claude-impl-done を含む(任意のユーザによる起動を防ぐため投稿者を限定)
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.login == 'claude-automation-impl[bot]' && contains(github.event.comment.body, 'signal: claude-impl-done'))
+    uses: win2cot/claude-automation/.github/workflows/reusable-review.yml@v1
+    secrets:
+      CLAUDE_REVIEW_APP_ID: ${{ secrets.CLAUDE_REVIEW_APP_ID }}
+      CLAUDE_REVIEW_PRIVATE_KEY: ${{ secrets.CLAUDE_REVIEW_PRIVATE_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
