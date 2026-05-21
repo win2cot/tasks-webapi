@@ -17,10 +17,17 @@ permissions:
   id-token: write
   actions: read
 
+concurrency:
+  group: claude-review-shim-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   review:
     if: |
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, 'signal: claude-impl-done'))
     uses: win2cot/claude-automation/.github/workflows/reusable-review.yml@v1
-    secrets: inherit
+    secrets:
+      CLAUDE_REVIEW_APP_ID: ${{ secrets.CLAUDE_REVIEW_APP_ID }}
+      CLAUDE_REVIEW_PRIVATE_KEY: ${{ secrets.CLAUDE_REVIEW_PRIVATE_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

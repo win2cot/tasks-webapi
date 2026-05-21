@@ -12,10 +12,21 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: claude-auto-merge-shim-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   auto-merge:
+    # 起動条件:
+    # (1) approve された
+    # (2) approve した actor が claude-automation-review[bot](人や他 bot の approve では起動しない)
+    # (3) needs-human-decision ラベルが付いていない
     if: |
       github.event.review.state == 'approved' &&
+      github.event.review.user.login == 'claude-automation-review[bot]' &&
       !contains(github.event.pull_request.labels.*.name, 'needs-human-decision')
     uses: win2cot/claude-automation/.github/workflows/reusable-auto-merge.yml@v1
-    secrets: inherit
+    secrets:
+      CLAUDE_REVIEW_APP_ID: ${{ secrets.CLAUDE_REVIEW_APP_ID }}
+      CLAUDE_REVIEW_PRIVATE_KEY: ${{ secrets.CLAUDE_REVIEW_PRIVATE_KEY }}
