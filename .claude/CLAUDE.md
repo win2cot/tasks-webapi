@@ -64,7 +64,7 @@ Architecture-level decisions are recorded as ADRs under `docs/adr/` (template: `
 
 ## CI/CD
 
-GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publishes test results and JaCoCo coverage reports. Automated Claude Code reviews run on PRs via `claude-code-review.yml`. CI environment uses `LANG=ja_JP.UTF-8` and `TZ=Asia/Tokyo`.
+GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publishes test results and JaCoCo coverage reports. Automated Claude Code reviews run on PRs via `claude-review.yml`. CI environment uses `LANG=ja_JP.UTF-8` and `TZ=Asia/Tokyo`.
 
 ## Design Context
 
