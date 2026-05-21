@@ -1,0 +1,22 @@
+# Claude Impl shim
+# claude:ready ラベル付与で実装 Claude を起動。
+# 本体は win2cot/claude-automation の reusable-impl.yml@v1。
+
+name: Claude Impl
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  impl:
+    if: github.event.label.name == 'claude:ready'
+    uses: win2cot/claude-automation/.github/workflows/reusable-impl.yml@v1
+    secrets: inherit
