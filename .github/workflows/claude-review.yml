@@ -1,12 +1,15 @@
 # Claude Review shim
-# PR ready 化・対応完了レポートコメントでレビュワ Claude を起動。
+# PR open(ready)・draft → ready 切替・対応完了レポートコメントでレビュワ Claude を起動。
 # 本体は win2cot/claude-automation の reusable-review.yml@v1。
 
 name: Claude Review
 
 on:
   pull_request:
-    types: [ready_for_review]
+    # opened: 最初から ready で open された PR
+    # ready_for_review: draft → ready 切替
+    # 両方対応することで PR 作成スタイルに依存せずレビューを起動できる
+    types: [opened, ready_for_review]
   issue_comment:
     types: [created]
 
@@ -24,11 +27,11 @@ concurrency:
 jobs:
   review:
     # 起動条件:
-    # (1) PR が ready_for_review になった
+    # (1) PR が opened または ready_for_review、かつ draft 状態でない
     # (2) issue_comment が PR に投稿された かつ 投稿者が claude-automation-impl[bot] かつ
     #     本文に signal: claude-impl-done を含む(任意のユーザによる起動を防ぐため投稿者を限定)
     if: |
-      github.event_name == 'pull_request' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.login == 'claude-automation-impl[bot]' && contains(github.event.comment.body, 'signal: claude-impl-done'))
     uses: win2cot/claude-automation/.github/workflows/reusable-review.yml@v1
     secrets:
