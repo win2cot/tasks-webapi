@@ -12,9 +12,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# auto-merge 有効化は冪等(既に有効なら 2 回目は no-op)のため、キュー積み上がりを避けて
+# 直近のイベントだけを処理する設計にする(cancel-in-progress: true)
 concurrency:
   group: claude-auto-merge-shim-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   auto-merge:
