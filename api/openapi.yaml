@@ -128,8 +128,8 @@ paths:
         - { name: tenantId, in: path, required: true, schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/auth/logout:
     post:
@@ -402,8 +402,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TenantUser" }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   # --- タスク ---
   /api/tasks:
@@ -493,11 +493,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TaskDetail" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
           description: タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
     put:
       tags: [Task]
       summary: タスク更新
@@ -516,13 +516,13 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Task" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
             なお**更新権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
-        "401": { $ref: "#/components/responses/Unauthorized" }
     delete:
       tags: [Task]
       summary: タスク論理削除(所有者のみ)
@@ -534,13 +534,13 @@ paths:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
             なお**論理削除権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
-        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/tasks/{id}/status:
     patch:
@@ -602,13 +602,13 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Task" }
         "400": { $ref: "#/components/responses/Validation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           $ref: "#/components/responses/NotFound"
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
             なお**公開範囲変更権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
-        "401": { $ref: "#/components/responses/Unauthorized" }
 
   # --- 関係者 ---
   /api/tasks/{id}/stakeholders:
@@ -815,8 +815,8 @@ paths:
                     type: array
                     items: { $ref: "#/components/schemas/AuditLog" }
                   totalElements: { type: integer, format: int64 }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
 # ======================================================================
 # コンポーネント
