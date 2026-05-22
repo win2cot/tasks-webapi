@@ -5,6 +5,22 @@
 - **Deciders**: 開発チーム
 - **Tags**: architecture, modularity
 
+## 目次
+
+- [1. コンテキスト](#1-コンテキスト)
+- [2. 検討した選択肢](#2-検討した選択肢)
+  - [選択肢 A: `shared` を **Open module** として宣言する](#選択肢-a-shared-を-open-module-として宣言する)
+  - [選択肢 B: `shared` を通常モジュールとし、`@NamedInterface` で個別公開する](#選択肢-b-shared-を通常モジュールとし-namedinterface-で個別公開する)
+  - [選択肢 C: `shared` を作らず、共通型を各 feature にコピー / 親パッケージに置く](#選択肢-c-shared-を作らず-共通型を各-feature-にコピー--親パッケージに置く)
+- [3. 決定](#3-決定)
+- [4. 理由](#4-理由)
+- [5. 影響](#5-影響)
+  - [良い影響](#良い影響)
+  - [悪い影響・制約](#悪い影響制約)
+  - [既存ドキュメント・規約への波及](#既存ドキュメント規約への波及)
+- [6. 実装メモ](#6-実装メモ)
+- [7. 参考リンク](#7-参考リンク)
+
 ## 1. コンテキスト
 
 設計規約 §1.2.2 は feature 単位パッケージとして `task` / `user` / `tenant` / `security` / `notification` / `audit` / `dashboard` / `shared` を定めている。このうち `shared` は「どの feature にも属さない共通型」(例外基底クラス、共通定数、汎用 Value Object 等)を置く特別な feature である。

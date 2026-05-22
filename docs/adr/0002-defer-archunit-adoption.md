@@ -5,6 +5,22 @@
 - **Deciders**: 開発チーム
 - **Tags**: architecture, ci, testing
 
+## 目次
+
+- [1. コンテキスト](#1-コンテキスト)
+- [2. 検討した選択肢](#2-検討した選択肢)
+  - [選択肢 A: ArchUnit を採用し feature 内部の 4 層依存方向を CI で強制する](#選択肢-a-archunit-を採用し-feature-内部の-4-層依存方向を-ci-で強制する)
+  - [選択肢 B: ArchUnit 採用を当面保留し、Spring Modulith の `ApplicationModules.verify()` に集約する](#選択肢-b-archunit-採用を当面保留し-spring-modulith-の-applicationmodulesverify-に集約する)
+  - [選択肢 C: 自前の `ApplicationModuleListener` テスト + `package-info.java` の `@ApplicationModule(allowedDependencies)` で頑張る](#選択肢-c-自前の-applicationmodulelistener-テスト--packageinfojava-の-applicationmodulealloweddependencies-で頑張る)
+- [3. 決定](#3-決定)
+- [4. 理由](#4-理由)
+- [5. 影響](#5-影響)
+  - [良い影響](#良い影響)
+  - [悪い影響・制約](#悪い影響制約)
+  - [既存ドキュメント・規約への波及](#既存ドキュメント規約への波及)
+- [6. 実装メモ](#6-実装メモ)
+- [7. 参考リンク](#7-参考リンク)
+
 ## 1. コンテキスト
 
 `.claude/CLAUDE.md`(2026-05-14 以前)の Architecture 節には **「クリーンアーキ 4 層(依存方向は外→内のみ、ArchUnit で検証)」** と記載されていた。一方で、本 PR(#135)時点の実態は以下のとおりである。
