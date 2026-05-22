@@ -5,6 +5,22 @@
 - **Deciders**: 開発チーム
 - **Tags**: process, documentation
 
+## 目次
+
+- [1. コンテキスト](#1-コンテキスト)
+- [2. 検討した選択肢](#2-検討した選択肢)
+  - [選択肢 A: ADR(Architecture Decision Record)を導入する](#選択肢-a-adrarchitecture-decision-recordを導入する)
+  - [選択肢 B: Confluence / Notion 等の外部ツールに残す](#選択肢-b-confluence--notion-等の外部ツールに残す)
+  - [選択肢 C: 何もしない(PR 本文・Slack で都度議論)](#選択肢-c-何もしないpr-本文slack-で都度議論)
+- [3. 決定](#3-決定)
+- [4. 理由](#4-理由)
+- [5. 影響](#5-影響)
+  - [良い影響](#良い影響)
+  - [悪い影響・制約](#悪い影響制約)
+  - [既存ドキュメント・規約への波及](#既存ドキュメント規約への波及)
+- [6. 実装メモ](#6-実装メモ)
+- [7. 参考リンク](#7-参考リンク)
+
 ## 1. コンテキスト
 
 tasks-webapi はマルチテナント SaaS として、Sprint 0(2026-07-14 予定)以降に本格実装に入る段階である。要件定義書 v1.2 / 基本設計書 v1.3.2 / 開発計画書 v1.2 / OpenAPI v1.3.1 / 詳細設計レビュー(2026-05-06) が揃い、これから多くの**アーキテクチャ的意思決定**(MapStruct 採否、Hibernate Filter vs Spring AOP、ProblemDetail vs 独自 ErrorResponse、ArchUnit 導入有無 など)を Sprint 0〜1 で連続して下す必要がある。

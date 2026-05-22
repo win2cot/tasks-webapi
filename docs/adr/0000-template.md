@@ -5,6 +5,22 @@
 - **Deciders**: <意思決定に関わった人>
 - **Tags**: <例: architecture, security, persistence>
 
+## 目次
+
+- [0. 本テンプレートの使い方](#0-本テンプレートの使い方)
+- [1. コンテキスト(Context)](#1-コンテキストcontext)
+- [2. 検討した選択肢(Options Considered)](#2-検討した選択肢options-considered)
+  - [選択肢 A: \<名前\>](#選択肢-a-名前)
+  - [選択肢 B: \<名前\>](#選択肢-b-名前)
+- [3. 決定(Decision)](#3-決定decision)
+- [4. 理由(Rationale)](#4-理由rationale)
+- [5. 影響(Consequences)](#5-影響consequences)
+  - [良い影響(Positive)](#良い影響positive)
+  - [悪い影響・制約(Negative)](#悪い影響制約negative)
+  - [既存ドキュメント・規約への波及](#既存ドキュメント規約への波及)
+- [6. 実装メモ(Implementation Notes)](#6-実装メモimplementation-notes)
+- [7. 参考リンク(References)](#7-参考リンクreferences)
+
 ## 0. 本テンプレートの使い方
 
 - 新規 ADR は `docs/adr/NNNN-<kebab-case-title>.md` のファイル名で作成する(`NNNN` は4桁連番)。
