@@ -70,12 +70,16 @@ GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publish
 
 詳細設計フェーズが完了し、現在は実装着手前の **Sprint 0 Readiness** 段階(2026-05-14時点)。本セクションは実装時に頻繁に参照する不変ルールのみを集約。詳細は別ファイル参照。
 
-### Design Versions
+## 設計ドキュメント
 
-- 要件定義書: v1.4.3
-- 基本設計書: **v1.4.4** ← Single Source of Truth
-- 開発計画書: v1.2
-- OpenAPI: **v1.4.5**(28 operations / 27 schemas)
+主要な設計ドキュメント(各最新版はファイルヘッダ参照):
+
+- 要件定義書: `docs/specs/要件定義書.md`
+- 基本設計書: `docs/specs/基本設計書.md`
+- 設計規約: `docs/specs/設計規約.md`
+- コーディング規約: `docs/specs/コーディング規約.md`
+- 開発計画書: `docs/specs/開発計画書.md`
+- ADR: `docs/adr/` 配下(各 ADR 個別ファイル)
 
 ### Multi-Tenancy(絶対不変)
 
