@@ -30,3 +30,6 @@ bin/
 
 # Local Docker Compose override (per-developer, not committed)
 docker-compose.local.override.yml
+
+# Local environment variables (per-developer, not committed)
+.env.local
