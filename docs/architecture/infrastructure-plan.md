@@ -749,7 +749,7 @@ Setup 単位 + Sprint 単位で Milestone を切る。各 Milestone に **due_da
 | Status | built-in(Single Select) | Todo / In Progress / In Review / Blocked / Done |
 | Priority | Single Select | p0 / p1 / p2 / p3 |
 | **Phase** | Single Select | Phase 1 / Phase 2(将来) |
-| Setup/Sprint | Single Select | Setup 0 / Setup 1 / Setup 2 / Sprint 0 / Sprint 1 / Sprint 2 / Sprint 3 / Sprint 4 / Sprint 5 / Parallel / Post-Sprint-0(Phase prefix なし、Phase フィールドと組み合わせて使用) |
+| **Iteration** | built-in(Iteration field) | 8 iteration: Phase 1 Setup 0(W0)/ Phase 1 Setup 1-2(W1-2、parallel な Setup 1+2 を combined)/ Phase 1 Sprint 0-5(W3-W12)。各 iteration は start + duration を持ち Roadmap で時系列描画される。Parallel / Post-Sprint-0 は iteration 未設定 + label で補う |
 | Stream | Single Select | App / Infra / Setup |
 | claude-automation | Single Select | 適用 / 半適用 / 不適用 |
 | Estimate | Number | 日数(任意) |
@@ -759,7 +759,7 @@ Setup 単位 + Sprint 単位で Milestone を切る。各 Milestone に **due_da
 | View 名 | 種別 | 用途 |
 |---|---|---|
 | **By Status(Board)** | Board(Status 列) | 日常進捗把握。In Progress / In Review / Blocked を見て次の手 |
-| **By Setup/Sprint(Board)** | Board(Setup/Sprint 列) | 計画とのズレ把握。Setup または Sprint X 単位 |
+| **By Iteration(Board)** | Board(Iteration 列) | 計画とのズレ把握。Iteration 単位(Phase 1 Setup 0 / Setup 1-2 / Sprint 0-5)。Setup/Sprint Single Select field は Iteration への統合により廃止(2026-05-23) |
 | **By Stream(Board)** | Board(Stream 列) | App / Infra ストリーム並行進行の俯瞰 |
 | **Roadmap** | Roadmap(due_date 軸) | Milestone と Issue を時系列 |
 | **Blocked Only** | Board(filter `Status=Blocked`) | ブロック中 Issue 全体俯瞰 |
@@ -772,7 +772,7 @@ Setup 単位 + Sprint 単位で Milestone を切る。各 Milestone に **due_da
 
 ### 11.3 運用ルール
 
-1. **Issue 起票時に必ず Milestone + Phase + Setup/Sprint + Stream を設定**(Milestone は Phase prefix 入り、Project field は Phase / Setup-Sprint 分離)
+1. **Issue 起票時に必ず Milestone + Phase + Iteration + Stream を設定**(Milestone は Phase prefix 入り、Project field は Phase / Iteration 分離。Parallel / Post-Sprint-0 は iteration 未設定 + label で補う)
 2. **Milestone 進捗は週 1 回確認**(原則金曜)、ズレ 1 週間以上で計画見直し起票
 3. **claude-automation 経由の Issue も Milestone を継承**
 4. **Project View はカスタマイズせず固定 5 view**
