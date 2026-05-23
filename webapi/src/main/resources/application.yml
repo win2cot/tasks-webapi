@@ -22,9 +22,6 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
   flyway:
     enabled: true
-    url: ${DATASOURCE_URL}
-    user: ${DATASOURCE_USERNAME}
-    password: ${DATASOURCE_PASSWORD:}
     locations: classpath:db/migration
   security:
     oauth2:
