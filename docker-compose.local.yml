@@ -24,10 +24,9 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
+      - "18080:8080"
+    # start-dev は H2 embedded を使用するため mysql への depends_on は不要
+    # Setup 1-2 で Realm 設定後、必要であれば MySQL 接続設定を追加する
 
 volumes:
   mysql-data:
