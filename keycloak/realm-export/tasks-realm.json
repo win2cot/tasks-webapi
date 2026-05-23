@@ -1,0 +1,151 @@
+{
+  "id": "tasks",
+  "realm": "tasks",
+  "displayName": "Tasks Management",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "roles": {
+    "realm": [
+      {
+        "name": "APP_ADMIN",
+        "description": "SaaS全体管理者",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "TENANT_ADMIN",
+        "description": "テナント管理者",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MEMBER",
+        "description": "一般メンバー",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "tasks-webapi",
+      "name": "Tasks WebAPI",
+      "description": "Tasks Management WebAPI client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "notBefore": 0,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300",
+        "pkce.code.challenge.method": "S256"
+      },
+      "fullScopeAllowed": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@example.com",
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "APP_ADMIN"
+      ]
+    },
+    {
+      "username": "tenant1-admin@example.com",
+      "email": "tenant1-admin@example.com",
+      "firstName": "Tenant1",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "TENANT_ADMIN"
+      ]
+    },
+    {
+      "username": "tenant1-member1@example.com",
+      "email": "tenant1-member1@example.com",
+      "firstName": "Tenant1",
+      "lastName": "Member1",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "MEMBER"
+      ]
+    },
+    {
+      "username": "tenant1-member2@example.com",
+      "email": "tenant1-member2@example.com",
+      "firstName": "Tenant1",
+      "lastName": "Member2",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "MEMBER"
+      ]
+    }
+  ]
+}
