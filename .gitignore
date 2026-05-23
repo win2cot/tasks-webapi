@@ -27,3 +27,6 @@ replay_pid*
 build/
 bin/
 .gradle/
+
+# Local Docker Compose override (per-developer, not committed)
+docker-compose.local.override.yml
