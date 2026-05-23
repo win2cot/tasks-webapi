@@ -35,26 +35,26 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run checks
-        run: ./gradlew check
+        run: ./gradlew :webapi:check
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
-          files: build/test-results/**/*.xml
+          files: webapi/build/test-results/**/*.xml
 
       - name: Upload test reports
         uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-reports
-          path: build/reports/tests/test/
+          path: webapi/build/reports/tests/test/
 
       - name: JaCoCo Report
         uses: madrapps/jacoco-report@v1.7.2
         if: always()
         with:
-          paths: build/reports/jacoco/test/jacocoTestReport.xml
+          paths: webapi/build/reports/jacoco/test/jacocoTestReport.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 80
           min-coverage-changed-files: 80
@@ -66,4 +66,4 @@ jobs:
         if: always()
         with:
           name: coverage-reports
-          path: build/reports/jacoco/test/html/
+          path: webapi/build/reports/jacoco/test/html/
