@@ -30,6 +30,26 @@
         "org.projectlombok:lombok"
       ],
       "groupName": "Lombok"
+    },
+    {
+      "matchFileNames": ["webapi/**"],
+      "addLabels": ["area/webapi", "renovate"]
+    },
+    {
+      "matchFileNames": ["keycloak/**"],
+      "addLabels": ["area/keycloak", "renovate"]
+    },
+    {
+      "matchFileNames": ["infra/**"],
+      "addLabels": ["area/infra", "renovate"]
+    },
+    {
+      "matchFileNames": ["web/**"],
+      "addLabels": ["area/web", "renovate"]
+    },
+    {
+      "matchFileNames": [".github/**"],
+      "addLabels": ["area/ci", "renovate"]
     }
   ]
 }
