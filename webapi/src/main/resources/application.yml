@@ -1,17 +1,36 @@
+# env vars (required at startup):
+#   DATASOURCE_URL      - JDBC URL e.g. jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true
+#   DATASOURCE_USERNAME - DB user e.g. tasks_webapi
+#   DATASOURCE_PASSWORD - DB password (empty string allowed for IAM auth)
+#   OIDC_ISSUER_URI     - Keycloak realm issuer e.g. http://localhost:8080/realms/tasks
+# See .env.local for local development values.
+
 spring:
   application:
     name: tasks-webapi
   datasource:
-    url: ${DATASOURCE_URL:jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true}
-    username: ${DATASOURCE_USERNAME:tasks_webapi}
-    password: ${DATASOURCE_PASSWORD:tasks_webapi}
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
   flyway:
     enabled: true
+    url: ${DATASOURCE_URL}
+    user: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD:}
     locations: classpath:db/migration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI}
 
 server:
   port: 8080
@@ -21,3 +40,8 @@ management:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    root: INFO
+    xyz.dgz48: DEBUG
