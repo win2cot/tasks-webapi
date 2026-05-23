@@ -1,10 +1,17 @@
 spring:
   application:
     name: tasks-webapi
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DATASOURCE_USERNAME:tasks_webapi}
+    password: ${DATASOURCE_PASSWORD:tasks_webapi}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: none
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 server:
   port: 8080
