@@ -46,7 +46,7 @@ GitHub上ではそのままレンダリングされます。VS Codeでは Markdo
 
 ### Flyway SQL
 ```bash
-./gradlew flywayMigrate \
+./gradlew :webapi:flywayMigrate \
   -Pflyway.url=jdbc:mysql://localhost:3306/taskflow \
   -Pflyway.user=app
 ```

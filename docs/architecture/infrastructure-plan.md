@@ -513,6 +513,8 @@ App ストリームの詳細(機能実装)は `docs/specs/開発計画書.md` v1
 | # | サブタスク | claude-automation 適用 | Milestone |
 |---|---|---|---|
 | S2Infra-1 | infra(app): tasks-webapi Dockerfile(IAM 認証クライアント設定込み、`webapi/Dockerfile`) | 適用 | Phase 1 Sprint 2 |
+
+> **[S2Infra-1 実装時の注意]** monorepo 化(Setup0-1)により Spring Boot fat JAR のアーティファクト名が変更済み: `tasks-webapi-*.jar` → **`webapi-*.jar`**。Dockerfile の `COPY` パスは `webapi/build/libs/webapi-*.jar` で参照すること。
 | S2Infra-2 | infra(terraform): tasks-webapi ECS Service + Listener Rule + Task Role(IAM 認証) | 適用 | Phase 1 Sprint 2 |
 | S2Infra-3 | infra(terraform): Frontend S3 + CloudFront + ACM(us-east-1) | 適用 | Phase 1 Sprint 2 |
 | S2Infra-4 | infra(ci-cd): tasks-webapi tag → ECR push + ECS update | 適用 | Phase 1 Sprint 2 |

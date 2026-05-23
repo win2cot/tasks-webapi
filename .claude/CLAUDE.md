@@ -12,31 +12,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+This repository is a Gradle multi-project (monorepo). Run subproject-targeted tasks with `:webapi:` prefix.
+
 ```bash
 # Build
-./gradlew build
+./gradlew :webapi:build
 
 # Run
-./gradlew bootRun
+./gradlew :webapi:bootRun
 
 # All checks (compile + format check + tests)
-./gradlew check
+./gradlew :webapi:check
 
 # Tests only
-./gradlew test
+./gradlew :webapi:test
 
 # Single test class or method
-./gradlew test --tests "xyz.dgz48.tasks.webapi.TasksWebapiApplicationTests"
-./gradlew test --tests "xyz.dgz48.tasks.webapi.TasksWebapiApplicationTests.contextLoads"
+./gradlew :webapi:test --tests "xyz.dgz48.tasks.webapi.TasksWebapiApplicationTests"
+./gradlew :webapi:test --tests "xyz.dgz48.tasks.webapi.TasksWebapiApplicationTests.contextLoads"
 
 # Coverage report (HTML + XML at build/reports/jacoco/)
-./gradlew jacocoTestReport
+./gradlew :webapi:jacocoTestReport
 
 # Apply Google Java Format
-./gradlew spotlessApply
+./gradlew :webapi:spotlessApply
 
 # Check formatting only
-./gradlew spotlessCheck
+./gradlew :webapi:spotlessCheck
 ```
 
 ## Code Quality Toolchain
@@ -64,7 +66,7 @@ Architecture-level decisions are recorded as ADRs under `docs/adr/` (template: `
 
 ## CI/CD
 
-GitHub Actions (`cicd.yml`) runs `./gradlew check` on every push and PR, publishes test results and JaCoCo coverage reports. Automated Claude Code reviews run on PRs via `claude-review.yml`. CI environment uses `LANG=ja_JP.UTF-8` and `TZ=Asia/Tokyo`.
+GitHub Actions (`cicd.yml`) runs `./gradlew :webapi:check` on every push and PR, publishes test results and JaCoCo coverage reports. Automated Claude Code reviews run on PRs via `claude-review.yml`. CI environment uses `LANG=ja_JP.UTF-8` and `TZ=Asia/Tokyo`.
 
 ## Design Context
 

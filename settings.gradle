@@ -1,1 +1,4 @@
-rootProject.name = 'tasks-webapi'
+rootProject.name = 'tasks-webapi-monorepo'
+
+include 'webapi'
+// keycloak は Phase 1 Sprint 1 Infra で追加(独立 Gradle project、Custom Image 用)
