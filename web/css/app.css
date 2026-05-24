@@ -1,0 +1,10 @@
+/* app.css — Bootstrap 5 を補完する最小スタイル */
+
+body {
+  background-color: #f8f9fa;
+}
+
+pre#user-info {
+  max-height: 400px;
+  overflow-y: auto;
+}
