@@ -1,0 +1,95 @@
+# Daily Inventory
+# 毎日 JST 19:00 に Issue/PR の棚卸しを Slack #cowork-inbox へ通知。
+# Cowork からは Slack MCP 経由で読み取り → 朝の関心事項把握に利用。
+
+name: Daily Inventory
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # 10:00 UTC = 19:00 JST 毎日
+  workflow_dispatch:  # 手動 trigger(動作確認用)
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build inventory and post to Slack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          WEBHOOK_URL: ${{ secrets.SLACK_AUDIT_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          TODAY=$(date +%F)
+          SINCE_24H=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          STALE_BEFORE=$(date -u -d '3 days ago' +%Y-%m-%d)
+
+          # 1) 過去 24h に新規作成された Open Issue
+          NEW_ISSUES=$(gh issue list --repo "$REPO" --state open \
+            --search "created:>=${SINCE_24H}" \
+            --json number,title,url \
+            --jq 'map("• <\(.url)|#\(.number)> \(.title)") | join("\n")' || true)
+
+          # 2) Open PR 一覧(レビュー状態付き)
+          PRS=$(gh pr list --repo "$REPO" --state open \
+            --json number,title,url,isDraft,reviewDecision,statusCheckRollup \
+            --jq '
+              map(
+                "• <\(.url)|#\(.number)> " +
+                "[" +
+                (if .isDraft then "DRAFT " else "" end) +
+                (.reviewDecision // "REVIEW_PENDING") +
+                "] " + .title
+              ) | join("\n")' || true)
+
+          # 3) Stale: assigned to win2cot かつ 3 日以上 update なし
+          STALE=$(gh issue list --repo "$REPO" --state open \
+            --assignee win2cot \
+            --search "updated:<${STALE_BEFORE}" \
+            --json number,title,url,updatedAt \
+            --jq 'map("• <\(.url)|#\(.number)> \(.title) _(updated \(.updatedAt[:10]))_") | join("\n")' || true)
+
+          # 4) Phase 1 milestone 進捗(tasks-webapi 専用)
+          P1_OPEN=$(gh issue list --repo "$REPO" --state open --milestone "Phase 1" --limit 200 --json number --jq 'length' || echo 0)
+          P1_CLOSED=$(gh issue list --repo "$REPO" --state closed --milestone "Phase 1" --limit 500 --json number --jq 'length' || echo 0)
+          P1_TOTAL=$((P1_OPEN + P1_CLOSED))
+
+          # Slack payload を jq で安全構築(改行・特殊文字エスケープを自動で実施)
+          jq -n \
+            --arg today "$TODAY" \
+            --arg repo "$REPO" \
+            --arg new_issues "${NEW_ISSUES:-_(なし)_}" \
+            --arg prs "${PRS:-_(なし)_}" \
+            --arg stale "${STALE:-_(なし)_}" \
+            --arg phase1 "$P1_CLOSED closed / $P1_TOTAL total (open: $P1_OPEN)" \
+            '{
+              blocks: [
+                {type:"header", text:{type:"plain_text", text:("🗂 Daily Inventory — " + $today + " — " + $repo)}},
+                {type:"section", text:{type:"mrkdwn", text:("*🆕 New Issues (last 24h)*\n" + $new_issues)}},
+                {type:"section", text:{type:"mrkdwn", text:("*🔄 Open PRs*\n" + $prs)}},
+                {type:"section", text:{type:"mrkdwn", text:("*⏰ Stale (assigned to win2cot, no update 3+ days)*\n" + $stale)}},
+                {type:"section", text:{type:"mrkdwn", text:("*📊 Phase 1 milestone:* " + $phase1)}}
+              ]
+            }' > payload.json
+
+          echo "--- payload preview ---"
+          cat payload.json
+          echo "------------------------"
+
+          # Slack へ POST(URL ログ漏洩防止のため --fail と -o /dev/null)
+          curl -sS --fail -X POST \
+            -H 'Content-Type: application/json' \
+            --data @payload.json \
+            -o /dev/null \
+            "$WEBHOOK_URL"
+
+          echo "Posted to Slack."
