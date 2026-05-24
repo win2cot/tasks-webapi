@@ -278,13 +278,21 @@ TOKEN=$(curl -s \
   "http://localhost:18080/realms/tasks/protocol/openid-connect/token" \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 
-# 2. /api/auth/me を呼んで認証を確認
-curl -s \
-  -H "Authorization: Bearer ${TOKEN}" \
-  http://localhost:8080/api/auth/me
+# 2. ヘルスチェックで API サーバー疎通を確認
+curl -s http://localhost:8080/actuator/health
+# 期待レスポンス: {"status":"UP"}
 
-# 期待レスポンス: ユーザー情報 JSON (200 OK)
+# 3. JWT 認証の動作確認 (token なし → 401)
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/tasks
+# 期待: 401
+
+# 4. JWT デコードで realm_access.roles に MEMBER が含まれることを確認
+echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool | grep -A5 realm_access
+# 期待: "roles": ["MEMBER", ...]
 ```
+
+> **注意**: `/api/auth/me` は Phase 1 Sprint 0 で実装予定のため現時点では未提供。  
+> 代替として `/actuator/health` で API サーバーの起動確認、JWT デコードでロール確認を行う。
 
 ### 確認チェックリスト
 
@@ -292,8 +300,9 @@ curl -s \
 - [ ] `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`
 - [ ] Flyway migration ログが起動時に出力される
 - [ ] ブラウザで `http://localhost:5500/index.html` → Keycloak ログイン画面にリダイレクト
-- [ ] テストユーザーでログイン → Tasks 画面表示
-- [ ] `curl /api/auth/me` → 200 OK
+- [ ] テストユーザーでログイン → Tasks 画面表示(ナビバーにユーザー名表示)
+- [ ] `curl /api/tasks`(token なし) → 401 Unauthorized
+- [ ] JWT デコードで `realm_access.roles` に `MEMBER` が含まれることを確認
 
 ---
 
