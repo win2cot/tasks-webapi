@@ -171,7 +171,7 @@ prd 構築時(Post-Sprint-0)に以下の条件を評価し、Aurora 移行の採
 - `docs/architecture/infrastructure-plan.md` §3.5 — RDS 認証(K-A 案、MySQL 8.4)
 - `docs/architecture/infrastructure-plan.md` §3.5.1 — Private DNS で RDS エンドポイント固定化
 - `docs/architecture/infrastructure-plan.md` §5.3 — Phase 1 Setup 2 対象 ADR 一覧
-- `infra/docs/adr/0001-private-dns-for-rds.md` — Route53 PHZ 採否 ADR(Setup2-3)
+- `infra/docs/adr/0001-private-dns-for-rds.md` — Route53 PHZ 採否 ADR(Setup2-3 で作成予定)
 - Issue #221 — RDS MySQL vs Aurora 選定 ADR 起票
 - Issue #206 — Phase 1 Setup 2 親 tracker
 - [AWS Aurora MySQL vs RDS MySQL 公式比較](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.AuroraMySQL.Compare-80-v3.html)
