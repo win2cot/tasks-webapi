@@ -120,10 +120,10 @@ docker compose -f docker-compose.local.yml down -v
 ```bash
 # リポジトリルートで実行
 cat > .env.local << 'EOF'
-DATASOURCE_URL=jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true
-DATASOURCE_USERNAME=tasks_webapi
-DATASOURCE_PASSWORD=tasks_webapi
-OIDC_ISSUER_URI=http://localhost:18080/realms/tasks
+export DATASOURCE_URL=jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true
+export DATASOURCE_USERNAME=tasks_webapi
+export DATASOURCE_PASSWORD=tasks_webapi
+export OIDC_ISSUER_URI=http://localhost:18080/realms/tasks
 EOF
 ```
 
@@ -373,7 +373,7 @@ ls keycloak/realm-export/tasks-realm.json
 |------|----------|------|
 | MySQL が起動していない | `docker compose ps` | `docker compose -f docker-compose.local.yml up -d` |
 | MySQL がまだ healthy でない | `docker compose ps` の STATUS | healthy になるまで最大 80 秒待つ |
-| `.env.local` が読み込まれていない | `echo $DATASOURCE_URL` | `source .env.local` を実行してから再試行 |
+| `.env.local` が読み込まれていない | `echo $DATASOURCE_URL`(空なら未読込) | `source .env.local && ./gradlew :webapi:bootRun` で再起動(`.env.local` に `export` があることを確認) |
 | DATASOURCE_URL の値が間違い | `.env.local` を確認 | [セクション 4](#4-環境変数設定) の値を再確認 |
 
 ```bash
