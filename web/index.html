@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tasks</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <a class="navbar-brand" href="#">Tasks</a>
+        <div class="ms-auto">
+          <span id="nav-username" class="navbar-text text-white me-3 d-none"></span>
+          <button id="btn-logout" class="btn btn-outline-light btn-sm d-none" onclick="handleLogout()">
+            ログアウト
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container mt-4">
+      <div id="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">認証状態を確認中...</p>
+      </div>
+
+      <div id="content-logged-in" class="d-none">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">ユーザー情報</h5>
+            <pre id="user-info" class="bg-light p-3 rounded small"></pre>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmT0Y8msGDLlVEGoPob3Hc8DxuH+"
+      crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/keycloak-js@24.0.5/dist/keycloak.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script>
+      async function main() {
+        const authenticated = await Auth.init();
+        document.getElementById('loading').classList.add('d-none');
+
+        if (!authenticated) {
+          return;
+        }
+
+        const user = Auth.getUser();
+        document.getElementById('nav-username').textContent = user.name || user.preferred_username || '';
+        document.getElementById('nav-username').classList.remove('d-none');
+        document.getElementById('btn-logout').classList.remove('d-none');
+        document.getElementById('content-logged-in').classList.remove('d-none');
+
+        try {
+          const me = await Api.getMe();
+          document.getElementById('user-info').textContent = JSON.stringify(me, null, 2);
+        } catch (err) {
+          document.getElementById('user-info').textContent = 'API 呼び出しエラー: ' + err.message;
+        }
+      }
+
+      function handleLogout() {
+        Auth.logout();
+      }
+
+      main();
+    </script>
+  </body>
+</html>
