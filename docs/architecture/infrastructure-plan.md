@@ -539,7 +539,7 @@ App ストリームの詳細(機能実装)は `docs/specs/開発計画書.md` v1
 
 | # | サブタスク | claude-automation 適用 | Iteration |
 |---|---|---|---|
-| S3Infra-1 | infra(dev-e2e): dev E2E 動作確認 + クロステナント先行テスト | 半適用 | Phase 1 Sprint 3 |
+| S3Infra-1 | infra(dev-e2e): dev E2E 動作確認 + クロステナント先行テスト | 議論先行 | Phase 1 Sprint 3 |
 | S3Infra-2 | infra(dev-e2e): パフォーマンス簡易計測(latency / connection pool / メモリ) | 半適用 | Phase 1 Sprint 3 |
 | S3Infra-3 | infra(observability): ログ基盤実装(別議論 ADR 結果反映、初期 CloudWatch Logs 想定) | 適用 | Phase 1 Sprint 3 |
 | S3Infra-4 | infra(scheduling): EventBridge Scheduler で dev ECS Service の desiredCount を曜日別切替(平日 19:00-02:00 / 土日 10:00-02:00、Lambda + IAM 経由 `ecs:UpdateService`)| 適用 | Phase 1 Sprint 3 |
