@@ -1,6 +1,6 @@
 # ADR-0006: Keycloak User Storage SPI を実装し、users テーブルを本システム単一 SoT として運用する(writable SPI)
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-05-24
 - **Deciders**: 開発チーム
 - **Tags**: security, persistence, integration, keycloak
