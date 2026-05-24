@@ -122,6 +122,8 @@ ALTER TABLE tasks MODIFY COLUMN title VARCHAR(100) NOT NULL;
 
 **Entity拡張**: `Task.java` に上記カラム + Lombok or canonical setters を追加。クリーンアーキ移行時はDomain層に Task 集約を作り、Entity は `adapter.persistence` に移動。
 
+> **※ 2026-05-24 追記**: 本セクションの「`V1.0.1__align_tasks_with_design_v1_3.sql` 追加」案は、初期版直接追記の例外運用ルール([設計規約 §3.1](../specs/設計規約.md#31-flyway-マイグレーション)、dev 初回デプロイ前 = Sprint 1 完了 2026-07-11 まで)成立により **`V1.0.0_01__create_tables.sql` への直接追記** に方針転換した。実装は既に V1.0.0 へ統合済(2026-05-24 確認)。Entity 拡張も同 PR で同時 commit のルールに従う(同上 §3.1)。Issue #83 (N1) / #85 (N3) は完了確認後 close 予定。
+
 ---
 
 ### G-3. 🔴 未実装テーブル(全て新規 migration が必要)
@@ -136,6 +138,8 @@ ALTER TABLE tasks MODIFY COLUMN title VARCHAR(100) NOT NULL;
 | `shedlock` | バッチ排他制御 | §4.2.8 |
 
 `V1.0.2__add_multitenancy_and_supporting_tables.sql` として一括追加を推奨。
+
+> **※ 2026-05-24 追記**: 本セクションの「`V1.0.2__add_multitenancy_and_supporting_tables.sql` 追加」案も §G-2 と同様に、初期版直接追記の例外運用ルール([設計規約 §3.1](../specs/設計規約.md#31-flyway-マイグレーション)、dev 初回デプロイ前 = Sprint 1 完了 2026-07-11 まで)成立により **`V1.0.0_01__create_tables.sql` への直接追記** に方針転換した。実装は既に V1.0.0 へ 6 テーブル(`tenants` / `user_tenants` / `task_stakeholders` / `audit_logs` / `user_notification_settings` / `shedlock`)が統合済(2026-05-24 確認)。Issue #84 (N2) は完了確認後 close 予定。
 
 ---
 
