@@ -1,6 +1,6 @@
 %% ====================================================================
 %% Sequence 03: Task List (today's tasks + overdue always shown + authz filter)
-%% Task Management System v1.2
+%% Task Management System v1.3
 %% ====================================================================
 sequenceDiagram
   autonumber
@@ -12,6 +12,7 @@ sequenceDiagram
   participant UC as ListTasksUseCase
   participant AuthZ as TaskAuthorizationDomainService
   participant TaskRepo as TaskRepositoryImpl
+  participant StakeholderRepo as StakeholderRepositoryImpl
   participant DB as MySQL
 
   User->>Browser: ダッシュボード表示
@@ -33,10 +34,16 @@ sequenceDiagram
   DB-->>TaskRepo: 本日タスク 23件
   TaskRepo-->>UC: List<Task>
 
+  Note over UC,DB: --- 関係者タスクID一括フェッチ (N+1回避) ---
+  UC->>StakeholderRepo: findTaskIdsByUser(userId=1, tenantId=11)
+  StakeholderRepo->>DB: SELECT task_id FROM task_stakeholders<br/>WHERE user_id=1 AND tenant_id=11
+  DB-->>StakeholderRepo: task_id リスト
+  StakeholderRepo-->>UC: Set<Long> stakeholderTaskIds
+
   Note over UC,AuthZ: --- 公開範囲フィルタを適用 ---
   Note over AuthZ: 参照認可の詳細ルールは TaskAuthorizationDomainService が SSOT<br/>(基本設計書 §6.2.1 参照)
   loop 各 task について
-    UC->>AuthZ: canBeViewedBy(task, userId=1, role=MEMBER, stakeholders)
+    UC->>AuthZ: canBeViewedBy(task, userId=1, role=MEMBER, stakeholderTaskIds)
     AuthZ-->>UC: ✓ 参照可 / ✗ 除外
   end
 
