@@ -4,11 +4,11 @@ import java.security.Principal;
 import lombok.EqualsAndHashCode;
 import org.jspecify.annotations.Nullable;
 
-@EqualsAndHashCode(of = "sub")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class TasksPrincipal implements Principal {
 
   private final Long id;
-  private final String sub;
+  @EqualsAndHashCode.Include private final String sub;
   private final String email;
   private final String fullName;
   private final String fullNameKana;
