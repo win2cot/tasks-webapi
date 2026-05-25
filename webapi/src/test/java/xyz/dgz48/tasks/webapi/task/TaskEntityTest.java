@@ -97,4 +97,54 @@ class TaskEntityTest {
     assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
     assertThat(task.getDescription()).isNull();
   }
+
+  @Test
+  void canPersistTaskWithInProgressStatus() {
+    var tenant = new Tenant("TENANT-003", "進行中テスト株式会社");
+    entityManager.persist(tenant);
+    entityManager.flush();
+
+    var user = new User("sub-005", "owner3@example.com", "伊藤 三郎", "イトウ サブロウ", null);
+    entityManager.persist(user);
+    entityManager.flush();
+
+    var task =
+        new Task(
+            tenant.getId(),
+            user.getId(),
+            "進行中タスク",
+            null,
+            TaskStatus.IN_PROGRESS,
+            Priority.MEDIUM,
+            LocalDate.of(2026, 12, 31));
+    entityManager.persist(task);
+    entityManager.flush();
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+  }
+
+  @Test
+  void canPersistTaskWithOnHoldStatus() {
+    var tenant = new Tenant("TENANT-004", "保留テスト株式会社");
+    entityManager.persist(tenant);
+    entityManager.flush();
+
+    var user = new User("sub-006", "owner4@example.com", "渡辺 四郎", "ワタナベ シロウ", null);
+    entityManager.persist(user);
+    entityManager.flush();
+
+    var task =
+        new Task(
+            tenant.getId(),
+            user.getId(),
+            "保留タスク",
+            null,
+            TaskStatus.ON_HOLD,
+            Priority.LOW,
+            LocalDate.of(2026, 12, 31));
+    entityManager.persist(task);
+    entityManager.flush();
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.ON_HOLD);
+  }
 }
