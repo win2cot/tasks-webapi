@@ -1029,7 +1029,7 @@ components:
           description: |
             直近 24 時間で新規作成されたテナント数。
             計算基準: ローリングウィンドウ(リクエスト時刻 -24h ≤ `tenants.created_at` ≤ リクエスト時刻)。
-            タイムゾーン: 比較は **UTC** で実施(`tenants.created_at` は DB に UTC で保存される前提)。
+            タイムゾーン: 比較は **JST(`Asia/Tokyo`)** で実施(`tenants.created_at` は DB に JST で保存される前提)。
 
     TenantUser:
       type: object

@@ -222,9 +222,14 @@ dev の ECS Task Definition(抜粋、Terraform):
 
 ```hcl
 environment = [
-  { name = "DATASOURCE_URL",      value = "jdbc:mysql://db.tasks.internal:3306/tasks?useSSL=true&serverTimezone=UTC" },
+  { name = "DATASOURCE_URL",      value = "jdbc:mysql://db.tasks.internal:3306/tasks?useSSL=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" },
   { name = "DATASOURCE_USERNAME", value = "tasks_webapi" },
-  { name = "OIDC_ISSUER_URI",     value = "https://auth-dev.tasks.dgz48.xyz/realms/tasks" }
+  { name = "OIDC_ISSUER_URI",     value = "https://auth-dev.tasks.dgz48.xyz/realms/tasks" },
+  # JVM・CI・DB すべて Asia/Tokyo に揃える(コーディング規約 §12.1、Issue #265)
+  # OS 経由で JVM デフォルト TZ を JST に
+  { name = "TZ",                  value = "Asia/Tokyo" },
+  # JVM 側でも明示し、base image / OS の差異に依存させない(二重強制)
+  { name = "JAVA_TOOL_OPTIONS",   value = "-Duser.timezone=Asia/Tokyo" }
 ]
 # tasks-webapi は IAM 認証なので password の secrets 注入は不要
 # Keycloak の password 注入は keycloak service の Task Definition で別途設定
