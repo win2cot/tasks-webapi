@@ -1,10 +1,10 @@
 %% ====================================================================
-%% シーケンス図 05: 関係者追加 (所有者または担当者が実施、ADR-0005)
-%% タスク管理システム v1.4.4
+%% Sequence 05: Add Stakeholder (owner or assignee, ADR-0005)
+%% Task Management System v1.4.4
 %%
-%% ADR-0005 で関係者追加権限は「所有者 ∪ 担当者」に拡張。
-%% また、関係者指名は visibility 非依存(要件定義書 v1.4.3 §3.4.5)のため、
-%% 旧仕様にあった「visibility = STAKEHOLDERS への自動昇格」は撤廃する。
+%% ADR-0005 expands stakeholder management permission to owner ∪ assignee.
+%% Stakeholder assignment is visibility-independent (Requirements §3.4.5),
+%% so the old "auto-promote to visibility=STAKEHOLDERS" behavior is removed.
 %% ====================================================================
 sequenceDiagram
   autonumber
