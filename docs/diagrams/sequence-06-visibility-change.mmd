@@ -1,15 +1,15 @@
 %% ====================================================================
-%% シーケンス図 06: 公開範囲変更 (所有者のみ、ADR-0005)
-%% タスク管理システム v1.4.8
+%% Sequence 06: Visibility Change (owner only, ADR-0005)
+%% Task Management System v1.4.8
 %%
-%% Issue #92: visibility を TENANT/PRIVATE へ戻した場合の
-%% task_stakeholders レコード挙動を定義する。
-%%   - → STAKEHOLDERS : stakeholderUserIds で置換
-%%   - → TENANT       : 関係者レコード保持
-%%   - → PRIVATE      : 関係者レコード CASCADE 削除 + STAKEHOLDER_PURGED 記録
+%% Issue #92: Defines task_stakeholders behavior when reverting visibility
+%% to TENANT/PRIVATE:
+%%   - → STAKEHOLDERS : replace with stakeholderUserIds
+%%   - → TENANT       : retain stakeholder records
+%%   - → PRIVATE      : CASCADE DELETE stakeholder records + STAKEHOLDER_PURGED log
 %%
-%% 認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005 §3.1)
-%% 設計書: 基本設計書 §4.2.5 / 要件定義書 §3.4.4
+%% Authorization: owner only (no Tenant Admin privilege, ADR-0005 §3.1)
+%% Design docs: Basic Design §4.2.5 / Requirements §3.4.4
 %% ====================================================================
 sequenceDiagram
   autonumber
