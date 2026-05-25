@@ -1,0 +1,98 @@
+%% ====================================================================
+%% シーケンス図 06: 公開範囲変更 (所有者のみ、ADR-0005)
+%% タスク管理システム v1.4.8
+%%
+%% Issue #92: visibility を TENANT/PRIVATE へ戻した場合の
+%% task_stakeholders レコード挙動を定義する。
+%%   - → STAKEHOLDERS : stakeholderUserIds で置換
+%%   - → TENANT       : 関係者レコード保持
+%%   - → PRIVATE      : 関係者レコード CASCADE 削除 + STAKEHOLDER_PURGED 記録
+%%
+%% 認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005 §3.1)
+%% 設計書: 基本設計書 §4.2.5 / 要件定義書 §3.4.4
+%% ====================================================================
+sequenceDiagram
+  autonumber
+  actor Owner as 所有者
+  participant Browser as ブラウザ
+  participant Sec as Spring Security
+  participant Filter as TenantContextFilter
+  participant Ctrl as TaskController
+  participant UC as ChangeVisibilityUseCase
+  participant AuthZ as TaskAuthorizationDomainService
+  participant TaskRepo as TaskRepositoryImpl
+  participant SHRepo as StakeholderRepositoryImpl
+  participant Audit as AuditLogger
+  participant DB as MySQL
+
+  Owner->>Browser: タスク詳細 → 公開範囲ドロップダウン変更 → 保存
+  Browser->>Sec: PATCH /api/tasks/101/visibility<br/>{ "visibility": "PRIVATE" }
+  Sec->>Filter: 認証OK (userId=1, role=MEMBER)
+  Filter->>Ctrl: forward (TenantContext set)
+  Ctrl->>UC: execute(taskId=101, newVisibility=PRIVATE, stakeholderIds=[], actor)
+
+  UC->>TaskRepo: findById(101, tenantId=11)
+  TaskRepo->>DB: SELECT * FROM tasks WHERE id=101 AND tenant_id=11
+  alt タスク不在 または 参照権限なし
+    TaskRepo-->>UC: empty
+    UC-->>Ctrl: TaskNotViewableException
+    Ctrl-->>Browser: 404 E_NOT_FOUND
+    Browser-->>Owner: エラー表示
+  else タスク取得成功
+    TaskRepo-->>UC: task (owner_id=1, visibility=STAKEHOLDERS)
+  end
+
+  UC->>AuthZ: canChangeVisibility(task, actorUserId=1)
+  Note over AuthZ: 認可ルール: 所有者のみ(ADR-0005 §3.1)<br/>(基本設計書 §6.2.1「公開範囲変更」参照)
+  AuthZ->>AuthZ: task.ownerId == actorUserId ?
+  alt 認可失敗 (所有者でない)
+    AuthZ-->>UC: throw TaskOwnershipException
+    UC->>Audit: log(VISIBILITY_CHANGE_DENIED, actor, taskId=101)
+    Audit->>DB: INSERT audit_logs (action='VISIBILITY_CHANGE_DENIED')
+    UC-->>Ctrl: TaskOwnershipException
+    Ctrl-->>Browser: 403 E_FORBIDDEN<br/>"公開範囲変更は所有者のみ可能です"
+    Browser-->>Owner: エラー表示
+  else 認可成功 (所有者)
+    AuthZ-->>UC: ✓
+  end
+
+  Note over UC: newVisibility による task_stakeholders の扱いを分岐
+
+  alt newVisibility = STAKEHOLDERS
+    Note over UC,SHRepo: 既存の関係者レコードを stakeholderUserIds で置換
+    UC->>SHRepo: deleteAll(taskId=101, tenantId=11)
+    SHRepo->>DB: DELETE FROM task_stakeholders<br/>WHERE task_id=101 AND tenant_id=11
+    loop stakeholderUserIds の各 userId
+      UC->>SHRepo: add(TaskStakeholder(taskId=101, userId=X, addedBy=1))
+      SHRepo->>DB: INSERT INTO task_stakeholders ...
+    end
+    UC->>TaskRepo: updateVisibility(101, STAKEHOLDERS)
+    TaskRepo->>DB: UPDATE tasks SET visibility='STAKEHOLDERS' WHERE id=101
+    UC->>Audit: log(VISIBILITY_CHANGED, actor, taskId=101,<br/>detail={from:STAKEHOLDERS, to:STAKEHOLDERS, replacedCount:N})
+    Audit->>DB: INSERT audit_logs (action='VISIBILITY_CHANGED')
+
+  else newVisibility = TENANT
+    Note over UC,SHRepo: 関係者レコードを保持(将来 STAKEHOLDERS 再昇格時に流用可)
+    UC->>TaskRepo: updateVisibility(101, TENANT)
+    TaskRepo->>DB: UPDATE tasks SET visibility='TENANT' WHERE id=101
+    UC->>Audit: log(VISIBILITY_CHANGED, actor, taskId=101,<br/>detail={from:STAKEHOLDERS, to:TENANT, stakeholdersRetained:true})
+    Audit->>DB: INSERT audit_logs (action='VISIBILITY_CHANGED')
+
+  else newVisibility = PRIVATE
+    Note over UC,SHRepo: 関係者レコードを CASCADE 削除(NIST AC-4 情報フロー保護)
+    UC->>SHRepo: countAll(taskId=101, tenantId=11)
+    SHRepo->>DB: SELECT COUNT(*) FROM task_stakeholders<br/>WHERE task_id=101 AND tenant_id=11
+    SHRepo-->>UC: purgedCount (例: 3)
+    UC->>SHRepo: deleteAll(taskId=101, tenantId=11)
+    SHRepo->>DB: DELETE FROM task_stakeholders<br/>WHERE task_id=101 AND tenant_id=11
+    UC->>TaskRepo: updateVisibility(101, PRIVATE)
+    TaskRepo->>DB: UPDATE tasks SET visibility='PRIVATE' WHERE id=101
+    UC->>Audit: log(VISIBILITY_CHANGED, actor, taskId=101,<br/>detail={from:STAKEHOLDERS, to:PRIVATE})
+    Audit->>DB: INSERT audit_logs (action='VISIBILITY_CHANGED')
+    UC->>Audit: log(STAKEHOLDER_PURGED, actor, taskId=101,<br/>detail={purgedCount:3, reason:"visibility→PRIVATE"})
+    Audit->>DB: INSERT audit_logs (action='STAKEHOLDER_PURGED')
+  end
+
+  UC-->>Ctrl: Task (更新後)
+  Ctrl-->>Browser: 200 + Task JSON
+  Browser-->>Owner: 公開範囲変更完了

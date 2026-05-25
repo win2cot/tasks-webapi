@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: タスク管理システム API
   description: |
-    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4.4 / 要件定義書 v1.4.3 準拠)。
+    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4.8 / 要件定義書 v1.4.4 準拠)。
 
     認証はKeycloak経由のOIDC、本APIはJWTを Spring Security OAuth2 Resource Server で検証する。
     全リクエストには `Authorization: Bearer {access_token}` を付与し、
@@ -578,7 +578,21 @@ paths:
     patch:
       tags: [Task]
       summary: 公開範囲変更
-      description: "認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403"
+      description: |-
+        認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403。
+
+        ## task_stakeholders レコードへの副作用(Issue #92 / 基本設計書 §4.2.5 / 要件定義書 §3.4.4)
+
+        | 変更後 visibility | task_stakeholders レコード | audit_logs |
+        |---|---|---|
+        | STAKEHOLDERS | `stakeholderUserIds` で**置換**(既存を一括削除後に再 INSERT) | `VISIBILITY_CHANGED` |
+        | TENANT | **保持**(将来 STAKEHOLDERS 再昇格時に流用可) | `VISIBILITY_CHANGED` |
+        | PRIVATE | **CASCADE 削除**(NIST AC-4 情報フロー保護) | `VISIBILITY_CHANGED` + `STAKEHOLDER_PURGED` |
+
+        PRIVATE 戻し時に削除する理由: visibility = PRIVATE では関係者リストが参照権限に影響しない(所有者・担当者のみ参照可)。
+        不要なリスト情報の残留を避けるため削除し、件数を `STAKEHOLDER_PURGED` の `detail` に記録して監査追跡を確保する。
+
+        シーケンス図: `docs/diagrams/sequence-06-visibility-change.mmd`
       operationId: changeVisibility
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -594,7 +608,7 @@ paths:
                 stakeholderUserIds:
                   type: array
                   items: { type: integer, format: int64 }
-                  description: "visibility=STAKEHOLDERS のとき指定。既存の関係者は置換される"
+                  description: "visibility=STAKEHOLDERS のとき指定。既存の関係者は置換される(TENANT/PRIVATE 指定時は無視する)"
       responses:
         "200":
           description: OK
