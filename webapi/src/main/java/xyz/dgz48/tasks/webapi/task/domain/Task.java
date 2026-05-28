@@ -1,7 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.domain;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 
@@ -19,10 +19,10 @@ public class Task {
   private final Long ownerId;
   @Nullable private final Long assigneeId;
   private final LocalDate dueDate;
-  @Nullable private final LocalDateTime completedAt;
-  @Nullable private final LocalDateTime deletedAt;
-  private final LocalDateTime createdAt;
-  private final LocalDateTime updatedAt;
+  @Nullable private final OffsetDateTime completedAt;
+  @Nullable private final OffsetDateTime deletedAt;
+  private final OffsetDateTime createdAt;
+  private final OffsetDateTime updatedAt;
 
   public Task(
       Long id,
@@ -35,10 +35,10 @@ public class Task {
       Long ownerId,
       @Nullable Long assigneeId,
       LocalDate dueDate,
-      @Nullable LocalDateTime completedAt,
-      @Nullable LocalDateTime deletedAt,
-      LocalDateTime createdAt,
-      LocalDateTime updatedAt) {
+      @Nullable OffsetDateTime completedAt,
+      @Nullable OffsetDateTime deletedAt,
+      OffsetDateTime createdAt,
+      OffsetDateTime updatedAt) {
     this.id = id;
     this.tenantId = tenantId;
     this.title = title;

@@ -11,7 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -66,17 +66,23 @@ public class TaskJpaEntity {
 
   @Nullable
   @Column(name = "completed_at")
-  private LocalDateTime completedAt;
+  private OffsetDateTime completedAt;
 
   @Nullable
   @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
+  private OffsetDateTime deletedAt;
+
+  @Column(name = "created_by", nullable = false, updatable = false)
+  private Long createdBy;
+
+  @Column(name = "updated_by", nullable = false)
+  private Long updatedBy;
 
   @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
+  private OffsetDateTime createdAt;
 
   @Column(name = "updated_at", nullable = false)
-  private LocalDateTime updatedAt;
+  private OffsetDateTime updatedAt;
 
   public TaskJpaEntity(
       Long tenantId,
@@ -85,7 +91,9 @@ public class TaskJpaEntity {
       @Nullable String description,
       TaskStatus status,
       Priority priority,
-      LocalDate dueDate) {
+      LocalDate dueDate,
+      Long createdBy,
+      Long updatedBy) {
     this.tenantId = tenantId;
     this.ownerId = ownerId;
     this.title = title;
@@ -94,18 +102,20 @@ public class TaskJpaEntity {
     this.priority = priority;
     this.visibility = Visibility.TENANT;
     this.dueDate = dueDate;
+    this.createdBy = createdBy;
+    this.updatedBy = updatedBy;
   }
 
   @PrePersist
   void onCreate() {
-    LocalDateTime now = LocalDateTime.now();
+    OffsetDateTime now = OffsetDateTime.now();
     this.createdAt = now;
     this.updatedAt = now;
   }
 
   @PreUpdate
   void onUpdate() {
-    this.updatedAt = LocalDateTime.now();
+    this.updatedAt = OffsetDateTime.now();
   }
 
   public Task toDomain() {

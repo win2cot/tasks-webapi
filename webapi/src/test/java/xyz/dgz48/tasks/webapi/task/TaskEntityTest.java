@@ -63,7 +63,9 @@ class TaskEntityTest {
             "タスクの詳細",
             TaskStatus.NOT_STARTED,
             Priority.MEDIUM,
-            LocalDate.of(2026, 12, 31));
+            LocalDate.of(2026, 12, 31),
+            user.getId(),
+            user.getId());
     entityManager.persist(task);
     entityManager.flush();
 
@@ -92,7 +94,9 @@ class TaskEntityTest {
             null,
             TaskStatus.DONE,
             Priority.HIGH,
-            LocalDate.of(2026, 12, 31));
+            LocalDate.of(2026, 12, 31),
+            user.getId(),
+            user.getId());
     entityManager.persist(task);
     entityManager.flush();
 
@@ -119,7 +123,9 @@ class TaskEntityTest {
             null,
             TaskStatus.IN_PROGRESS,
             Priority.MEDIUM,
-            LocalDate.of(2026, 12, 31));
+            LocalDate.of(2026, 12, 31),
+            user.getId(),
+            user.getId());
     entityManager.persist(task);
     entityManager.flush();
 
@@ -144,7 +150,9 @@ class TaskEntityTest {
             null,
             TaskStatus.ON_HOLD,
             Priority.LOW,
-            LocalDate.of(2026, 12, 31));
+            LocalDate.of(2026, 12, 31),
+            user.getId(),
+            user.getId());
     entityManager.persist(task);
     entityManager.flush();
 
