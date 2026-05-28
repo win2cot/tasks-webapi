@@ -11,6 +11,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
+import xyz.dgz48.tasks.webapi.task.adapter.persistence.TaskJpaEntity;
+import xyz.dgz48.tasks.webapi.task.domain.Priority;
+import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.tenant.Tenant;
 import xyz.dgz48.tasks.webapi.user.User;
 
@@ -53,7 +56,7 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new Task(
+        new TaskJpaEntity(
             tenant.getId(),
             user.getId(),
             "タスク1",
@@ -82,7 +85,7 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new Task(
+        new TaskJpaEntity(
             tenant.getId(),
             user.getId(),
             "完了タスク",
@@ -109,7 +112,7 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new Task(
+        new TaskJpaEntity(
             tenant.getId(),
             user.getId(),
             "進行中タスク",
@@ -134,7 +137,7 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new Task(
+        new TaskJpaEntity(
             tenant.getId(),
             user.getId(),
             "保留タスク",
