@@ -46,8 +46,6 @@ CREATE TABLE tasks (
     due_date     DATE                                                NOT NULL COMMENT '期限日',
     completed_at DATETIME                                            NULL     COMMENT '完了日時',
     deleted_at   DATETIME                                            NULL     COMMENT '論理削除日時(NULL=有効)',
-    created_by   BIGINT                                              NOT NULL COMMENT '作成者',
-    updated_by   BIGINT                                              NOT NULL COMMENT '更新者',
     created_at   DATETIME                                            NOT NULL COMMENT '作成日時',
     updated_at   DATETIME                                            NOT NULL COMMENT '更新日時',
     PRIMARY KEY (id),
@@ -57,11 +55,9 @@ CREATE TABLE tasks (
     KEY idx_tasks_tenant_status_due (tenant_id, status, due_date),
     KEY idx_tasks_tenant_visibility (tenant_id, visibility),
     KEY idx_tasks_tenant_deleted    (tenant_id, deleted_at),
-    CONSTRAINT fk_tasks_tenant      FOREIGN KEY (tenant_id)   REFERENCES tenants(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_tasks_owner       FOREIGN KEY (owner_id)    REFERENCES users(id)   ON DELETE RESTRICT,
-    CONSTRAINT fk_tasks_assignee    FOREIGN KEY (assignee_id) REFERENCES users(id)   ON DELETE RESTRICT,
-    CONSTRAINT fk_tasks_created_by  FOREIGN KEY (created_by)  REFERENCES users(id)   ON DELETE RESTRICT,
-    CONSTRAINT fk_tasks_updated_by  FOREIGN KEY (updated_by)  REFERENCES users(id)   ON DELETE RESTRICT
+    CONSTRAINT fk_tasks_tenant    FOREIGN KEY (tenant_id)   REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_owner     FOREIGN KEY (owner_id)    REFERENCES users(id)   ON DELETE RESTRICT,
+    CONSTRAINT fk_tasks_assignee  FOREIGN KEY (assignee_id) REFERENCES users(id)   ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE task_stakeholders (

@@ -11,9 +11,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
-import xyz.dgz48.tasks.webapi.task.adapter.persistence.TaskJpaEntity;
-import xyz.dgz48.tasks.webapi.task.domain.Priority;
-import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.tenant.Tenant;
 import xyz.dgz48.tasks.webapi.user.User;
 
@@ -56,16 +53,14 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new TaskJpaEntity(
+        new Task(
             tenant.getId(),
             user.getId(),
             "タスク1",
             "タスクの詳細",
             TaskStatus.NOT_STARTED,
             Priority.MEDIUM,
-            LocalDate.of(2026, 12, 31),
-            user.getId(),
-            user.getId());
+            LocalDate.of(2026, 12, 31));
     entityManager.persist(task);
     entityManager.flush();
 
@@ -87,16 +82,14 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new TaskJpaEntity(
+        new Task(
             tenant.getId(),
             user.getId(),
             "完了タスク",
             null,
             TaskStatus.DONE,
             Priority.HIGH,
-            LocalDate.of(2026, 12, 31),
-            user.getId(),
-            user.getId());
+            LocalDate.of(2026, 12, 31));
     entityManager.persist(task);
     entityManager.flush();
 
@@ -116,16 +109,14 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new TaskJpaEntity(
+        new Task(
             tenant.getId(),
             user.getId(),
             "進行中タスク",
             null,
             TaskStatus.IN_PROGRESS,
             Priority.MEDIUM,
-            LocalDate.of(2026, 12, 31),
-            user.getId(),
-            user.getId());
+            LocalDate.of(2026, 12, 31));
     entityManager.persist(task);
     entityManager.flush();
 
@@ -143,16 +134,14 @@ class TaskEntityTest {
     entityManager.flush();
 
     var task =
-        new TaskJpaEntity(
+        new Task(
             tenant.getId(),
             user.getId(),
             "保留タスク",
             null,
             TaskStatus.ON_HOLD,
             Priority.LOW,
-            LocalDate.of(2026, 12, 31),
-            user.getId(),
-            user.getId());
+            LocalDate.of(2026, 12, 31));
     entityManager.persist(task);
     entityManager.flush();
 
