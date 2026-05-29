@@ -9,8 +9,7 @@ import java.util.List;
  * の infra 設定クラスで {@code @Bean} 登録する。各メソッドは boolean を返し、 UseCase 層が false 時に
  * TaskNotViewableException(404) または TaskOwnershipException(403) を throw する。
  *
- * <p>{@link Task} は JPA 非依存の Domain POJO。永続化は {@code task.adapter.persistence.TaskJpaEntity}
- * が担う。
+ * <p>{@link Task} は JPA 非依存の Domain POJO。永続化は {@code task.adapter.persistence.TaskJpaEntity} が担う。
  */
 public class TaskAuthorizationDomainService {
 
@@ -32,8 +31,7 @@ public class TaskAuthorizationDomainService {
           task.getOwnerId().equals(userId)
               || userId.equals(task.getAssigneeId())
               || stakeholderUserIds.contains(userId);
-      case PRIVATE ->
-          task.getOwnerId().equals(userId) || userId.equals(task.getAssigneeId());
+      case PRIVATE -> task.getOwnerId().equals(userId) || userId.equals(task.getAssigneeId());
     };
   }
 

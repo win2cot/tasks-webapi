@@ -25,8 +25,7 @@ public class GetTaskUseCase {
             .findByTenantIdAndId(tenantId, taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
     // TODO(Sprint 2): resolve TenantRole from user_tenants; load stakeholders from DB
-    if (!authorizationService.canBeViewedBy(
-        task, requestingUserId, TenantRole.MEMBER, List.of())) {
+    if (!authorizationService.canBeViewedBy(task, requestingUserId, TenantRole.MEMBER, List.of())) {
       throw new TaskNotViewableException(taskId);
     }
     return task;

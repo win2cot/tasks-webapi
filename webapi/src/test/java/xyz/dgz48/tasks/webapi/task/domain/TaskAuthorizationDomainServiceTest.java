@@ -39,8 +39,7 @@ class TaskAuthorizationDomainServiceTest {
     @Test
     void saasAdminCannotViewPrivateTask() {
       Task task = mockTask(Visibility.PRIVATE, OWNER_ID, null);
-      assertThat(service.canBeViewedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN, List.of()))
-          .isFalse();
+      assertThat(service.canBeViewedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN, List.of())).isFalse();
     }
 
     @Test

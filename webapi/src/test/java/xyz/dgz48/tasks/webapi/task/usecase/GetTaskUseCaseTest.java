@@ -60,7 +60,8 @@ class GetTaskUseCaseTest {
   void getTask_throwsTaskNotFoundException_whenNotFound() {
     when(taskRepository.findByTenantIdAndId(1L, 99L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> useCase.getTask(1L, 99L, 1L)).isInstanceOf(TaskNotFoundException.class);
+    assertThatThrownBy(() -> useCase.getTask(1L, 99L, 1L))
+        .isInstanceOf(TaskNotFoundException.class);
   }
 
   @Test

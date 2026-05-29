@@ -33,3 +33,4 @@ docker-compose.local.override.yml
 
 # Local environment variables (per-developer, not committed)
 .env.local
+.claude/settings.local.json
