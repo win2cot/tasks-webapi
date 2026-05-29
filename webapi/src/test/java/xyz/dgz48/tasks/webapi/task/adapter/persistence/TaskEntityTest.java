@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.task;
+package xyz.dgz48.tasks.webapi.task.adapter.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.security;
+package xyz.dgz48.tasks.webapi.security.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
