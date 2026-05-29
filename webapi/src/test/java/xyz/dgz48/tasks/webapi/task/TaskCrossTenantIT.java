@@ -54,8 +54,8 @@ class TaskCrossTenantIT {
   }
 
   /**
-   * テストデータを committed トランザクションで作成し、{taskId, tenantBId, userBId} を返す。
-   * MockMvc リクエストは別トランザクションで動作するため class-level @Transactional は使わない。
+   * テストデータを committed トランザクションで作成し、{taskId, tenantBId, userBId} を返す。 MockMvc リクエストは別トランザクションで動作するため
+   * class-level @Transactional は使わない。
    */
   private long[] setupCrossTenantData() {
     long seed = System.nanoTime();
