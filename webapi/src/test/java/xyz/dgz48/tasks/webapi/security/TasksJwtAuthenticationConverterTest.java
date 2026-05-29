@@ -13,8 +13,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
-import xyz.dgz48.tasks.webapi.user.User;
-import xyz.dgz48.tasks.webapi.user.UserRepository;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConverter;
+import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class TasksJwtAuthenticationConverterTest {

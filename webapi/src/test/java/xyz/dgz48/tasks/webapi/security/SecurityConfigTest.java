@@ -11,7 +11,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import xyz.dgz48.tasks.webapi.user.UserRepository;
+import xyz.dgz48.tasks.webapi.security.adapter.web.SecurityConfig;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConverter;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest
 @Import({SecurityConfig.class, TasksJwtAuthenticationConverter.class})

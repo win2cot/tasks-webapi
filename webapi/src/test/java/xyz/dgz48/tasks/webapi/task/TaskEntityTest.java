@@ -11,8 +11,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
-import xyz.dgz48.tasks.webapi.tenant.Tenant;
-import xyz.dgz48.tasks.webapi.user.User;
+import xyz.dgz48.tasks.webapi.task.adapter.persistence.Task;
+import xyz.dgz48.tasks.webapi.task.domain.Priority;
+import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
+import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.Tenant;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})

@@ -8,8 +8,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import xyz.dgz48.tasks.webapi.task.Task;
-import xyz.dgz48.tasks.webapi.task.Visibility;
+import xyz.dgz48.tasks.webapi.task.adapter.persistence.Task;
 
 class TaskAuthorizationDomainServiceTest {
 

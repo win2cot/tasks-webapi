@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})
