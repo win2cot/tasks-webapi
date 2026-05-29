@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.task;
+package xyz.dgz48.tasks.webapi.task.domain;
 
 public enum TaskStatus {
   NOT_STARTED,

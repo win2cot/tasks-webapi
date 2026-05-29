@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.tenant;
+package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantPlan;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
 
 @Entity
 @Table(name = "tenants")

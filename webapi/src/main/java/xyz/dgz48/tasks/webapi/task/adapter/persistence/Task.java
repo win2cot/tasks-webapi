@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.task;
+package xyz.dgz48.tasks.webapi.task.adapter.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +16,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import xyz.dgz48.tasks.webapi.task.domain.Priority;
+import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
+import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 
 @Entity
 @Table(name = "tasks")

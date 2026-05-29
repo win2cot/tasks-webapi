@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.user;
+package xyz.dgz48.tasks.webapi.user.adapter.persistence;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 
 class TasksPrincipalTest {
 

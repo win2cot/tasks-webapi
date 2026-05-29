@@ -1,9 +1,10 @@
-package xyz.dgz48.tasks.webapi.security;
+package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import java.util.Collection;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
+import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 
 public class TasksAuthenticationToken extends AbstractAuthenticationToken {
 

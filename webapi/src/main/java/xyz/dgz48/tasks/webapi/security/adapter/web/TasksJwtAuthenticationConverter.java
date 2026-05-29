@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.security;
+package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import java.util.List;
 import org.springframework.core.convert.converter.Converter;
@@ -6,8 +6,9 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.stereotype.Component;
-import xyz.dgz48.tasks.webapi.user.User;
-import xyz.dgz48.tasks.webapi.user.UserRepository;
+import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @Component
 public class TasksJwtAuthenticationConverter
