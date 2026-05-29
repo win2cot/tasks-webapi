@@ -15,20 +15,16 @@ import java.util.List;
 public class TaskAuthorizationDomainService {
 
   /**
-   * 参照可否を返す。
+   * 参照可否を返す。ADR-0005 により Tenant Admin / SaaS Admin の業務タスク特権は撤廃済み。
    *
    * <ul>
    *   <li>TENANT: テナント全員参照可
    *   <li>STAKEHOLDERS: 所有者 / 担当者 / task_stakeholders 登録ユーザーのみ
-   *   <li>PRIVATE: 所有者のみ
-   *   <li>Tenant Admin / SaaS Admin は visibility 制限なし
+   *   <li>PRIVATE: 所有者 / 担当者のみ
    * </ul>
    */
   public boolean canBeViewedBy(
       Task task, Long userId, TenantRole role, List<Long> stakeholderUserIds) {
-    if (role.isAdmin()) {
-      return true;
-    }
     Visibility visibility = task.getVisibility();
     return switch (visibility) {
       case TENANT -> true;
@@ -36,7 +32,8 @@ public class TaskAuthorizationDomainService {
           task.getOwnerId().equals(userId)
               || userId.equals(task.getAssigneeId())
               || stakeholderUserIds.contains(userId);
-      case PRIVATE -> task.getOwnerId().equals(userId);
+      case PRIVATE ->
+          task.getOwnerId().equals(userId) || userId.equals(task.getAssigneeId());
     };
   }
 

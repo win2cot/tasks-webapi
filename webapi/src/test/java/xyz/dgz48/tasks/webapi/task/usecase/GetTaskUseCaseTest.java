@@ -87,4 +87,30 @@ class GetTaskUseCaseTest {
     assertThatThrownBy(() -> useCase.getTask(1L, 1L, 1L)) // requesting user is 1, not owner
         .isInstanceOf(TaskNotViewableException.class);
   }
+
+  @Test
+  void getTask_returnsTask_whenPrivateAndAssignee() {
+    var now = OffsetDateTime.now();
+    Task privateTask =
+        new Task(
+            2L,
+            1L,
+            "担当者プライベートタスク",
+            null,
+            TaskStatus.NOT_STARTED,
+            Priority.MEDIUM,
+            Visibility.PRIVATE,
+            99L, // owner is user 99
+            1L, // assignee is user 1 (requesting user)
+            LocalDate.of(2026, 12, 31),
+            null,
+            null,
+            now,
+            now);
+    when(taskRepository.findByTenantIdAndId(1L, 2L)).thenReturn(Optional.of(privateTask));
+
+    Task result = useCase.getTask(1L, 2L, 1L); // requesting user is 1 (assignee)
+
+    assertThat(result.getId()).isEqualTo(2L);
+  }
 }

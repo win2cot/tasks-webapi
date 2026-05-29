@@ -30,16 +30,17 @@ class TaskAuthorizationDomainServiceTest {
   class CanBeViewedBy {
 
     @Test
-    void tenantAdminBypassesAllVisibility() {
+    void tenantAdminCannotViewPrivateTask() {
       Task task = mockTask(Visibility.PRIVATE, OWNER_ID, null);
       assertThat(service.canBeViewedBy(task, OTHER_ID, TenantRole.TENANT_ADMIN, List.of()))
-          .isTrue();
+          .isFalse();
     }
 
     @Test
-    void saasAdminBypassesAllVisibility() {
+    void saasAdminCannotViewPrivateTask() {
       Task task = mockTask(Visibility.PRIVATE, OWNER_ID, null);
-      assertThat(service.canBeViewedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN, List.of())).isTrue();
+      assertThat(service.canBeViewedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN, List.of()))
+          .isFalse();
     }
 
     @Test
@@ -79,6 +80,12 @@ class TaskAuthorizationDomainServiceTest {
     void privateVisibilityAllowsOwner() {
       Task task = mockTask(Visibility.PRIVATE, OWNER_ID, null);
       assertThat(service.canBeViewedBy(task, OWNER_ID, TenantRole.MEMBER, List.of())).isTrue();
+    }
+
+    @Test
+    void privateVisibilityAllowsAssignee() {
+      Task task = mockTask(Visibility.PRIVATE, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeViewedBy(task, ASSIGNEE_ID, TenantRole.MEMBER, List.of())).isTrue();
     }
 
     @Test
