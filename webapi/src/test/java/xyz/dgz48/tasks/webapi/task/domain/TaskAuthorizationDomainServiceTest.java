@@ -100,25 +100,25 @@ class TaskAuthorizationDomainServiceTest {
     @Test
     void ownerCanEdit() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeEditedBy(task, OWNER_ID, TenantRole.MEMBER)).isTrue();
+      assertThat(service.canBeEditedBy(task, OWNER_ID)).isTrue();
     }
 
     @Test
-    void tenantAdminCanEdit() {
+    void tenantAdminCannotEdit() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeEditedBy(task, OTHER_ID, TenantRole.TENANT_ADMIN)).isTrue();
+      assertThat(service.canBeEditedBy(task, OTHER_ID)).isFalse();
     }
 
     @Test
     void saasAdminCannotEdit() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeEditedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isFalse();
+      assertThat(service.canBeEditedBy(task, OTHER_ID)).isFalse();
     }
 
     @Test
     void nonOwnerMemberCannotEdit() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeEditedBy(task, OTHER_ID, TenantRole.MEMBER)).isFalse();
+      assertThat(service.canBeEditedBy(task, OTHER_ID)).isFalse();
     }
   }
 
@@ -128,25 +128,25 @@ class TaskAuthorizationDomainServiceTest {
     @Test
     void ownerCanDelete() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeDeletedBy(task, OWNER_ID, TenantRole.MEMBER)).isTrue();
+      assertThat(service.canBeDeletedBy(task, OWNER_ID)).isTrue();
     }
 
     @Test
-    void tenantAdminCanDelete() {
+    void tenantAdminCannotDelete() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeDeletedBy(task, OTHER_ID, TenantRole.TENANT_ADMIN)).isTrue();
+      assertThat(service.canBeDeletedBy(task, OTHER_ID)).isFalse();
     }
 
     @Test
     void saasAdminCannotDelete() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeDeletedBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isFalse();
+      assertThat(service.canBeDeletedBy(task, OTHER_ID)).isFalse();
     }
 
     @Test
     void nonOwnerMemberCannotDelete() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
-      assertThat(service.canBeDeletedBy(task, OTHER_ID, TenantRole.MEMBER)).isFalse();
+      assertThat(service.canBeDeletedBy(task, OTHER_ID)).isFalse();
     }
   }
 
@@ -156,31 +156,31 @@ class TaskAuthorizationDomainServiceTest {
     @Test
     void ownerCanChangeStatus() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
-      assertThat(service.canChangeStatusBy(task, OWNER_ID, TenantRole.MEMBER)).isTrue();
+      assertThat(service.canChangeStatusBy(task, OWNER_ID)).isTrue();
     }
 
     @Test
     void assigneeCanChangeStatus() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
-      assertThat(service.canChangeStatusBy(task, ASSIGNEE_ID, TenantRole.MEMBER)).isTrue();
+      assertThat(service.canChangeStatusBy(task, ASSIGNEE_ID)).isTrue();
     }
 
     @Test
-    void tenantAdminCanChangeStatus() {
+    void tenantAdminCannotChangeStatus() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
-      assertThat(service.canChangeStatusBy(task, OTHER_ID, TenantRole.TENANT_ADMIN)).isTrue();
+      assertThat(service.canChangeStatusBy(task, OTHER_ID)).isFalse();
     }
 
     @Test
-    void saasAdminCanChangeStatus() {
+    void saasAdminCannotChangeStatus() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
-      assertThat(service.canChangeStatusBy(task, OTHER_ID, TenantRole.SAAS_ADMIN)).isTrue();
+      assertThat(service.canChangeStatusBy(task, OTHER_ID)).isFalse();
     }
 
     @Test
     void nonRelatedMemberCannotChangeStatus() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
-      assertThat(service.canChangeStatusBy(task, OTHER_ID, TenantRole.MEMBER)).isFalse();
+      assertThat(service.canChangeStatusBy(task, OTHER_ID)).isFalse();
     }
   }
 

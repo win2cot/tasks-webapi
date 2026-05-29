@@ -35,25 +35,23 @@ public class TaskAuthorizationDomainService {
     };
   }
 
-  /** 編集可否を返す。所有者または Tenant Admin のみ可(SaaS Admin は不可)。監査ログ記録は UseCase 側の責務。 */
-  public boolean canBeEditedBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
+  /** 編集可否を返す。所有者のみ可(ADR-0005: Tenant Admin 特権撤廃済)。監査ログ記録は UseCase 側の責務。 */
+  public boolean canBeEditedBy(Task task, Long userId) {
+    return task.getOwnerId().equals(userId);
   }
 
   /**
-   * 削除可否を返す。所有者または Tenant Admin のみ可(SaaS Admin は不可)。
+   * 削除可否を返す。所有者のみ可(ADR-0005: Tenant Admin 特権撤廃済)。
    *
    * <p>現仕様では {@link #canBeEditedBy} と同一だが、削除ポリシーが独立して変更される可能性があるため 意図的に分離している。
    */
-  public boolean canBeDeletedBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId) || role == TenantRole.TENANT_ADMIN;
+  public boolean canBeDeletedBy(Task task, Long userId) {
+    return task.getOwnerId().equals(userId);
   }
 
-  /** ステータス変更可否を返す。所有者・担当者・Admin。 */
-  public boolean canChangeStatusBy(Task task, Long userId, TenantRole role) {
-    return task.getOwnerId().equals(userId)
-        || userId.equals(task.getAssigneeId())
-        || role.isAdmin();
+  /** ステータス変更可否を返す。所有者・担当者のみ(ADR-0005: Admin 特権撤廃済)。 */
+  public boolean canChangeStatusBy(Task task, Long userId) {
+    return task.getOwnerId().equals(userId) || userId.equals(task.getAssigneeId());
   }
 
   /** 公開範囲変更・関係者編集可否を返す。所有者のみ(Admin も不可)。 */
