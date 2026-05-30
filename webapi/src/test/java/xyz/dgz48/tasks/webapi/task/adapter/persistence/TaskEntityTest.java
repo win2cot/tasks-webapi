@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.dgz48.tasks.webapi.FixedClockConfiguration;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
@@ -17,7 +19,11 @@ import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.TenantJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 
 @SpringBootTest
-@Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})
+@Import({
+  TestcontainersConfiguration.class,
+  MockJwtDecoderConfiguration.class,
+  FixedClockConfiguration.class
+})
 @Transactional
 class TaskEntityTest {
 
@@ -148,5 +154,33 @@ class TaskEntityTest {
     entityManager.flush();
 
     assertThat(task.getStatus()).isEqualTo(TaskStatus.ON_HOLD);
+  }
+
+  @Test
+  void timestampsAreSetFromFixedClock() {
+    LocalDateTime expectedTimestamp = FixedClockConfiguration.FIXED_NOW;
+
+    var tenant = new TenantJpaEntity("TENANT-005", "タイムスタンプテスト株式会社");
+    entityManager.persist(tenant);
+    entityManager.flush();
+
+    var user = new UserJpaEntity("sub-007", "ts@example.com", "時間 太郎", "ジカン タロウ", null);
+    entityManager.persist(user);
+    entityManager.flush();
+
+    var task =
+        new TaskJpaEntity(
+            tenant.getId(),
+            user.getId(),
+            "タイムスタンプ確認タスク",
+            null,
+            TaskStatus.NOT_STARTED,
+            Priority.LOW,
+            LocalDate.of(2026, 12, 31));
+    entityManager.persist(task);
+    entityManager.flush();
+
+    assertThat(task.getCreatedAt()).isEqualTo(expectedTimestamp);
+    assertThat(task.getUpdatedAt()).isEqualTo(expectedTimestamp);
   }
 }
