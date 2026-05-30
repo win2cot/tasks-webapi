@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
-public class User {
+public class UserJpaEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,7 +38,7 @@ public class User {
   @Column(name = "department_name", length = 255)
   private String departmentName;
 
-  public User(
+  public UserJpaEntity(
       String oidcSub,
       String email,
       String fullName,

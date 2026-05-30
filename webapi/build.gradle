@@ -91,6 +91,8 @@ jacocoTestReport {
 }
 
 spotless {
+    // OS に依存せず常に LF を正とする(CI は Linux=LF、Windows ローカルでの CRLF 誤検知を防ぐ)。
+    lineEndings = 'UNIX'
     java {
         googleJavaFormat('1.24.0')
     }
