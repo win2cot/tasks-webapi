@@ -2,27 +2,29 @@ package xyz.dgz48.tasks.webapi.task.adapter.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 
 @Entity
 @Table(name = "tasks")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
@@ -72,9 +74,11 @@ public class TaskJpaEntity {
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
+  @CreatedDate
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
+  @LastModifiedDate
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
@@ -94,17 +98,5 @@ public class TaskJpaEntity {
     this.priority = priority;
     this.visibility = Visibility.TENANT;
     this.dueDate = dueDate;
-  }
-
-  @PrePersist
-  void onCreate() {
-    LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
-    this.createdAt = now;
-    this.updatedAt = now;
-  }
-
-  @PreUpdate
-  void onUpdate() {
-    this.updatedAt = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
   }
 }
