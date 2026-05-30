@@ -1,6 +1,5 @@
 package xyz.dgz48.tasks.webapi.security.adapter.web;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,8 +27,27 @@ class SecurityConfigTest {
   }
 
   @Test
+  @WithMockJwt
   void authenticatedRequestIsAllowed() throws Exception {
-    mockMvc.perform(get("/api/tasks").with(jwt())).andExpect(status().isNotFound());
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+  }
+
+  @Test
+  @WithMockMember
+  void memberIsAllowed() throws Exception {
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void tenantAdminIsAllowed() throws Exception {
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+  }
+
+  @Test
+  @WithMockSaasAdmin
+  void saasAdminIsAllowed() throws Exception {
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
   }
 
   @Test
