@@ -15,7 +15,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
@@ -81,6 +83,14 @@ public class TaskJpaEntity {
   @LastModifiedDate
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
+
+  @CreatedBy
+  @Column(name = "created_by", nullable = false, updatable = false)
+  private Long createdBy;
+
+  @LastModifiedBy
+  @Column(name = "updated_by", nullable = false)
+  private Long updatedBy;
 
   public TaskJpaEntity(
       Long tenantId,

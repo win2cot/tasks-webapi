@@ -5,14 +5,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.FixedClockConfiguration;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
+import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.TenantJpaEntity;
@@ -28,6 +34,27 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 class TaskEntityTest {
 
   @Autowired EntityManager entityManager;
+
+  private Long auditorUserId;
+
+  @BeforeEach
+  void setUpAuditor() {
+    var auditor = new UserJpaEntity("sub-auditor", "auditor@example.com", "監査 太郎", "カンサ タロウ", null);
+    entityManager.persist(auditor);
+    entityManager.flush();
+    auditorUserId = auditor.getId();
+
+    var principal =
+        new TasksPrincipal(
+            auditorUserId, "sub-auditor", "auditor@example.com", "監査 太郎", "カンサ タロウ", null);
+    SecurityContextHolder.getContext()
+        .setAuthentication(new TasksAuthenticationToken(principal, List.of()));
+  }
+
+  @AfterEach
+  void clearSecurityContext() {
+    SecurityContextHolder.clearContext();
+  }
 
   @Test
   void canPersistUser() {
@@ -182,5 +209,7 @@ class TaskEntityTest {
 
     assertThat(task.getCreatedAt()).isEqualTo(expectedTimestamp);
     assertThat(task.getUpdatedAt()).isEqualTo(expectedTimestamp);
+    assertThat(task.getCreatedBy()).isEqualTo(auditorUserId);
+    assertThat(task.getUpdatedBy()).isEqualTo(auditorUserId);
   }
 }

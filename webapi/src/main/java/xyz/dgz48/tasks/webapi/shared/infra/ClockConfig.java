@@ -11,7 +11,9 @@ import org.springframework.data.auditing.DateTimeProvider;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @Configuration
-@EnableJpaAuditing(dateTimeProviderRef = "clockDateTimeProvider")
+@EnableJpaAuditing(
+    dateTimeProviderRef = "clockDateTimeProvider",
+    auditorAwareRef = "jpaAuditorAware")
 class ClockConfig {
 
   @Bean
