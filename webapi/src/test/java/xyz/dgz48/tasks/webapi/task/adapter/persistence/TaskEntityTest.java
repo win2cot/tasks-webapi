@@ -13,8 +13,8 @@ import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
-import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.Tenant;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
+import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.TenantJpaEntity;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})
@@ -25,7 +25,7 @@ class TaskEntityTest {
 
   @Test
   void canPersistUser() {
-    var user = new User("sub-001", "user@example.com", "山田 太郎", "ヤマダ タロウ", "開発部");
+    var user = new UserJpaEntity("sub-001", "user@example.com", "山田 太郎", "ヤマダ タロウ", "開発部");
     entityManager.persist(user);
     entityManager.flush();
 
@@ -36,7 +36,7 @@ class TaskEntityTest {
 
   @Test
   void canPersistUserWithoutDepartment() {
-    var user = new User("sub-002", "nodept@example.com", "鈴木 花子", "スズキ ハナコ", null);
+    var user = new UserJpaEntity("sub-002", "nodept@example.com", "鈴木 花子", "スズキ ハナコ", null);
     entityManager.persist(user);
     entityManager.flush();
 
@@ -46,11 +46,11 @@ class TaskEntityTest {
 
   @Test
   void canPersistTask() {
-    var tenant = new Tenant("TENANT-001", "テスト株式会社");
+    var tenant = new TenantJpaEntity("TENANT-001", "テスト株式会社");
     entityManager.persist(tenant);
     entityManager.flush();
 
-    var user = new User("sub-003", "owner@example.com", "田中 一郎", "タナカ イチロウ", null);
+    var user = new UserJpaEntity("sub-003", "owner@example.com", "田中 一郎", "タナカ イチロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 
@@ -75,11 +75,11 @@ class TaskEntityTest {
 
   @Test
   void canPersistTaskWithoutDescription() {
-    var tenant = new Tenant("TENANT-002", "別テスト株式会社");
+    var tenant = new TenantJpaEntity("TENANT-002", "別テスト株式会社");
     entityManager.persist(tenant);
     entityManager.flush();
 
-    var user = new User("sub-004", "owner2@example.com", "佐藤 次郎", "サトウ ジロウ", null);
+    var user = new UserJpaEntity("sub-004", "owner2@example.com", "佐藤 次郎", "サトウ ジロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 
@@ -102,11 +102,11 @@ class TaskEntityTest {
 
   @Test
   void canPersistTaskWithInProgressStatus() {
-    var tenant = new Tenant("TENANT-003", "進行中テスト株式会社");
+    var tenant = new TenantJpaEntity("TENANT-003", "進行中テスト株式会社");
     entityManager.persist(tenant);
     entityManager.flush();
 
-    var user = new User("sub-005", "owner3@example.com", "伊藤 三郎", "イトウ サブロウ", null);
+    var user = new UserJpaEntity("sub-005", "owner3@example.com", "伊藤 三郎", "イトウ サブロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 
@@ -127,11 +127,11 @@ class TaskEntityTest {
 
   @Test
   void canPersistTaskWithOnHoldStatus() {
-    var tenant = new Tenant("TENANT-004", "保留テスト株式会社");
+    var tenant = new TenantJpaEntity("TENANT-004", "保留テスト株式会社");
     entityManager.persist(tenant);
     entityManager.flush();
 
-    var user = new User("sub-006", "owner4@example.com", "渡辺 四郎", "ワタナベ シロウ", null);
+    var user = new UserJpaEntity("sub-006", "owner4@example.com", "渡辺 四郎", "ワタナベ シロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 

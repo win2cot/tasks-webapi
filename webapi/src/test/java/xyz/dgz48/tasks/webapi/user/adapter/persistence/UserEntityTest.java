@@ -20,7 +20,7 @@ class UserEntityTest {
 
   @Test
   void canPersistUser() {
-    var user = new User("sub-001", "user@example.com", "山田 太郎", "ヤマダ タロウ", "開発部");
+    var user = new UserJpaEntity("sub-001", "user@example.com", "山田 太郎", "ヤマダ タロウ", "開発部");
     entityManager.persist(user);
     entityManager.flush();
 
@@ -34,7 +34,7 @@ class UserEntityTest {
 
   @Test
   void canPersistUserWithoutDepartment() {
-    var user = new User("sub-002", "nodept@example.com", "鈴木 花子", "スズキ ハナコ", null);
+    var user = new UserJpaEntity("sub-002", "nodept@example.com", "鈴木 花子", "スズキ ハナコ", null);
     entityManager.persist(user);
     entityManager.flush();
 
@@ -44,12 +44,12 @@ class UserEntityTest {
 
   @Test
   void canFindUserById() {
-    var user = new User("sub-003", "find@example.com", "田中 一郎", "タナカ イチロウ", null);
+    var user = new UserJpaEntity("sub-003", "find@example.com", "田中 一郎", "タナカ イチロウ", null);
     entityManager.persist(user);
     entityManager.flush();
     entityManager.clear();
 
-    var found = entityManager.find(User.class, user.getId());
+    var found = entityManager.find(UserJpaEntity.class, user.getId());
     assertThat(found).isNotNull();
     assertThat(found.getOidcSub()).isEqualTo("sub-003");
     assertThat(found.getEmail()).isEqualTo("find@example.com");
@@ -57,8 +57,8 @@ class UserEntityTest {
 
   @Test
   void canPersistMultipleUsersWithDifferentOidcSubs() {
-    var user1 = new User("sub-004", "first@example.com", "佐藤 次郎", "サトウ ジロウ", null);
-    var user2 = new User("sub-005", "second@example.com", "佐藤 三郎", "サトウ サブロウ", "営業部");
+    var user1 = new UserJpaEntity("sub-004", "first@example.com", "佐藤 次郎", "サトウ ジロウ", null);
+    var user2 = new UserJpaEntity("sub-005", "second@example.com", "佐藤 三郎", "サトウ サブロウ", "営業部");
     entityManager.persist(user1);
     entityManager.persist(user2);
     entityManager.flush();

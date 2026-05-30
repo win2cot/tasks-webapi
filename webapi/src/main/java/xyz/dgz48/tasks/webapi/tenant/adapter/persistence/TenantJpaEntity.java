@@ -22,7 +22,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
-public class Tenant {
+public class TenantJpaEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,7 +48,7 @@ public class Tenant {
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
-  public Tenant(String code, String name) {
+  public TenantJpaEntity(String code, String name) {
     this.code = code;
     this.name = name;
     this.plan = TenantPlan.STANDARD;

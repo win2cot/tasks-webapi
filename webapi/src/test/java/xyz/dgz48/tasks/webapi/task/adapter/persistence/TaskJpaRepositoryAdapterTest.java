@@ -15,8 +15,8 @@ import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.usecase.TaskRepository;
-import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.Tenant;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
+import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.TenantJpaEntity;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})
@@ -28,9 +28,9 @@ class TaskJpaRepositoryAdapterTest {
 
   @Test
   void findByIdAndTenantIdReturnsDomainTaskWhenFound() {
-    var tenant = new Tenant("TENANT-ADP-1", "テナント A");
+    var tenant = new TenantJpaEntity("TENANT-ADP-1", "テナント A");
     entityManager.persist(tenant);
-    var user = new User("sub-adp-1", "adp1@example.com", "山田 太郎", "ヤマダ タロウ", null);
+    var user = new UserJpaEntity("sub-adp-1", "adp1@example.com", "山田 太郎", "ヤマダ タロウ", null);
     entityManager.persist(user);
     entityManager.flush();
 
@@ -68,9 +68,9 @@ class TaskJpaRepositoryAdapterTest {
 
   @Test
   void findByIdAndTenantIdReturnsEmptyWhenTenantMismatch() {
-    var tenant = new Tenant("TENANT-ADP-2", "テナント B");
+    var tenant = new TenantJpaEntity("TENANT-ADP-2", "テナント B");
     entityManager.persist(tenant);
-    var user = new User("sub-adp-2", "adp2@example.com", "鈴木 花子", "スズキ ハナコ", null);
+    var user = new UserJpaEntity("sub-adp-2", "adp2@example.com", "鈴木 花子", "スズキ ハナコ", null);
     entityManager.persist(user);
     entityManager.flush();
 

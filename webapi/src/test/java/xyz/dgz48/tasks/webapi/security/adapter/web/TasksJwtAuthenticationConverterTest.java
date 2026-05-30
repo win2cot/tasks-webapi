@@ -14,7 +14,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,7 +22,7 @@ class TasksJwtAuthenticationConverterTest {
 
   @Mock UserRepository userRepository;
   @Mock Jwt jwt;
-  @Mock User user;
+  @Mock UserJpaEntity user;
 
   @InjectMocks TasksJwtAuthenticationConverter converter;
 

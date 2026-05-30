@@ -7,7 +7,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.stereotype.Component;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.User;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @Component
@@ -26,7 +26,7 @@ public class TasksJwtAuthenticationConverter
     if (sub == null) {
       throw new InvalidBearerTokenException("JWT missing sub claim");
     }
-    User user =
+    UserJpaEntity user =
         userRepository
             .findByOidcSub(sub)
             .orElseThrow(
