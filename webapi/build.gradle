@@ -68,6 +68,8 @@ tasks.named('compileJava') {
         error('NullAway')
         option('NullAway:AnnotatedPackages', 'xyz.dgz48')
         option('NullAway:JSpecifyMode', 'true')
+        error('BadImport')
+        error('JavaTimeDefaultTimeZone')
     }
 }
 
