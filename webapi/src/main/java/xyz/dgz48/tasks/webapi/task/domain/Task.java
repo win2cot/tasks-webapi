@@ -2,9 +2,9 @@ package xyz.dgz48.tasks.webapi.task.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
  * TaskJpaEntity} と相互変換する。
  */
 @Getter
-@AllArgsConstructor
+@RequiredArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Task {
 
