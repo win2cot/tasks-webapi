@@ -25,7 +25,7 @@ import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
-public class Task {
+public class TaskJpaEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -77,7 +77,7 @@ public class Task {
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
-  public Task(
+  public TaskJpaEntity(
       Long tenantId,
       Long ownerId,
       String title,

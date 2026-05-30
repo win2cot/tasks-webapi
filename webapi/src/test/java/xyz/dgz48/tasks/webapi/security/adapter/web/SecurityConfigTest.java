@@ -1,4 +1,4 @@
-package xyz.dgz48.tasks.webapi.security;
+package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,8 +11,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import xyz.dgz48.tasks.webapi.security.adapter.web.SecurityConfig;
-import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConverter;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest

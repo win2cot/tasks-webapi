@@ -1,9 +1,8 @@
-package xyz.dgz48.tasks.webapi.security;
+package xyz.dgz48.tasks.webapi.security.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 
 class TasksPrincipalTest {
 
