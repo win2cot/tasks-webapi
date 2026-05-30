@@ -1,7 +1,7 @@
 # ADR-0010: マルチテナント絞り込みの自動付与は Hibernate Filter で行う
 
 - **Status**: Accepted
-- **Date**: 2026-05-31
+- **Date**: 2026-05-30
 - **Deciders**: 開発チーム
 - **Tags**: persistence, multi-tenancy, security
 
@@ -27,7 +27,7 @@ tasks-webapi はマルチテナント SaaS であり、全業務テーブルが 
 
 設計規約 v1.3 §3.3 は事実上「Hibernate Filter で全 SELECT に自動付与する」前提でドラフトされているが、コーディング規約 v1.3 §8.1 と合わせて「Filter vs Spring AOP の選択は今後の ADR で決定予定 — 想定 ADR-0004」と保留してきた。一方、ADR-0004 番号は別件(`tenants-as-audit-column-exception`、2026-05-16 Accepted)に消費されたため、本決定は **ADR-0010** として起票する。
 
-Sprint 0 着手(2026-06-14 予定)を前に方式を確定し、§3.3 / §8.1 の保留節を解消する必要がある。直近で Accepted となった ADR-0008(GraalVM Native Image 採用)と ADR-0009(JST 全層統一)も本決定の制約条件となる。
+Sprint 0 着手(2026-07-14 予定)を前に方式を確定し、§3.3 / §8.1 の保留節を解消する必要がある。直近で Accepted となった ADR-0008(GraalVM Native Image 採用)と ADR-0009(JST 全層統一)も本決定の制約条件となる。
 
 なお、現行 scaffold には既に `TaskJpaEntity` / `TenantJpaEntity` / `UserJpaEntity` の 3 JPA entity と `findByIdAndTenantId` 形式の明示絞り込み Repository が配置されているが、Hibernate Filter(`@FilterDef` / `@Filter`)および `TenantContext` 注入経路は**未配線**である。本 ADR は方式の確定のみを行い、実コード配線(`@FilterDef` 配置 + リクエストスコープでの enable + Repository 命名緩和)は本 PR とは別の Sprint 0 着手タスクで起票・実施する(規約決定 ADR は実装を別 PR に分離する運用、ADR-0004 と同形)。
 
