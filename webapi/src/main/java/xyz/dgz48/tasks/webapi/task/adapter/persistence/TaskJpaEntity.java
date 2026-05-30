@@ -12,6 +12,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -97,13 +98,13 @@ public class TaskJpaEntity {
 
   @PrePersist
   void onCreate() {
-    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
     this.createdAt = now;
     this.updatedAt = now;
   }
 
   @PreUpdate
   void onUpdate() {
-    this.updatedAt = LocalDateTime.now();
+    this.updatedAt = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
   }
 }
