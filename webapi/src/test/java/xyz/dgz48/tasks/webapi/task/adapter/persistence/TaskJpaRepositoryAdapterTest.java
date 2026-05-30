@@ -4,13 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
+import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
@@ -25,6 +31,24 @@ class TaskJpaRepositoryAdapterTest {
 
   @Autowired EntityManager entityManager;
   @Autowired TaskRepository taskRepository;
+
+  @BeforeEach
+  void setUpAuditor() {
+    var auditor = new UserJpaEntity("sub-auditor", "auditor@example.com", "監査 太郎", "カンサ タロウ", null);
+    entityManager.persist(auditor);
+    entityManager.flush();
+
+    var principal =
+        new TasksPrincipal(
+            auditor.getId(), "sub-auditor", "auditor@example.com", "監査 太郎", "カンサ タロウ", null);
+    SecurityContextHolder.getContext()
+        .setAuthentication(new TasksAuthenticationToken(principal, List.of()));
+  }
+
+  @AfterEach
+  void clearSecurityContext() {
+    SecurityContextHolder.clearContext();
+  }
 
   @Test
   void findByIdAndTenantIdReturnsDomainTaskWhenFound() {
