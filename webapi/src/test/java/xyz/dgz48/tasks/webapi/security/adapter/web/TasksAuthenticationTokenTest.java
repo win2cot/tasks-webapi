@@ -1,10 +1,9 @@
-package xyz.dgz48.tasks.webapi.security;
+package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 
 class TasksAuthenticationTokenTest {

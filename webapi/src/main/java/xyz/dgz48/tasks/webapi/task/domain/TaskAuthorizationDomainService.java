@@ -1,7 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.domain;
 
 import java.util.List;
-import xyz.dgz48.tasks.webapi.task.adapter.persistence.Task;
 
 /**
  * タスクごとの認可判定 SSOT — 基本設計書 §6.2.1 参照。
@@ -10,9 +9,7 @@ import xyz.dgz48.tasks.webapi.task.adapter.persistence.Task;
  * の infra 設定クラスで {@code @Bean} 登録する。各メソッドは boolean を返し、 UseCase 層が false 時に
  * TaskNotViewableException(404) または TaskOwnershipException(403) を throw する。
  *
- * <p>TODO: {@link Task} は JPA エンティティ({@code @Entity})であり、Domain 層の純粋性を損なっている。 将来的には {@code
- * task.domain} に JPA 非依存のドメインモデルを分離し、{@link Task} エンティティは {@code task.adapter.persistence}
- * へ移動することが推奨される(技術的負債)。
+ * <p>B-1 (#273) で Domain {@link Task}(POJO)を新規追加し、本クラスは domain.Task を参照する形に整理した。
  */
 public class TaskAuthorizationDomainService {
 
