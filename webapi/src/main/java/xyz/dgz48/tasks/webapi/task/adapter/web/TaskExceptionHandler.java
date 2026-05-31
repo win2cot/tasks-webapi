@@ -7,9 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
-import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotViewableException;
 
