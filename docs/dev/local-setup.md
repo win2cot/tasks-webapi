@@ -129,7 +129,7 @@ cp .env.local.example .env.local
 ```bash
 # リポジトリルートで実行
 cat > .env.local << 'EOF'
-export DATASOURCE_URL=jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true
+export DATASOURCE_URL=jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true
 export DATASOURCE_USERNAME=tasks_webapi
 export DATASOURCE_PASSWORD=tasks_webapi
 export OIDC_ISSUER_URI=http://localhost:18080/realms/tasks
@@ -140,7 +140,7 @@ EOF
 
 | 変数名 | ローカル開発値 | 説明 |
 |--------|----------------|------|
-| `DATASOURCE_URL` | `jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true` | MySQL JDBC URL |
+| `DATASOURCE_URL` | `jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true` | MySQL JDBC URL |
 | `DATASOURCE_USERNAME` | `tasks_webapi` | DB ユーザー名 |
 | `DATASOURCE_PASSWORD` | `tasks_webapi` | DB パスワード |
 | `OIDC_ISSUER_URI` | `http://localhost:18080/realms/tasks` | Keycloak realm の issuer URI |
