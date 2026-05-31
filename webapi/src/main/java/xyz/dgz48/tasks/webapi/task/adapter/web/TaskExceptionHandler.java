@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -26,7 +27,7 @@ public class TaskExceptionHandler {
         HttpStatus.NOT_FOUND.value(),
         HttpStatus.NOT_FOUND.getReasonPhrase(),
         ErrorCode.E_NOT_FOUND,
-        ex.getMessage(),
+        Objects.requireNonNullElse(ex.getMessage(), "Not Found"),
         request.getRequestURI());
   }
 }
