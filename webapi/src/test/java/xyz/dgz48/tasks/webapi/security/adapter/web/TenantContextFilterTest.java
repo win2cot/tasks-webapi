@@ -133,6 +133,6 @@ class TenantContextFilterTest {
     assertThatThrownBy(
             () ->
                 mockMvc.perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1")))
-        .hasRootCauseInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }
