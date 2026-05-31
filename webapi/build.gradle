@@ -53,6 +53,12 @@ dependencies {
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // JSON logging for CloudWatch Logs
+    runtimeOnly 'net.logstash.logback:logstash-logback-encoder:8.0'
+
+    // Prometheus metrics
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
     // Testcontainers
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-mysql'

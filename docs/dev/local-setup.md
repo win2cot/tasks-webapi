@@ -116,6 +116,15 @@ docker compose -f docker-compose.local.yml down -v
 ## 4. 環境変数設定
 
 アプリケーション起動に必要な環境変数をまとめた `.env.local` ファイルを作成する。
+リポジトリルートにある [.env.local.example](../../.env.local.example) をテンプレートとして使うと便利。
+
+```bash
+# リポジトリルートで実行
+cp .env.local.example .env.local
+# 必要に応じて .env.local を編集し、DATASOURCE_PASSWORD 等の実際の値を設定する
+```
+
+または手動で作成する場合:
 
 ```bash
 # リポジトリルートで実行
@@ -414,6 +423,7 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 
 - [CLAUDE.md](../../.claude/CLAUDE.md) — コマンドリファレンス / コード品質ツール
 - [docker-compose.local.yml](../../docker-compose.local.yml) — Docker Compose 定義
+- [.env.local.example](../../.env.local.example) — 環境変数テンプレート(`.env.local` にコピーして使用)
 - [application.yml](../../webapi/src/main/resources/application.yml) — Spring Boot 設定 / env vars コメント
 - [keycloak/realm-export/tasks-realm.json](../../keycloak/realm-export/tasks-realm.json) — Keycloak Realm 定義
 - [docs/specs/開発計画書.md](../specs/開発計画書.md) — 開発計画 §4.3.1 / §11.1
