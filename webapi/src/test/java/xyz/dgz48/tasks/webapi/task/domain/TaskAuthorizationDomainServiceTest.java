@@ -155,14 +155,42 @@ class TaskAuthorizationDomainServiceTest {
 
     @Test
     void ownerCanChangeVisibility() {
-      Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
       assertThat(service.canChangeVisibilityBy(task, OWNER_ID)).isTrue();
+    }
+
+    @Test
+    void assigneeCannotChangeVisibility() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canChangeVisibilityBy(task, ASSIGNEE_ID)).isFalse();
     }
 
     @Test
     void nonOwnerCannotChangeVisibility() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, null);
       assertThat(service.canChangeVisibilityBy(task, OTHER_ID)).isFalse();
+    }
+  }
+
+  @Nested
+  class CanManageStakeholdersBy {
+
+    @Test
+    void ownerCanManageStakeholders() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canManageStakeholdersBy(task, OWNER_ID)).isTrue();
+    }
+
+    @Test
+    void assigneeCanManageStakeholders() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canManageStakeholdersBy(task, ASSIGNEE_ID)).isTrue();
+    }
+
+    @Test
+    void nonOwnerNonAssigneeCannotManageStakeholders() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canManageStakeholdersBy(task, OTHER_ID)).isFalse();
     }
   }
 }

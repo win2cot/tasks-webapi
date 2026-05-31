@@ -56,8 +56,13 @@ public class TaskAuthorizationDomainService {
     return task.getOwnerId().equals(userId) || userId.equals(task.getAssigneeId());
   }
 
-  /** 公開範囲変更・関係者編集可否を返す(ADR-0005 §3.1)。所有者のみ可。 */
+  /** 公開範囲変更可否を返す(ADR-0005 §3.1)。所有者のみ可。 */
   public boolean canChangeVisibilityBy(Task task, Long userId) {
     return task.getOwnerId().equals(userId);
+  }
+
+  /** 関係者追加・削除可否を返す(ADR-0005 §3.1)。所有者・担当者のみ可。 */
+  public boolean canManageStakeholdersBy(Task task, Long userId) {
+    return task.getOwnerId().equals(userId) || userId.equals(task.getAssigneeId());
   }
 }
