@@ -5,11 +5,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -17,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
@@ -39,6 +42,18 @@ class TenantContextFilterTest {
         return ResponseEntity.noContent().build();
       }
       return ResponseEntity.ok(tenantId);
+    }
+
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    @GetMapping("/probe/tenant-admin-only")
+    ResponseEntity<Void> tenantAdminOnly() {
+      return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("hasRole('MEMBER')")
+    @GetMapping("/probe/member-only")
+    ResponseEntity<Void> memberOnly() {
+      return ResponseEntity.ok().build();
     }
   }
 
@@ -72,8 +87,8 @@ class TenantContextFilterTest {
 
   @Test
   @WithMockMember
-  void inactiveMember_returnsForbidden() throws Exception {
-    given(tenantMembershipPort.isActiveMember(1L, 1L)).willReturn(false);
+  void nonMember_returnsForbidden() throws Exception {
+    given(tenantMembershipPort.findActiveRole(1L, 1L)).willReturn(Optional.empty());
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
         .andExpect(status().isForbidden());
@@ -82,10 +97,30 @@ class TenantContextFilterTest {
   @Test
   @WithMockMember
   void activeMember_setsTenantContextAndPassesThrough() throws Exception {
-    given(tenantMembershipPort.isActiveMember(1L, 1L)).willReturn(true);
+    given(tenantMembershipPort.findActiveRole(1L, 1L)).willReturn(Optional.of(TenantRole.MEMBER));
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
         .andExpect(status().isOk())
         .andExpect(content().string("1"));
+  }
+
+  @Test
+  @WithMockJwt(roles = {})
+  void memberRole_grantsMemberAuthority() throws Exception {
+    given(tenantMembershipPort.findActiveRole(1L, 1L)).willReturn(Optional.of(TenantRole.MEMBER));
+    mockMvc
+        .perform(get("/probe/member-only").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @WithMockJwt(roles = {})
+  void tenantAdminRole_grantsTenantAdminAuthority() throws Exception {
+    given(tenantMembershipPort.findActiveRole(1L, 1L))
+        .willReturn(Optional.of(TenantRole.TENANT_ADMIN));
+    mockMvc
+        .perform(
+            get("/probe/tenant-admin-only").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
+        .andExpect(status().isOk());
   }
 }

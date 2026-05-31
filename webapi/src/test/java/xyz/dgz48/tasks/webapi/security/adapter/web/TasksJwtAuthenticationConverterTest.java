@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,8 +28,7 @@ class TasksJwtAuthenticationConverterTest {
 
   @InjectMocks TasksJwtAuthenticationConverter converter;
 
-  @Test
-  void convertsJwtToAuthenticationToken() {
+  private void stubValidUser() {
     when(jwt.getSubject()).thenReturn("sub123");
     when(userRepository.findByOidcSub("sub123")).thenReturn(Optional.of(user));
     when(user.getId()).thenReturn(1L);
@@ -36,6 +37,11 @@ class TasksJwtAuthenticationConverterTest {
     when(user.getFullName()).thenReturn("山田太郎");
     when(user.getFullNameKana()).thenReturn("ヤマダタロウ");
     when(user.getDepartmentName()).thenReturn("開発部");
+  }
+
+  @Test
+  void convertsJwtToAuthenticationToken() {
+    stubValidUser();
 
     AbstractAuthenticationToken token = converter.convert(jwt);
 
@@ -47,6 +53,37 @@ class TasksJwtAuthenticationConverterTest {
     assertThat(principal.getEmail()).isEqualTo("user@example.com");
     assertThat(principal.getFullName()).isEqualTo("山田太郎");
     assertThat(principal.getDepartmentName()).isEqualTo("開発部");
+    assertThat(token.getAuthorities()).isEmpty();
+  }
+
+  @Test
+  void grantsAppAdminWhenRealmRolePresent() {
+    stubValidUser();
+    when(jwt.getClaim("realm_access"))
+        .thenReturn(Map.of("roles", List.of("APP_ADMIN", "default-roles-realm")));
+
+    AbstractAuthenticationToken token = converter.convert(jwt);
+
+    assertThat(token.getAuthorities()).extracting("authority").containsExactly("ROLE_APP_ADMIN");
+  }
+
+  @Test
+  void noAuthoritiesWhenAppAdminNotInRealmRoles() {
+    stubValidUser();
+    when(jwt.getClaim("realm_access")).thenReturn(Map.of("roles", List.of("default-roles-realm")));
+
+    AbstractAuthenticationToken token = converter.convert(jwt);
+
+    assertThat(token.getAuthorities()).isEmpty();
+  }
+
+  @Test
+  void noAuthoritiesWhenRealmAccessClaimMissing() {
+    stubValidUser();
+
+    AbstractAuthenticationToken token = converter.convert(jwt);
+
+    assertThat(token.getAuthorities()).isEmpty();
   }
 
   @Test

@@ -5,19 +5,26 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 
 /**
  * X-Tenant-Id ヘッダを読み取り、user_tenants を検証して TenantContext を設定する。
  *
- * <p>ヘッダ未指定の場合は TenantContext を設定せずに通過させる。 認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。
+ * <p>ヘッダ未指定の場合は TenantContext を設定せずに通過させる。認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は
+ * ROLE_TENANT_ADMIN または ROLE_MEMBER を SecurityContext に付与する。
  */
 @Component
 @RequiredArgsConstructor
@@ -52,16 +59,26 @@ public class TenantContextFilter extends OncePerRequestFilter {
       return;
     }
 
-    if (!tenantMembershipPort.isActiveMember(token.getPrincipal().getId(), tenantId)) {
+    Optional<TenantRole> roleOpt =
+        tenantMembershipPort.findActiveRole(token.getPrincipal().getId(), tenantId);
+    if (roleOpt.isEmpty()) {
       response.sendError(HttpStatus.FORBIDDEN.value(), "Not a member of the specified tenant");
       return;
     }
 
+    SecurityContextHolder.getContext().setAuthentication(withTenantRole(token, roleOpt.get()));
     TenantContext.set(tenantId);
     try {
       filterChain.doFilter(request, response);
     } finally {
       TenantContext.clear();
     }
+  }
+
+  private static TasksAuthenticationToken withTenantRole(
+      TasksAuthenticationToken existing, TenantRole role) {
+    List<GrantedAuthority> authorities = new ArrayList<>(existing.getAuthorities());
+    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    return new TasksAuthenticationToken(existing.getPrincipal(), authorities);
   }
 }
