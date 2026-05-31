@@ -6,10 +6,6 @@ import org.springframework.stereotype.Component;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.usecase.TaskRepository;
 
-/**
- * {@link TaskRepository} ポートを Spring Data JPA で実装。 {@link TaskJpaEntity} と {@link Task}
- * ドメインモデル間の変換責務を担う。
- */
 @Component
 @RequiredArgsConstructor
 class TaskJpaRepositoryAdapter implements TaskRepository {
@@ -17,8 +13,8 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
   private final TaskJpaRepository jpaRepository;
 
   @Override
-  public Optional<Task> findByIdAndTenantId(Long id, Long tenantId) {
-    return jpaRepository.findByIdAndTenantId(id, tenantId).map(this::toDomain);
+  public Optional<Task> findById(Long id) {
+    return jpaRepository.findById(id).map(this::toDomain);
   }
 
   private Task toDomain(TaskJpaEntity entity) {

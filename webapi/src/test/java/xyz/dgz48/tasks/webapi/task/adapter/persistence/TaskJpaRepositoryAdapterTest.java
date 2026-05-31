@@ -51,7 +51,7 @@ class TaskJpaRepositoryAdapterTest {
   }
 
   @Test
-  void findByIdAndTenantIdReturnsDomainTaskWhenFound() {
+  void findByIdReturnsDomainTaskWhenFound() {
     var tenant = new TenantJpaEntity("TENANT-ADP-1", "テナント A");
     entityManager.persist(tenant);
     var user = new UserJpaEntity("sub-adp-1", "adp1@example.com", "山田 太郎", "ヤマダ タロウ", null);
@@ -71,7 +71,7 @@ class TaskJpaRepositoryAdapterTest {
     entityManager.flush();
     entityManager.clear();
 
-    var found = taskRepository.findByIdAndTenantId(jpa.getId(), tenant.getId());
+    var found = taskRepository.findById(jpa.getId());
 
     assertThat(found).isPresent();
     Task task = found.get();
@@ -85,33 +85,8 @@ class TaskJpaRepositoryAdapterTest {
   }
 
   @Test
-  void findByIdAndTenantIdReturnsEmptyWhenNotFound() {
-    var found = taskRepository.findByIdAndTenantId(999_999L, 999_999L);
-    assertThat(found).isEmpty();
-  }
-
-  @Test
-  void findByIdAndTenantIdReturnsEmptyWhenTenantMismatch() {
-    var tenant = new TenantJpaEntity("TENANT-ADP-2", "テナント B");
-    entityManager.persist(tenant);
-    var user = new UserJpaEntity("sub-adp-2", "adp2@example.com", "鈴木 花子", "スズキ ハナコ", null);
-    entityManager.persist(user);
-    entityManager.flush();
-
-    var jpa =
-        new TaskJpaEntity(
-            tenant.getId(),
-            user.getId(),
-            "別テナント",
-            null,
-            TaskStatus.NOT_STARTED,
-            Priority.LOW,
-            LocalDate.of(2026, 12, 31));
-    entityManager.persist(jpa);
-    entityManager.flush();
-
-    // 別 tenant id で探すと空
-    var found = taskRepository.findByIdAndTenantId(jpa.getId(), tenant.getId() + 99_999L);
+  void findByIdReturnsEmptyWhenNotFound() {
+    var found = taskRepository.findById(999_999L);
     assertThat(found).isEmpty();
   }
 }
