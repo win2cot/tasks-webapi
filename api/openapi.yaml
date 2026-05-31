@@ -54,6 +54,7 @@ info:
     email: dev@example.com
   license:
     name: Proprietary
+    url: https://github.com/win2cot/tasks-webapi
 
 tags:
   - name: Auth
@@ -72,14 +73,20 @@ tags:
       いずれも NIST AC-4 整合のため、他者の `PRIVATE` タスクの存在を集計値経由で推定できない設計(個人視点は所有者・担当者のみ加算、テナント運営者視点は `PRIVATE` を集計対象外)。
   - name: Audit
     description: 監査ログ参照(Tenant Admin)
+  - name: Stakeholder
+    description: タスク関係者の追加・削除・一覧
+  - name: Notification
+    description: テナントごとの通知設定(ON/OFF 管理)
 
 servers:
-  - url: https://api.taskflow.example.com
-    description: 本番環境
-  - url: https://staging-api.taskflow.example.com
-    description: ステージング環境
   - url: http://localhost:8080
-    description: ローカル開発環境
+    description: ローカル開発環境 (local)
+  - url: https://api-dev.tasks.dgz48.xyz
+    description: 開発環境 (dev)
+  - url: https://api-stg.tasks.dgz48.xyz
+    description: ステージング環境 (stg)
+  - url: https://api.tasks.dgz48.xyz
+    description: 本番環境 (prd)
 
 # ======================================================================
 # セキュリティ
@@ -125,7 +132,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - { name: tenantId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: tenantId, in: path, required: true, description: "切り替え先のテナントID", schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -225,7 +232,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "テナントID", schema: { type: integer, format: int64 } }
       responses:
         "200":
           description: OK
@@ -248,7 +255,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "テナントID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -287,7 +294,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "テナントID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -332,6 +339,7 @@ paths:
     get:
       tags: [User]
       summary: 自身のプロフィール取得(既存usersから読み取り)
+      description: ログイン中ユーザー自身のプロフィール情報(`users` テーブル)を取得する。テナント選択状態に依存しない。
       operationId: getMyProfile
       responses:
         "200":
@@ -384,9 +392,10 @@ paths:
     put:
       tags: [User]
       summary: ロール変更 (Tenant Admin)
+      description: "認可: Tenant Admin のみ。指定ユーザーの `user_tenants.role` を `TENANT_ADMIN` / `MEMBER` に変更する。"
       operationId: updateRole
       parameters:
-        - { name: userId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: userId, in: path, required: true, description: "ロール変更対象のユーザーID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -430,13 +439,13 @@ paths:
             minItems: 1
             items:
               $ref: "#/components/schemas/TaskStatus"
-        - { name: ownerId,        in: query, schema: { type: integer, format: int64 } }
-        - { name: assigneeId,     in: query, schema: { type: integer, format: int64 } }
-        - { name: priority,       in: query, schema: { $ref: "#/components/schemas/Priority" } }
-        - { name: visibility,     in: query, schema: { type: string, enum: [TENANT, STAKEHOLDERS, PRIVATE] } }
+        - { name: ownerId,        in: query, description: "絞り込み: タスク所有者のユーザーID", schema: { type: integer, format: int64 } }
+        - { name: assigneeId,     in: query, description: "絞り込み: 担当者のユーザーID", schema: { type: integer, format: int64 } }
+        - { name: priority,       in: query, description: "絞り込み: 優先度 (HIGH / MEDIUM / LOW)", schema: { $ref: "#/components/schemas/Priority" } }
+        - { name: visibility,     in: query, description: "絞り込み: 公開範囲 (TENANT / STAKEHOLDERS / PRIVATE)", schema: { type: string, enum: [TENANT, STAKEHOLDERS, PRIVATE] } }
         - { name: keyword,        in: query, schema: { type: string }, description: "タイトル/説明部分一致" }
-        - { name: page,           in: query, schema: { type: integer, default: 0 } }
-        - { name: size,           in: query, schema: { type: integer, default: 50, maximum: 100 } }
+        - { name: page,           in: query, description: "ページ番号 (0 始まり)", schema: { type: integer, default: 0 } }
+        - { name: size,           in: query, description: "1ページあたりの件数 (最大 100)", schema: { type: integer, default: 50, maximum: 100 } }
         - name: sort
           in: query
           description: |
@@ -486,7 +495,7 @@ paths:
       description: "認可: 一覧と同じ参照認可ルール(3 役割評価、Tenant Admin の特別権限なし、ADR-0005)。違反時は 404 を返す(リソース存在を漏らさない)"
       operationId: getTask
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       responses:
         "200":
           description: OK
@@ -504,7 +513,7 @@ paths:
       description: "認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403"
       operationId: updateTask
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -531,7 +540,7 @@ paths:
         物理削除は MVP では提供しない(完全削除はテナント解約 #167 / Phase 2 で扱う)。
       operationId: deleteTask
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -549,7 +558,7 @@ paths:
       description: "認可: 所有者または担当者(Tenant Admin の特別権限なし、ADR-0005)"
       operationId: changeStatus
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -595,7 +604,7 @@ paths:
         シーケンス図: `docs/diagrams/sequence-06-visibility-change.mmd`
       operationId: changeVisibility
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -632,7 +641,7 @@ paths:
       description: "認可: タスク参照可能なユーザー"
       operationId: listStakeholders
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       responses:
         "200":
           description: OK
@@ -656,7 +665,7 @@ paths:
         本 API は visibility を**自動変更しない**(ADR-0005 §3.4 / 基本設計書 §6.2.1 / 要件定義書 §3.4.5)。
       operationId: addStakeholder
       parameters:
-        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
       requestBody:
         required: true
         content:
@@ -695,8 +704,8 @@ paths:
         本 API は visibility を**自動変更しない**(ADR-0005 §3.4 / 基本設計書 §6.2.1 / 要件定義書 §3.4.5)。
       operationId: removeStakeholder
       parameters:
-        - { name: taskId, in: path, required: true, schema: { type: integer, format: int64 } }
-        - { name: userId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: taskId, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
+        - { name: userId, in: path, required: true, description: "削除対象のユーザーID", schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -807,16 +816,17 @@ paths:
     get:
       tags: [Audit]
       summary: 監査ログ参照 (Tenant Admin)
+      description: "認可: Tenant Admin のみ。現在のテナントの監査ログをページングで返す。`from` / `to` / `action` で絞り込み可能。"
       operationId: listAuditLogs
       parameters:
-        - { name: from, in: query, schema: { type: string, format: date-time } }
-        - { name: to,   in: query, schema: { type: string, format: date-time } }
+        - { name: from, in: query, description: "絞り込み開始日時 (ISO 8601)", schema: { type: string, format: date-time } }
+        - { name: to,   in: query, description: "絞り込み終了日時 (ISO 8601)", schema: { type: string, format: date-time } }
         - name: action
           in: query
           description: "監査ログ action 値による完全一致フィルタ。`AuditLog.action` と同じ命名規約に従う(設計規約 §2.5)。"
           schema: { type: string, pattern: "^[A-Z][A-Z0-9_]*$" }
-        - { name: page, in: query, schema: { type: integer, default: 0 } }
-        - { name: size, in: query, schema: { type: integer, default: 50, maximum: 100 } }
+        - { name: page, in: query, description: "ページ番号 (0 始まり)", schema: { type: integer, default: 0 } }
+        - { name: size, in: query, description: "1ページあたりの件数 (最大 100)", schema: { type: integer, default: 50, maximum: 100 } }
       responses:
         "200":
           description: OK
@@ -1099,7 +1109,6 @@ components:
       description: |
         `GET /api/tasks/{id}` の暫定レスポンス。
         `owner`(UserSummary) / `editable` / `deletable` / `stakeholders` は B-3(#279)で追加予定。
-        フルスキーマは `TaskDetail` を参照。
       type: object
       required: [id, tenantId, title, status, priority, visibility, dueDate, createdAt, updatedAt]
       properties:
@@ -1114,16 +1123,6 @@ components:
         dueDate:     { type: string, format: date }
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
-
-    TaskDetail:
-      allOf:
-        - $ref: "#/components/schemas/Task"
-        - type: object
-          required: [stakeholders]
-          properties:
-            stakeholders:
-              type: array
-              items: { $ref: "#/components/schemas/Stakeholder" }
 
     TaskCreateRequest:
       description: |
