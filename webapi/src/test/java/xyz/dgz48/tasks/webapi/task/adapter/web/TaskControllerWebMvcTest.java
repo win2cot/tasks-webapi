@@ -38,7 +38,7 @@ class TaskControllerWebMvcTest {
 
   @Autowired MockMvc mockMvc;
 
-  private static final Long USER_ID = 1L; // matches @WithMockJwt default id
+  private static final Long USER_ID = 1L; // matches @WithMockMember default id
 
   private Task buildTask() {
     return new Task(
@@ -79,7 +79,10 @@ class TaskControllerWebMvcTest {
   void get_returns404_whenTaskNotFoundException() throws Exception {
     when(getTaskUseCase.execute(99L, USER_ID)).thenThrow(new TaskNotFoundException(99L));
 
-    mockMvc.perform(get("/api/tasks/99")).andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/tasks/99"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("E_NOT_FOUND"));
   }
 
   @Test
@@ -87,6 +90,9 @@ class TaskControllerWebMvcTest {
   void get_returns404_whenTaskNotViewableException() throws Exception {
     when(getTaskUseCase.execute(2L, USER_ID)).thenThrow(new TaskNotViewableException(2L));
 
-    mockMvc.perform(get("/api/tasks/2")).andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/tasks/2"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("E_NOT_FOUND"));
   }
 }

@@ -10,13 +10,13 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotViewableException;
 
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class GetTaskUseCase {
 
   private final TaskRepository taskRepository;
   private final TaskAuthorizationDomainService taskAuthorizationDomainService;
 
+  @Transactional(readOnly = true)
   public Task execute(Long taskId, Long userId) {
     Task task =
         taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException(taskId));
