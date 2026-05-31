@@ -116,7 +116,7 @@ jobs:
               print('N/A')
           PYEOF
             )
-            if [ "$COVERAGE" != "N/A" ] && python3 -c "import sys; sys.exit(0 if float('$COVERAGE') >= 80 else 1)" 2>/dev/null; then
+            if [ "$COVERAGE" != "N/A" ] && python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) >= 80 else 1)" "$COVERAGE" 2>/dev/null; then
               COV_ICON=":white_check_mark:"
             elif [ "$COVERAGE" = "N/A" ]; then
               COV_ICON=":question:"
@@ -144,7 +144,7 @@ jobs:
 
       - name: Post sticky CI report
         uses: marocchino/sticky-pull-request-comment@v2
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && steps.ci-report.outcome == 'success'
         with:
           header: ci-report
           message: ${{ steps.ci-report.outputs.BODY }}
