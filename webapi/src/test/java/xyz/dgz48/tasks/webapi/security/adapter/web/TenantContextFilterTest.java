@@ -132,8 +132,7 @@ class TenantContextFilterTest {
         .willReturn(Optional.of(TenantRole.SAAS_ADMIN));
     assertThatThrownBy(
             () ->
-                mockMvc.perform(
-                    get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1")))
+                mockMvc.perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1")))
         .hasRootCauseInstanceOf(IllegalArgumentException.class);
   }
 }
