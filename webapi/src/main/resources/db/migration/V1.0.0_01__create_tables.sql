@@ -8,7 +8,8 @@ CREATE TABLE users (
     version         BIGINT       NOT NULL DEFAULT 0 COMMENT 'JPA @Version 楽観排他用(ADR-0006 §3.4)',
     deleted_at      DATETIME     NULL     COMMENT '論理削除日時。NULL=有効、NOT NULL=匿名化済み(ADR-0006 §3.4)',
     PRIMARY KEY (id),
-    UNIQUE KEY uq_users_oidc_sub (oidc_sub)
+    UNIQUE KEY uq_users_oidc_sub (oidc_sub),
+    UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tenants (
