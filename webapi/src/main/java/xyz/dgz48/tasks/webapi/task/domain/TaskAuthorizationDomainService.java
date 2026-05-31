@@ -1,6 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.domain;
 
 import java.util.List;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 
 /**
  * タスクごとの認可判定 SSOT — 基本設計書 §6.2.1 参照。
