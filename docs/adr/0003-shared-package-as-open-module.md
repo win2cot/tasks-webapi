@@ -109,6 +109,7 @@ package xyz.dgz48.tasks.webapi.shared;
 - 設計規約 §1.3.1(`shared` パッケージの扱い)は本 ADR の結論に合致しており、本文の `package-info.java` サンプルが ADR の §3 と整合する。
 - 設計規約 §1.3.1 末尾に **「決定根拠は ADR-0003 を参照」** のリンクを追加する(本 ADR と同 PR で対応)。
 - ADR-0001 §6 の「次に起票が想定される候補」リストでも、本 ADR を ADR-0003 として記録し、テナント分離は想定 ADR-0004 に繰り下げる(本 ADR と同 PR で対応)。
+- 新 feature 追加時に `shared` を参照するための具体的な手順は **[docs/dev/feature-template.md §5](../dev/feature-template.md#5-shared-参照ルール)** に記載した(Issue #274)。
 
 ## 6. 実装メモ
 
