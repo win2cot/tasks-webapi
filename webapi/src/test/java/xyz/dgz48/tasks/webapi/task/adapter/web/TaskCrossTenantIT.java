@@ -2,6 +2,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.EntityManager;
@@ -159,7 +160,8 @@ class TaskCrossTenantIT {
             get("/api/tasks/" + taskBId)
                 .header("X-Tenant-Id", String.valueOf(tenantAId))
                 .with(authentication(authToken)))
-        .andExpect(status().isNotFound());
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("E_NOT_FOUND"));
   }
 
   @Test
