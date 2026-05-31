@@ -77,6 +77,10 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
   private static TasksAuthenticationToken withTenantRole(
       TasksAuthenticationToken existing, TenantRole role) {
+    if (role == TenantRole.SAAS_ADMIN) {
+      // SaaS Admin は Keycloak が管理し user_tenants には存在しない(設計規約 §5.2)
+      throw new IllegalArgumentException("SAAS_ADMIN は user_tenants から返却されない");
+    }
     List<GrantedAuthority> authorities = new ArrayList<>(existing.getAuthorities());
     authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
     return new TasksAuthenticationToken(existing.getPrincipal(), authorities);

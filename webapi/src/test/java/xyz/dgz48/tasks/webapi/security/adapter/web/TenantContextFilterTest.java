@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.security.adapter.web;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -122,5 +123,17 @@ class TenantContextFilterTest {
         .perform(
             get("/probe/tenant-admin-only").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  @WithMockJwt(roles = {})
+  void saasAdminRole_throwsIllegalArgumentException() {
+    given(tenantMembershipPort.findActiveRole(1L, 1L))
+        .willReturn(Optional.of(TenantRole.SAAS_ADMIN));
+    assertThatThrownBy(
+            () ->
+                mockMvc.perform(
+                    get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1")))
+        .hasRootCauseInstanceOf(IllegalArgumentException.class);
   }
 }
