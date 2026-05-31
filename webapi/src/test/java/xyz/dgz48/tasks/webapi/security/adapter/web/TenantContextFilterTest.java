@@ -20,8 +20,13 @@ import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
-@WebMvcTest(TenantContextFilterTest.ProbeController.class)
-@Import({SecurityConfig.class, TenantContextFilter.class, TasksJwtAuthenticationConverter.class})
+@WebMvcTest
+@Import({
+  SecurityConfig.class,
+  TenantContextFilter.class,
+  TasksJwtAuthenticationConverter.class,
+  TenantContextFilterTest.ProbeController.class
+})
 class TenantContextFilterTest {
 
   @RestController
