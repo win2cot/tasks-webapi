@@ -27,7 +27,7 @@ public class TaskExceptionHandler {
         HttpStatus.NOT_FOUND.value(),
         HttpStatus.NOT_FOUND.getReasonPhrase(),
         ErrorCode.E_NOT_FOUND,
-        Objects.requireNonNullElse(ex.getMessage(), "Not Found"),
+        Objects.requireNonNullElse(ex.getMessage(), "リソースが見つかりません"),
         request.getRequestURI());
   }
 }

@@ -4,6 +4,6 @@ import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 
 public class TaskNotFoundException extends DomainException {
   public TaskNotFoundException(Long taskId) {
-    super("Task not found: " + taskId);
+    super("タスクが見つかりません: " + taskId);
   }
 }

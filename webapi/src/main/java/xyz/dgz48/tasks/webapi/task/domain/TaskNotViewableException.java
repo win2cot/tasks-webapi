@@ -4,6 +4,6 @@ import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 
 public class TaskNotViewableException extends DomainException {
   public TaskNotViewableException(Long taskId) {
-    super("Task not viewable: " + taskId);
+    super("タスクを参照できません: " + taskId);
   }
 }
