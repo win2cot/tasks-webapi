@@ -20,6 +20,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import xyz.dgz48.tasks.webapi.shared.adapter.persistence.TenantFilteredEntity;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
@@ -30,7 +31,7 @@ import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
-public class TaskJpaEntity {
+public class TaskJpaEntity extends TenantFilteredEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
