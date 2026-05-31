@@ -1,10 +1,11 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 
 interface UserTenantJpaRepository extends JpaRepository<UserTenantJpaEntity, UserTenantId> {
 
-  boolean existsByIdUserIdAndIdTenantIdAndStatus(
+  Optional<UserTenantJpaEntity> findByIdUserIdAndIdTenantIdAndStatus(
       Long userId, Long tenantId, UserTenantStatus status);
 }
