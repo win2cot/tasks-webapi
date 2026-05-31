@@ -1,6 +1,6 @@
 %% ====================================================================
-%% Sequence 01: OIDC Login (Keycloak integration + legacy users lookup)
-%% Task Management System v1.2
+%% Sequence 01: OIDC Login (Keycloak integration + users lookup)
+%% Task Management System v1.3 (ADR-0006: users は本システム内 SoT)
 %% ====================================================================
 sequenceDiagram
   autonumber
@@ -8,8 +8,7 @@ sequenceDiagram
   participant Browser as ブラウザ
   participant AP as Spring Boot AP<br/>(ECS Fargate)
   participant KC as Keycloak<br/>(ECS Fargate)
-  participant LegacyUsers as 既存users DB<br/>(ReadOnlyレプリカ)
-  participant AppDB as アプリDB<br/>(MySQL)
+  participant AppDB as アプリDB<br/>(MySQL / users + 業務テーブル)
 
   User->>Browser: アクセス /
   Browser->>AP: GET /
@@ -24,12 +23,12 @@ sequenceDiagram
   AP->>KC: POST /token (code, code_verifier, client_id, client_secret)
   KC-->>AP: 200 { access_token (JWT), id_token, refresh_token }
   AP->>AP: JWT検証 (署名/iss/aud/exp)
-  AP->>LegacyUsers: SELECT id, email, full_name, full_name_kana, department_name<br/>FROM users WHERE oidc_sub = :sub
+  AP->>AppDB: SELECT id, email, full_name, full_name_kana, department_name<br/>FROM users WHERE oidc_sub = :sub AND deleted_at IS NULL
   alt oidc_subが存在しない
-    LegacyUsers-->>AP: (0件)
+    AppDB-->>AP: (0件)
     AP-->>Browser: 403 E_USER_NOT_REGISTERED<br/>"管理者にユーザー登録を依頼してください"
   else 存在する
-    LegacyUsers-->>AP: { id, email, full_name, ... }
+    AppDB-->>AP: { id, email, full_name, ... }
     AP->>AppDB: SELECT tenant_id, role FROM user_tenants<br/>WHERE user_id = :userId AND status='ACTIVE'
     AppDB-->>AP: 所属テナント+ロール一覧
     alt 所属テナント0件
