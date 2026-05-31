@@ -1,0 +1,74 @@
+name: OpenAPI Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lint OpenAPI spec
+        id: spectral
+        run: npx --yes @stoplight/spectral-cli@6 lint api/openapi.yaml --format github-actions
+        continue-on-error: true
+
+      - name: Build lint report
+        id: lint-report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          LINT_OUTCOME: ${{ steps.spectral.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          if [ "$LINT_OUTCOME" = "success" ]; then
+            LINT_ROW="| OpenAPI Lint :white_check_mark: | Run [#${RUN_NUM}](${RUN_URL}) — 警告・エラーなし |"
+          else
+            LINT_ROW="| OpenAPI Lint :x: | Run [#${RUN_NUM}](${RUN_URL}) — lint エラーあり(詳細はログ参照) |"
+          fi
+
+          {
+            echo 'BODY<<__LINT_REPORT_EOF__'
+            echo "### OpenAPI Lint 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            echo "${LINT_ROW}"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__LINT_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky lint report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.lint-report.outcome == 'success'
+        with:
+          header: openapi-lint
+          message: ${{ steps.lint-report.outputs.BODY }}
+
+      - name: Fail on lint errors
+        if: steps.spectral.outcome == 'failure'
+        run: exit 1

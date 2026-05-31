@@ -1,0 +1,104 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check package-info.java
+        id: pkg-info
+        run: |
+          MISSING=()
+          while IFS= read -r dir; do
+            if [ ! -f "$dir/package-info.java" ]; then
+              pkg="${dir#webapi/src/main/java/}"
+              MISSING+=("${pkg//'/'/.}")
+              echo "::error file=${dir}/package-info.java::package-info.java が見つかりません: ${pkg//'/'/.}"
+            fi
+          done < <(
+            find webapi/src/main/java/xyz/dgz48/tasks/webapi \
+              -type f -name "*.java" ! -name "package-info.java" \
+              -exec dirname {} \; | sort -u
+          )
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Check Flyway migration naming
+        id: flyway
+        run: |
+          # V<version>__<description>.sql  /  R__<description>.sql
+          # version: 数字を . or _ で区切ったもの  (例: 1  /  1.0  /  1.0.0_01)
+          PATTERN='^(V[0-9]+([._][0-9]+)*|R)__[A-Za-z0-9][A-Za-z0-9_]*\.sql$'
+          INVALID=()
+          while IFS= read -r file; do
+            base=$(basename "$file")
+            if ! echo "$base" | grep -qE "$PATTERN"; then
+              INVALID+=("$file")
+              echo "::error file=${file}::Flyway 命名規約違反: ${base}  (期待: V<version>__<description>.sql または R__<description>.sql)"
+            fi
+          done < <(find webapi/src/main/resources/db/migration -type f -name "*.sql" 2>/dev/null | sort)
+          if [ ${#INVALID[@]} -gt 0 ]; then
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Build quality report
+        id: quality-report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          PKG_OUTCOME: ${{ steps.pkg-info.outcome }}
+          FLYWAY_OUTCOME: ${{ steps.flyway.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          icon() { [ "$1" = "success" ] && echo ":white_check_mark:" || echo ":x:"; }
+
+          PKG_ROW="| package-info.java $(icon "$PKG_OUTCOME") | Run [#${RUN_NUM}](${RUN_URL}) — $([ "$PKG_OUTCOME" = "success" ] && echo "全パッケージに存在" || echo "欠落あり(詳細はログ参照)") |"
+          FLYWAY_ROW="| Flyway 命名規約 $(icon "$FLYWAY_OUTCOME") | Run [#${RUN_NUM}](${RUN_URL}) — $([ "$FLYWAY_OUTCOME" = "success" ] && echo "全ファイル準拠" || echo "命名規約違反あり(詳細はログ参照)") |"
+
+          {
+            echo 'BODY<<__QUALITY_REPORT_EOF__'
+            echo "### Code Quality 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            echo "${PKG_ROW}"
+            echo "${FLYWAY_ROW}"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__QUALITY_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky quality report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.quality-report.outcome == 'success'
+        with:
+          header: code-quality
+          message: ${{ steps.quality-report.outputs.BODY }}
+
+      - name: Fail on errors
+        if: steps.pkg-info.outcome == 'failure' || steps.flyway.outcome == 'failure'
+        run: exit 1
