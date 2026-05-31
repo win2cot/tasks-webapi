@@ -12,6 +12,7 @@ public class TestcontainersConfiguration {
   @ServiceConnection
   MySQLContainer mysqlContainer() {
     return new MySQLContainer("mysql:8.4")
+        .withCommand("--default-time-zone=Asia/Tokyo")
         .withUrlParam("connectionTimeZone", "SERVER")
         .withUrlParam("forceConnectionTimeZoneToSession", "true");
   }
