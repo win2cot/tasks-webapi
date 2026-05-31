@@ -42,6 +42,8 @@ jobs:
         if: always()
         with:
           files: webapi/build/test-results/**/*.xml
+          comment_mode: off
+          fail_on: nothing
 
       - name: Upload test reports
         uses: actions/upload-artifact@v7
@@ -50,16 +52,102 @@ jobs:
           name: test-reports
           path: webapi/build/reports/tests/test/
 
-      - name: JaCoCo Report
-        uses: madrapps/jacoco-report@v1.7.2
-        if: always()
+      - name: Build CI report
+        id: ci-report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          # ── Test results ──────────────────────────────────────────────
+          TEST_DATA=$(python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET, glob, sys
+          files = glob.glob('webapi/build/test-results/**/*.xml', recursive=True)
+          if not files:
+              print('MISSING')
+              sys.exit(0)
+          t = f = e = s = 0
+          for p in files:
+              try:
+                  r = ET.parse(p).getroot()
+                  t += int(r.get('tests', 0))
+                  f += int(r.get('failures', 0))
+                  e += int(r.get('errors', 0))
+                  s += int(r.get('skipped', 0))
+              except Exception:
+                  pass
+          print(f'{t} {f} {e} {s}')
+          PYEOF
+          )
+
+          if [ "$TEST_DATA" = "MISSING" ]; then
+            TEST_ROW="| テスト結果 | :warning: Run #${RUN_NUM} — ビルド/コンパイル失敗のためテスト未実行 |"
+          else
+            read -r TOTAL FAIL ERR SKIP <<< "$TEST_DATA"
+            PASSED=$((TOTAL - FAIL - ERR - SKIP))
+            if [ "$((FAIL + ERR))" -eq 0 ]; then
+              TEST_ICON=":white_check_mark:"
+            else
+              TEST_ICON=":x:"
+            fi
+            TEST_ROW="| テスト結果 ${TEST_ICON} | 合計 ${TOTAL}: 成功 **${PASSED}**, 失敗 $((FAIL + ERR)), スキップ ${SKIP} |"
+          fi
+
+          # ── Coverage ──────────────────────────────────────────────────
+          JACOCO_XML="webapi/build/reports/jacoco/test/jacocoTestReport.xml"
+          if [ -f "$JACOCO_XML" ]; then
+            COVERAGE=$(python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET, sys
+          try:
+              root = ET.parse('webapi/build/reports/jacoco/test/jacocoTestReport.xml').getroot()
+              for c in root.findall('counter'):
+                  if c.get('type') == 'INSTRUCTION':
+                      missed = int(c.get('missed', 0))
+                      covered = int(c.get('covered', 0))
+                      total = missed + covered
+                      print(f'{covered / total * 100:.1f}' if total else '0.0')
+                      sys.exit(0)
+              print('N/A')
+          except Exception:
+              print('N/A')
+          PYEOF
+            )
+            if [ "$COVERAGE" != "N/A" ] && python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) >= 80 else 1)" "$COVERAGE" 2>/dev/null; then
+              COV_ICON=":white_check_mark:"
+            elif [ "$COVERAGE" = "N/A" ]; then
+              COV_ICON=":question:"
+            else
+              COV_ICON=":x:"
+            fi
+            COV_ROW="| カバレッジ ${COV_ICON} | 命令カバレッジ **${COVERAGE}%** (基準 80%) |"
+          else
+            COV_ROW="| カバレッジ | :warning: Run #${RUN_NUM} — ビルド/コンパイル失敗のためカバレッジ未計測 |"
+          fi
+
+          # ── Write output ──────────────────────────────────────────────
+          {
+            echo 'BODY<<__CI_REPORT_EOF__'
+            echo "### CI 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            echo "${TEST_ROW}"
+            echo "${COV_ROW}"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__CI_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky CI report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.ci-report.outcome == 'success'
         with:
-          paths: webapi/build/reports/jacoco/test/jacocoTestReport.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 80
-          min-coverage-changed-files: 80
-          update-comment: true
-          title: Code Coverage
+          header: ci-report
+          message: ${{ steps.ci-report.outputs.BODY }}
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v7

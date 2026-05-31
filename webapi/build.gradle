@@ -98,6 +98,17 @@ jacocoTestReport {
     }
 }
 
+jacocoTestCoverageVerification {
+    dependsOn test
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.80
+            }
+        }
+    }
+}
+
 spotless {
     // OS に依存せず常に LF を正とする(CI は Linux=LF、Windows ローカルでの CRLF 誤検知を防ぐ)。
     lineEndings = 'UNIX'
@@ -107,5 +118,5 @@ spotless {
 }
 
 tasks.named('check') {
-    dependsOn 'spotlessCheck'
+    dependsOn 'spotlessCheck', 'jacocoTestCoverageVerification'
 }
