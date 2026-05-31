@@ -30,6 +30,8 @@ class UserEntityTest {
     assertThat(user.getFullName()).isEqualTo("山田 太郎");
     assertThat(user.getFullNameKana()).isEqualTo("ヤマダ タロウ");
     assertThat(user.getDepartmentName()).isEqualTo("開発部");
+    assertThat(user.getVersion()).isEqualTo(0L);
+    assertThat(user.getDeletedAt()).isNull();
   }
 
   @Test

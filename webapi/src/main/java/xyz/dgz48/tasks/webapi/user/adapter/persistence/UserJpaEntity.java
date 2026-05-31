@@ -6,6 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,6 +39,14 @@ public class UserJpaEntity {
   @Nullable
   @Column(name = "department_name", length = 255)
   private String departmentName;
+
+  @Version
+  @Column(nullable = false)
+  private Long version;
+
+  @Nullable
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
 
   public UserJpaEntity(
       String oidcSub,
