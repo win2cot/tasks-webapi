@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: タスク管理システム API
   description: |
-    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4.8 / 要件定義書 v1.4.4 準拠)。
+    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.5.1 / 要件定義書 v1.4.4 準拠)。
 
     認証はKeycloak経由のOIDC、本APIはJWTを Spring Security OAuth2 Resource Server で検証する。
     全リクエストには `Authorization: Bearer {access_token}` を付与し、
@@ -48,7 +48,7 @@ info:
     - `409 Conflict` — リソースの競合状態(詳細は基本設計書 §5.4.1。エンドポイント個別のシナリオはレスポンス description 参照)
     - `422 Unprocessable Content` — 前提リソース未存在(招待時に Keycloak 未登録 等。詳細は基本設計書 §5.4.2)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.4.5"
+  version: "1.5.0"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -499,6 +499,10 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            ETag:
+              description: "楽観ロック用バージョンタグ (W/\"<version>\")。PATCH リクエスト時の If-Match ヘッダに使用(ADR-0012)"
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TaskDetailPartial" }
@@ -507,24 +511,45 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
           description: タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
-    put:
+    patch:
       tags: [Task]
-      summary: タスク更新
-      description: "認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403"
-      operationId: updateTask
+      summary: タスク部分更新(A-29)
+      description: |-
+        認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403。
+
+        期限 / 担当者 / 優先度 / タイトル / 説明 の 5 項目を任意組み合わせで部分更新する。
+        `JsonNullable<T>` セマンティクス(ADR-0014): 省略フィールドは変更なし、明示 `null` はフィールドをクリア。
+        visibility・ステータス・関係者は各専用 API を使用:
+        - 公開範囲変更: A-17 `PATCH /api/tasks/{id}/visibility`(所有者のみ)
+        - ステータス変更: A-16 `PATCH /api/tasks/{id}/status`(所有者・担当者)
+        - 関係者編集: A-19/A-20 `POST/DELETE /api/tasks/{id}/stakeholders/...`(所有者・担当者)
+
+        楽観ロック(ADR-0012): `If-Match` ヘッダに `GET /api/tasks/{id}` レスポンスの ETag 値を必須指定。
+        不一致時は 412 Precondition Failed(`E_PRECONDITION_FAILED`)を返す。
+      operationId: patchTask
       parameters:
         - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
+        - name: If-Match
+          in: header
+          required: true
+          description: "楽観ロック用 ETag 値。`GET /api/tasks/{id}` レスポンスの ETag ヘッダ値を指定(ADR-0012)"
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/TaskUpdateRequest" }
+            schema: { $ref: "#/components/schemas/TaskPatchRequest" }
       responses:
         "200":
-          description: OK
+          description: OK — 更新後のタスク全体を返す
+          headers:
+            ETag:
+              description: "更新後バージョンタグ (W/\"<version>\")。次回 PATCH 時の If-Match に使用"
+              schema: { type: string }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Task" }
+              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
@@ -532,6 +557,7 @@ paths:
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
             なお**更新権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
     delete:
       tags: [Task]
       summary: タスク論理削除(所有者のみ)
@@ -890,6 +916,14 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    PreconditionFailed:
+      description: |-
+        楽観ロック競合: `If-Match` ヘッダのバージョンが現在のリソースバージョンと不一致(ADR-0012)。
+        リソースを再取得して新しい ETag で If-Match を更新してから再試行してください。
+        ErrorCode: `E_PRECONDITION_FAILED`
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
     # --- 共通 ---
@@ -1152,16 +1186,15 @@ components:
           items: { type: integer, format: int64 }
           description: "visibility=STAKEHOLDERS のとき指定可能"
 
-    TaskUpdateRequest:
+    TaskPatchRequest:
       description: |
-        タスク更新リクエスト(**所有者のみ**実行可能。Tenant Admin の特別権限なし、ADR-0005)。
-        本リクエストでは visibility および関係者リストは変更できない。
-        - 公開範囲(visibility)変更: PATCH /api/tasks/{id}/visibility を使用(所有者のみ)
-        - 関係者の追加/削除: POST/DELETE /api/tasks/{id}/stakeholders/... を使用(所有者・担当者)
-        - ステータス変更: PATCH /api/tasks/{id}/status を使用(所有者・担当者)
-
+        タスク部分更新リクエスト(**所有者のみ**実行可能。Tenant Admin の特別権限なし、ADR-0005)。
+        `JsonNullable<T>` セマンティクス(ADR-0014): 省略フィールドは変更なし、明示 `null` はフィールドをクリア。
+        - `description`: `null` 指定でクリア可
+        - `assigneeId`: `null` 指定で担当者クリア可
+        - `title` / `dueDate` / `priority`: 省略 = 変更なし、値指定 = 更新(null 不可)
+        本リクエストでは visibility・ステータス・関係者は変更できない(各専用 API を使用)。
         全フィールドが任意だが、少なくとも 1 つのフィールド指定が必須(minProperties: 1)。
-        空のリクエストボディはバリデーションエラー(400)で拒否する。
       type: object
       minProperties: 1
       properties:
