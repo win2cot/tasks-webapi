@@ -19,6 +19,7 @@ public record TaskResponse(
     Visibility visibility,
     @Nullable Long assigneeId,
     LocalDate dueDate,
+    @Nullable OffsetDateTime completedAt,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt) {
 
@@ -35,6 +36,7 @@ public record TaskResponse(
         task.getVisibility(),
         task.getAssigneeId(),
         task.getDueDate(),
+        task.getCompletedAt() != null ? task.getCompletedAt().atZone(JST).toOffsetDateTime() : null,
         task.getCreatedAt().atZone(JST).toOffsetDateTime(),
         task.getUpdatedAt().atZone(JST).toOffsetDateTime());
   }

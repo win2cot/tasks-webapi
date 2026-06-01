@@ -13,6 +13,7 @@ import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotViewableException;
+import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
 
 @RestControllerAdvice(assignableTypes = TaskController.class)
 public class TaskExceptionHandler {
@@ -28,6 +29,18 @@ public class TaskExceptionHandler {
         HttpStatus.NOT_FOUND.getReasonPhrase(),
         ErrorCode.E_NOT_FOUND,
         Objects.requireNonNullElse(ex.getMessage(), "リソースが見つかりません"),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(TaskOwnershipException.class)
+  @ResponseStatus(HttpStatus.FORBIDDEN)
+  public ErrorResponse handleForbidden(DomainException ex, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        HttpStatus.FORBIDDEN.value(),
+        HttpStatus.FORBIDDEN.getReasonPhrase(),
+        ErrorCode.E_FORBIDDEN,
+        Objects.requireNonNullElse(ex.getMessage(), "操作権限がありません"),
         request.getRequestURI());
   }
 }

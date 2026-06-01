@@ -17,6 +17,17 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
     return jpaRepository.findById(id).map(this::toDomain);
   }
 
+  @Override
+  public Task save(Task task) {
+    TaskJpaEntity entity =
+        jpaRepository
+            .findById(task.getId())
+            .orElseThrow(
+                () -> new IllegalStateException("Task not found for save: " + task.getId()));
+    entity.updateStatus(task.getStatus(), task.getCompletedAt());
+    return toDomain(jpaRepository.save(entity));
+  }
+
   private Task toDomain(TaskJpaEntity entity) {
     return new Task(
         entity.getId(),

@@ -8,15 +8,17 @@ import org.junit.jupiter.api.Test;
 
 class TaskTest {
 
-  private Task buildTask(Visibility visibility) {
+  private static final LocalDateTime NOW = LocalDateTime.of(2026, 6, 1, 10, 0, 0);
+
+  private Task buildTask(TaskStatus status) {
     return new Task(
         1L,
         10L,
         "title",
         null,
-        TaskStatus.NOT_STARTED,
+        status,
         Priority.MEDIUM,
-        visibility,
+        Visibility.TENANT,
         100L,
         null,
         LocalDate.of(2026, 12, 31),
@@ -28,7 +30,7 @@ class TaskTest {
 
   @Test
   void changeVisibility_updatesVisibility() {
-    Task task = buildTask(Visibility.TENANT);
+    Task task = buildTask(TaskStatus.NOT_STARTED);
 
     task.changeVisibility(Visibility.PRIVATE);
 
@@ -37,11 +39,81 @@ class TaskTest {
 
   @Test
   void changeVisibility_canBeCalledMultipleTimes() {
-    Task task = buildTask(Visibility.TENANT);
+    Task task = buildTask(TaskStatus.NOT_STARTED);
 
     task.changeVisibility(Visibility.STAKEHOLDERS);
     task.changeVisibility(Visibility.PRIVATE);
 
     assertThat(task.getVisibility()).isEqualTo(Visibility.PRIVATE);
+  }
+
+  @Test
+  void changeStatus_toDone_setsCompletedAt() {
+    Task task = buildTask(TaskStatus.IN_PROGRESS);
+
+    task.changeStatus(TaskStatus.DONE, NOW);
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
+    assertThat(task.getCompletedAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  void changeStatus_fromDoneToNotDone_clearsCompletedAt() {
+    Task task =
+        new Task(
+            1L,
+            10L,
+            "title",
+            null,
+            TaskStatus.DONE,
+            Priority.MEDIUM,
+            Visibility.TENANT,
+            100L,
+            null,
+            LocalDate.of(2026, 12, 31),
+            NOW,
+            null,
+            LocalDateTime.of(2026, 1, 1, 0, 0),
+            LocalDateTime.of(2026, 1, 1, 0, 0));
+
+    task.changeStatus(TaskStatus.IN_PROGRESS, NOW.plusHours(1));
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    assertThat(task.getCompletedAt()).isNull();
+  }
+
+  @Test
+  void changeStatus_doneToDone_preservesCompletedAt() {
+    Task task =
+        new Task(
+            1L,
+            10L,
+            "title",
+            null,
+            TaskStatus.DONE,
+            Priority.MEDIUM,
+            Visibility.TENANT,
+            100L,
+            null,
+            LocalDate.of(2026, 12, 31),
+            NOW,
+            null,
+            LocalDateTime.of(2026, 1, 1, 0, 0),
+            LocalDateTime.of(2026, 1, 1, 0, 0));
+
+    task.changeStatus(TaskStatus.DONE, NOW.plusHours(2));
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.DONE);
+    assertThat(task.getCompletedAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  void changeStatus_notStartedToNotStarted_completedAtRemainsNull() {
+    Task task = buildTask(TaskStatus.NOT_STARTED);
+
+    task.changeStatus(TaskStatus.ON_HOLD, NOW);
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.ON_HOLD);
+    assertThat(task.getCompletedAt()).isNull();
   }
 }
