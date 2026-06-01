@@ -5,6 +5,22 @@
 - **Deciders**: win2cot
 - **Tags**: api, persistence, concurrency
 
+## 目次
+
+- [1. コンテキスト(Context)](#1-コンテキストcontext)
+- [2. 検討した選択肢(Options Considered)](#2-検討した選択肢options-considered)
+  - [選択肢 A: tasks.version + JPA @Version + ETag / If-Match + 412](#選択肢-a-tasksversion--jpa-version--etag--if-match--412)
+  - [選択肢 B: updated_at を ETag 源にする](#選択肢-b-updated_at-を-etag-源にする)
+  - [選択肢 C: 適用しない(後勝ち上書き受容)](#選択肢-c-適用しない後勝ち上書き受容)
+- [3. 決定(Decision)](#3-決定decision)
+- [4. 理由(Rationale)](#4-理由rationale)
+- [5. 影響(Consequences)](#5-影響consequences)
+  - [良い影響(Positive)](#良い影響positive)
+  - [悪い影響・制約(Negative)](#悪い影響制約negative)
+  - [既存ドキュメント・規約への波及](#既存ドキュメント規約への波及)
+- [6. 実装メモ(Implementation Notes)](#6-実装メモimplementation-notes)
+- [7. 参考リンク(References)](#7-参考リンクreferences)
+
 ## 1. コンテキスト(Context)
 
 Issue #329 で PATCH /api/tasks/{id} 化が確定し、ダッシュボードの行内編集 6 項目(ステータス / 期限 / 担当者 / 優先度 / タイトル / 説明)を任意組み合わせで部分更新できるようになった。マルチテナント SaaS で複数ユーザーが同じタスクを同時に触ることが現実的な MVP 利用形態であり、別項目を同時に編集した場合の後勝ち上書きを防ぐ手段を ADR として確定する必要がある。
@@ -42,6 +58,7 @@ Issue #150 派生 5(Sprint 0 UX 原則)で `tasks.completed_at` 追加の Flyway
   - サーバ時計の skew で予期せぬ 412 が起きうる
   - `updated_at` は監査・表示用と楽観ロック用で責務が混在する
   - JPA `@Version` のような言語側サポートが弱く、リポジトリ層に手動チェックが必要
+- リスク・未知数: なし
 
 ### 選択肢 C: 適用しない(後勝ち上書き受容)
 
@@ -50,6 +67,7 @@ Issue #150 派生 5(Sprint 0 UX 原則)で `tasks.completed_at` 追加の Flyway
 - 欠点:
   - マルチテナント SaaS で行内編集 6 項目の同時編集を前提にすると、MVP 後に同時編集ロストが顕在化しやすい
   - 監査ログ ADR(別 ADR、未起票)との整合がとれず、後発で乗せ替えコストが高い
+- リスク・未知数: なし
 
 ## 3. 決定(Decision)
 
@@ -57,7 +75,8 @@ Issue #150 派生 5(Sprint 0 UX 原則)で `tasks.completed_at` 追加の Flyway
 
 - write 系 endpoint(PATCH / DELETE)で `If-Match` ヘッダを必須化する
 - POST(新規作成)は対象 resource 不在のため `If-Match` 不要
-- GET 系(単件 / 一覧の各要素)レスポンスで `ETag: W/"<version>"` を返却する
+- **単件 GET**: `ETag: W/"<version>"` レスポンスヘッダで返却する
+- **一覧 GET の各要素**: HTTP ヘッダに複数リソースの ETag を個別設定できないため、レスポンスボディの各タスクオブジェクトに `"version"` フィールドを含める形で返却する(クライアントはこの値を使い PATCH / DELETE 時に `If-Match: W/"<version>"` を組み立てる)
 - 不一致は 412 Precondition Failed + ErrorResponse(`E_PRECONDITION_FAILED`)
 - `tasks.version BIGINT NOT NULL DEFAULT 0` を Flyway migration で追加し、Issue #150 派生 5 の `tasks.completed_at` 追加と同 migration に相乗りさせる
 
@@ -88,7 +107,7 @@ Issue #150 派生 5(Sprint 0 UX 原則)で `tasks.completed_at` 追加の Flyway
 - `docs/specs/設計規約.md`: 楽観ロック方式 + write 系 endpoint で `If-Match` 必須の方針を追記
 - `docs/specs/コーディング規約.md`: JPA Entity への `@Version` 付与方針 + UseCase 層からの ETag ヘッダ返却方針を追記
 - `docs/specs/基本設計書.md`: `tasks` テーブル定義に `version BIGINT NOT NULL DEFAULT 0` を追加
-- `docs/specs/openapi.yaml`(v1.5.x): GET レスポンスヘッダに `ETag`、PATCH / DELETE に `If-Match` parameter + 412 response 追加
+- `api/openapi.yaml`(v1.5.x): GET レスポンスヘッダに `ETag`、PATCH / DELETE に `If-Match` parameter + 412 response 追加; 一覧レスポンスのタスクオブジェクトに `version` フィールド追加
 - ADR-0011: ErrorCode enum に `E_PRECONDITION_FAILED` を追加(派生 PR)
 
 ## 6. 実装メモ(Implementation Notes)
@@ -101,7 +120,7 @@ Issue #150 派生 5(Sprint 0 UX 原則)で `tasks.completed_at` 追加の Flyway
 4. 設計規約 / コーディング規約 / 基本設計書 の追記 PR(上記 3 件と同 sprint で消化)
 
 検証:
-- 統合 IT(UpdateTaskIT): If-Match なし → 400、If-Match 古い version → 412、If-Match 一致 → 200 + 新 ETag
+- 統合 IT(UpdateTaskIT): If-Match なし → 400(`E_VALIDATION`、ADR-0011 既存 ErrorCode)、If-Match 古い version → 412(`E_PRECONDITION_FAILED`)、If-Match 一致 → 200 + 新 ETag
 - 同時実行 IT: 2 リクエスト並走時の片方が 412 を受けることを確認
 
 ## 7. 参考リンク(References)
