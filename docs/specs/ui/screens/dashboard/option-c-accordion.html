@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>S-03 ダッシュボード — 案C アコーディオン折り畳み</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bs-body-font-family:"Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --app-bg:#f4f5f7;
+    --app-surface:#ffffff;
+    --app-border:#e5e7eb;
+    --app-ink:#1f2733;
+    --app-muted:#6b7280;
+    --app-primary:#3b5bdb;
+    --c-overdue:#e03131;
+    --c-today:#e8830c;
+    --c-soon:#1c7ed6;
+    --c-done:#2f9e44;
+    --bs-body-bg:var(--app-bg);
+    --bs-body-color:var(--app-ink);
+  }
+  body{font-family:var(--bs-body-font-family);font-size:14px;}
+  .text-muted-2{color:var(--app-muted)!important;}
+
+  /* ---- App shell ---- */
+  .app-navbar{
+    background:var(--app-surface);
+    border-bottom:1px solid var(--app-border);
+    height:56px;
+  }
+  .app-brand{font-weight:700;letter-spacing:.02em;color:var(--app-ink);}
+  .app-brand .bi{color:var(--app-primary);}
+  .tenant-chip{
+    font-size:12px;background:#eef2ff;color:#3b4cca;border:1px solid #dbe1ff;
+    padding:3px 10px;border-radius:999px;font-weight:500;
+  }
+  .app-layout{display:flex;min-height:calc(100vh - 56px);}
+  .app-sidebar{
+    width:236px;flex:0 0 236px;background:var(--app-surface);
+    border-right:1px solid var(--app-border);padding:16px 12px;
+  }
+  .app-main{flex:1 1 auto;min-width:0;padding:22px 26px 60px;}
+  .nav-group-label{
+    font-size:11px;font-weight:700;letter-spacing:.08em;color:#9aa1ad;
+    text-transform:uppercase;padding:0 12px;margin:14px 0 6px;
+  }
+  .side-link{
+    display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+    color:#3f4855;text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;
+  }
+  .side-link .bi{font-size:16px;color:#7a828f;}
+  .side-link:hover{background:#f2f4f7;}
+  .side-link.active{background:#eef2ff;color:var(--app-primary);}
+  .side-link.active .bi{color:var(--app-primary);}
+  .side-link .badge{margin-left:auto;}
+  .admin-only{display:none;}
+  body.role-admin .admin-only{display:block;}
+
+  /* ---- Page header ---- */
+  .page-title{font-weight:700;font-size:20px;margin:0;}
+  .page-date{color:var(--app-muted);font-size:13px;}
+
+  /* ---- Stat cards ---- */
+  .stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 1.3fr 1.3fr;gap:14px;}
+  @media(max-width:1200px){.stat-grid{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:620px){.stat-grid{grid-template-columns:1fr;} }
+  .stat-card{
+    background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;
+    padding:16px 18px;position:relative;overflow:hidden;
+  }
+  .stat-card .stat-label{font-size:12px;color:var(--app-muted);font-weight:500;display:flex;align-items:center;gap:6px;}
+  .stat-card .stat-num{font-size:34px;font-weight:700;line-height:1.1;margin-top:6px;}
+  .stat-card .stat-sub{font-size:11.5px;color:var(--app-muted);margin-top:2px;}
+  .stat-card.is-overdue{border-left:4px solid var(--c-overdue);}
+  .stat-card.is-overdue .stat-num{color:var(--c-overdue);}
+  .stat-card.is-today{border-left:4px solid var(--c-today);}
+  .stat-card.is-today .stat-num{color:var(--c-today);}
+  .stat-card.is-done{border-left:4px solid var(--c-done);}
+  .stat-card.is-done .stat-num{color:var(--c-done);}
+
+  .donut{
+    width:84px;height:84px;border-radius:50%;flex:0 0 84px;
+    background:conic-gradient(var(--c-done) 0 120deg,var(--c-soon) 120deg 216deg,#d7dbe0 216deg 360deg);
+    position:relative;
+  }
+  .donut::after{content:"";position:absolute;inset:14px;background:var(--app-surface);border-radius:50%;}
+  .donut-total{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;}
+  .donut-total b{font-size:18px;line-height:1;}
+  .donut-total span{font-size:9px;color:var(--app-muted);}
+  .legend-dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;}
+  .pbar{height:9px;border-radius:5px;background:#eceef1;overflow:hidden;}
+  .pbar > i{display:block;height:100%;border-radius:5px;}
+
+  /* ---- Section ---- */
+  .task-section{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;margin-top:16px;overflow:hidden;}
+  .section-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--app-border);}
+  .section-head .sec-icon{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:14px;}
+  .section-head h2{font-size:15px;font-weight:700;margin:0;}
+  .section-head .sec-count{font-size:12px;color:var(--app-muted);font-weight:500;}
+  .section-head .sec-rule{font-size:11px;color:#9aa1ad;margin-left:auto;font-weight:400;}
+  .sec-overdue .sec-icon{background:var(--c-overdue);}
+  .sec-today .sec-icon{background:var(--c-today);}
+  .sec-soon .sec-icon{background:var(--c-soon);}
+  .sec-done .sec-icon{background:var(--c-done);}
+
+  /* ---- Task table ---- */
+  table.tasks{width:100%;margin:0;border-collapse:collapse;}
+  table.tasks th{
+    font-size:11px;font-weight:600;color:#9aa1ad;text-transform:uppercase;letter-spacing:.04em;
+    padding:8px 14px;border-bottom:1px solid var(--app-border);text-align:left;background:#fafbfc;
+  }
+  table.tasks td{padding:10px 14px;border-bottom:1px solid #f1f2f4;vertical-align:middle;}
+  table.tasks tr:last-child td{border-bottom:none;}
+  table.tasks tbody tr{cursor:pointer;}
+  table.tasks tbody tr:hover{background:#f8f9fb;}
+  .row-overdue{border-left:3px solid var(--c-overdue);}
+  .row-today{border-left:3px solid var(--c-today);}
+  .col-due{white-space:nowrap;}
+  .col-status{width:118px;}
+  .col-assignee{width:120px;}
+  .col-priority{width:78px;}
+  .col-vis{width:112px;}
+
+  .task-title{font-weight:500;color:var(--app-ink);}
+  .task-desc{font-size:11.5px;color:var(--app-muted);margin-top:1px;}
+  .done-row .task-title{text-decoration:line-through;color:var(--app-muted);}
+
+  /* ---- inline edit ---- */
+  .editable{border-bottom:1px dashed #b6bcc6;cursor:text;padding-bottom:1px;}
+  .editable:hover{background:#eef2ff;border-bottom-color:var(--app-primary);}
+  .edit-status{cursor:pointer;}
+  .cell-locked{color:#aab0ba!important;cursor:not-allowed;}
+  .cell-locked .badge{opacity:.55;}
+  .lock-i{font-size:10px;margin-left:3px;color:#c2c7d0;}
+  .inline-input{font:inherit;border:1px solid var(--app-primary);border-radius:5px;padding:2px 6px;width:100%;max-width:220px;}
+
+  /* ---- badges ---- */
+  .badge-due{font-weight:600;}
+  .vis-badge{font-size:11px;font-weight:500;padding:4px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;}
+  .vis-TENANT{background:#e7f5ec;color:#207a3a;border-color:#c3e6cf;}
+  .vis-STAKEHOLDERS{background:#e7f0fb;color:#1f5fb0;border-color:#c2d8f2;}
+  .vis-PRIVATE{background:#f3eef7;color:#7a4ba8;border-color:#e0d2ee;}
+  .pri-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;}
+  .pri-HIGH{background:#fdeaea;color:#c92a2a;}
+  .pri-MEDIUM{background:#fff3e2;color:#b8650b;}
+  .pri-LOW{background:#eef1f6;color:#566173;}
+  .st-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;}
+  .st-NOT_STARTED{background:#eef1f6;color:#566173;}
+  .st-IN_PROGRESS{background:#e7f0fb;color:#1f5fb0;}
+  .st-DONE{background:#e7f5ec;color:#207a3a;}
+  .st-ON_HOLD{background:#fff3e2;color:#b8650b;}
+
+  /* ---- drawer ---- */
+  .offcanvas-end{width:440px;}
+  .drawer-section-label{font-size:11px;font-weight:700;color:#9aa1ad;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 7px;}
+  .field-readonly{background:#f6f7f9;border-radius:7px;padding:9px 12px;font-size:13.5px;border:1px solid var(--app-border);}
+  .lock-note{font-size:11px;color:#a0a6b0;display:flex;align-items:center;gap:5px;margin-top:4px;}
+
+  /* ---- accordion layout (Option C) ---- */
+  .acc-wrap .accordion-item{border:1px solid var(--app-border);border-radius:12px!important;margin-top:14px;overflow:hidden;background:var(--app-surface);}
+  .acc-wrap .accordion-button{padding:13px 18px;font-weight:700;font-size:15px;color:var(--app-ink);background:var(--app-surface);box-shadow:none;}
+  .acc-wrap .accordion-button:not(.collapsed){background:#fafbfc;color:var(--app-ink);}
+  .acc-wrap .accordion-button:focus{box-shadow:none;border-color:var(--app-border);}
+  .acc-wrap .accordion-body{padding:0;}
+  .acc-wrap .sec-icon{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:14px;flex:0 0 26px;}
+  .acc-count{font-size:12px;color:var(--app-muted);font-weight:500;margin-left:8px;}
+  .acc-rule{font-size:11px;color:#9aa1ad;font-weight:400;margin-left:auto;margin-right:12px;}
+  @media(max-width:720px){.acc-rule{display:none;}}
+
+  /* ---- design notes ---- */
+  .design-notes{margin-top:30px;border:1px dashed #c9ccd3;border-radius:12px;background:#fcfcfd;padding:18px 22px;}
+  .design-notes h3{font-size:13px;font-weight:700;letter-spacing:.04em;color:#5a6270;margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+  .design-notes dl{display:grid;grid-template-columns:96px 1fr;gap:6px 14px;margin:0;font-size:12.5px;}
+  .design-notes dt{font-weight:700;color:#404856;}
+  .design-notes dd{margin:0;color:#5a6270;}
+  .role-note{font-size:11.5px;color:var(--app-muted);background:#fbfbfc;border:1px solid var(--app-border);border-radius:8px;padding:8px 12px;}
+</style>
+</head>
+<body class="role-member">
+
+<!-- ===== Top navbar ===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top">
+  <div class="app-brand d-flex align-items-center gap-2">
+    <i class="bi bi-check2-square fs-5"></i><span>tasks-webapi</span>
+  </div>
+  <span class="tenant-chip"><i class="bi bi-building me-1"></i>テナントA株式会社</span>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <label for="roleSel" class="text-muted-2 small mb-0 d-none d-md-inline">ロール</label>
+      <select id="roleSel" class="form-select form-select-sm" style="width:148px;" onchange="switchRole(this.value)">
+        <option value="member">Member</option>
+        <option value="admin">Tenant Admin</option>
+      </select>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle bg-primary-subtle text-primary d-grid" style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;">山</div>
+      <span class="small d-none d-lg-inline">山田 太郎</span>
+    </div>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar ===== -->
+  <aside class="app-sidebar d-none d-lg-block">
+    <div class="nav-group-label">メイン</div>
+    <a class="side-link active" href="#"><i class="bi bi-speedometer2"></i>ダッシュボード</a>
+    <a class="side-link" href="#"><i class="bi bi-list-check"></i>タスク一覧 <span class="badge text-bg-light text-muted-2">S-04</span></a>
+
+    <div class="admin-only">
+      <div class="nav-group-label">テナント運営</div>
+      <a class="side-link" href="#"><i class="bi bi-graph-up-arrow"></i>運営者ダッシュボード <span class="badge text-bg-light text-muted-2">S-15</span></a>
+      <a class="side-link" href="#"><i class="bi bi-people"></i>ユーザー管理 <span class="badge text-bg-light text-muted-2">S-08</span></a>
+    </div>
+
+    <div class="nav-group-label">アカウント</div>
+    <a class="side-link" href="#"><i class="bi bi-person-circle"></i>プロフィール</a>
+    <a class="side-link" href="#"><i class="bi bi-bell"></i>通知設定</a>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="app-main">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <div>
+        <h1 class="page-title">マイダッシュボード</h1>
+        <div class="page-date"><i class="bi bi-calendar3 me-1"></i>2026年6月1日(月)・山田 太郎 さんの当日対応 + 振り返り</div>
+      </div>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-html="true" data-bs-trigger="focus" title="凡例" data-bs-content="
+          <div class='small'>
+          <div class='mb-1'><span class='vis-badge vis-TENANT'><i class='bi bi-globe2'></i>テナント</span> 全員参照可</div>
+          <div class='mb-1'><span class='vis-badge vis-STAKEHOLDERS'><i class='bi bi-people-fill'></i>関係者</span> 所有者∪担当者∪関係者</div>
+          <div><span class='vis-badge vis-PRIVATE'><i class='bi bi-lock-fill'></i>非公開</span> 所有者∪担当者のみ</div>
+          </div>">
+          <i class="bi bi-info-circle me-1"></i>公開範囲の凡例
+        </button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="offcanvas" data-bs-target="#newTaskDrawer">
+          <i class="bi bi-plus-lg me-1"></i>新規
+        </button>
+      </div>
+    </div>
+
+    <div class="role-note mb-3 admin-only">
+      <i class="bi bi-shield-lock me-1"></i>Tenant Admin に切り替えてもサイドナビの運営メニューが増えるだけで、<b>業務タスクの操作権限は変わりません</b>(ADR-0005:所有者 / 担当者 / 関係者の3役割で評価。Tenant Admin に特権なし)。
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+      <div class="stat-card is-today">
+        <div class="stat-label"><i class="bi bi-calendar-check"></i>当日の期限</div>
+        <div class="stat-num">4</div>
+        <div class="stat-sub">本日 6/1 が期限のタスク</div>
+      </div>
+      <div class="stat-card is-overdue">
+        <div class="stat-label"><i class="bi bi-exclamation-triangle"></i>期限超過(未完了)</div>
+        <div class="stat-num">3</div>
+        <div class="stat-sub">対応が必要です</div>
+      </div>
+      <div class="stat-card is-done">
+        <div class="stat-label"><i class="bi bi-check2-circle"></i>本日完了</div>
+        <div class="stat-num">3</div>
+        <div class="stat-sub">completed_at = 今日</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-pie-chart"></i>自分の進捗</div>
+        <div class="d-flex align-items-center gap-3 mt-2">
+          <div class="donut"><div class="donut-total"><b>15</b><span>件</span></div></div>
+          <div class="small">
+            <div class="mb-1"><span class="legend-dot" style="background:var(--c-done)"></span>完了 <b>5</b></div>
+            <div class="mb-1"><span class="legend-dot" style="background:var(--c-soon)"></span>進行中 <b>4</b></div>
+            <div><span class="legend-dot" style="background:#d7dbe0"></span>未着手 <b>6</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-bar-chart"></i>優先度別の件数</div>
+        <div class="mt-2 small">
+          <div class="d-flex align-items-center gap-2 mb-2"><span style="width:24px;" class="pri-badge pri-HIGH text-center">高</span><div class="pbar flex-grow-1"><i style="width:71%;background:var(--c-overdue);"></i></div><b style="width:16px;text-align:right;">5</b></div>
+          <div class="d-flex align-items-center gap-2 mb-2"><span style="width:24px;" class="pri-badge pri-MEDIUM text-center">中</span><div class="pbar flex-grow-1"><i style="width:100%;background:var(--c-today);"></i></div><b style="width:16px;text-align:right;">7</b></div>
+          <div class="d-flex align-items-center gap-2"><span style="width:24px;" class="pri-badge pri-LOW text-center">低</span><div class="pbar flex-grow-1"><i style="width:43%;background:#8d99ae;"></i></div><b style="width:16px;text-align:right;">3</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections render here -->
+    <div id="dashboardSections"></div>
+
+    <!-- Design judgment notes -->
+    <div class="design-notes">
+      <h3><i class="bi bi-clipboard-data"></i>設計判断ポイント — 案C アコーディオン折り畳み(Accordion)</h3>
+      <dl>
+        <dt>強み</dt><dd>4セクションを折り畳み可能にし、デフォルトは(1)期限超過・(2)今日やることのみ展開。視線が「今日処理すべきこと」に集中し認知負荷が最も低い。ヘッダの件数バッジで畳んだまま全体量は把握できる。</dd>
+        <dt>弱み</dt><dd>(3)これから・(4)振り返りが初期状態で隠れるため、先の予定や達成感を見るには1クリック必要。開閉状態を記憶しないと毎回たたむ手間が出る(要設定保持)。</dd>
+        <dt>想定読者</dt><dd>タスク件数が多く一覧が長くなりがちなチームや、まず緊急分だけに集中したい利用者。情報量の出し入れを自分で制御したいユーザー。</dd>
+      </dl>
+    </div>
+  </main>
+</div>
+
+<!-- ===== New task drawer ===== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="newTaskDrawer" aria-labelledby="newTaskLabel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="newTaskLabel"><i class="bi bi-plus-circle me-2 text-primary"></i>新規タスク</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="text-muted-2 small mb-3"><i class="bi bi-link-45deg"></i> URL は <code>/tasks/new</code> に同期(S-06)</div>
+    <form onsubmit="return false">
+      <div class="mb-3">
+        <label class="form-label small fw-bold">タイトル <span class="text-danger">*</span></label>
+        <input class="form-control" maxlength="100" placeholder="例: 設計レビュー" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">説明</label>
+        <textarea class="form-control" rows="3" maxlength="2000" placeholder="任意・最大2000文字"></textarea>
+      </div>
+      <div class="row g-3">
+        <div class="col-6">
+          <label class="form-label small fw-bold">期限日 <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" value="2026-06-01" />
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-bold">担当者</label>
+          <select class="form-select"><option>未割当</option><option>山田 太郎</option><option>田中</option><option>鈴木</option></select>
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label small fw-bold">優先度 <span class="text-danger">*</span></label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="np" id="np-h"><label class="btn btn-outline-danger" for="np-h">高</label>
+          <input type="radio" class="btn-check" name="np" id="np-m" checked><label class="btn btn-outline-warning" for="np-m">中</label>
+          <input type="radio" class="btn-check" name="np" id="np-l"><label class="btn btn-outline-secondary" for="np-l">低</label>
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label small fw-bold">公開範囲 <span class="text-danger">*</span></label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="nv" id="nv-t" checked><label class="btn btn-outline-success" for="nv-t"><i class="bi bi-globe2"></i> テナント</label>
+          <input type="radio" class="btn-check" name="nv" id="nv-s"><label class="btn btn-outline-primary" for="nv-s"><i class="bi bi-people-fill"></i> 関係者</label>
+          <input type="radio" class="btn-check" name="nv" id="nv-p"><label class="btn btn-outline-secondary" for="nv-p"><i class="bi bi-lock-fill"></i> 非公開</label>
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label small fw-bold">関係者 <span class="text-muted-2 fw-normal">(公開範囲に依らず指名可)</span></label>
+        <select class="form-select" multiple size="3"><option>田中</option><option>鈴木</option><option>佐藤</option></select>
+      </div>
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary flex-grow-1" data-bs-dismiss="offcanvas">作成</button>
+        <button class="btn btn-light" data-bs-dismiss="offcanvas">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Detail drawer ===== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer" aria-labelledby="detailLabel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="detailLabel">タスク詳細</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+  </div>
+  <div class="offcanvas-body" id="detailBody"><!-- filled by JS --></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+/* ===================== Shared data + ADR-0005 authorization ===================== */
+const CURRENT_USER = { id: 1, name: "山田 太郎" };
+const TODAY = "2026-06-01";
+
+// ownerId / assigneeId drive ADR-0005 three-role evaluation.
+const TASKS = [
+  // (1) 期限超過
+  { id:101, sec:"overdue", title:"API 仕様レビュー", desc:"OpenAPI v1.4.5 の 403/404 description を 3 役割ルールに突き合わせ", status:"IN_PROGRESS", priority:"HIGH", vis:"TENANT", ownerId:1, ownerName:"山田 太郎", assigneeId:2, assigneeName:"田中", due:"2026-05-28" },
+  { id:102, sec:"overdue", title:"デザインシステム素案", desc:"行内編集セル / ポップオーバー / ドロワーの共通基盤(#154)", status:"NOT_STARTED", priority:"MEDIUM", vis:"STAKEHOLDERS", ownerId:3, ownerName:"鈴木", assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-30" },
+  { id:103, sec:"overdue", title:"テナント招待メール文面", desc:"セルフサインアップ(モデルB)の招待メール本文", status:"IN_PROGRESS", priority:"HIGH", vis:"PRIVATE", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-31" },
+  // (2) 今日やること
+  { id:201, sec:"today", title:"Issue #152 ダッシュボード案作成", desc:"S-03 の方向性検証モックを 2〜3 案", status:"NOT_STARTED", priority:"HIGH", vis:"STAKEHOLDERS", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-01" },
+  { id:202, sec:"today", title:"Sprint 1 計画会議準備", desc:"バックログ整理とベロシティ確認", status:"IN_PROGRESS", priority:"HIGH", vis:"TENANT", ownerId:1, ownerName:"山田 太郎", assigneeId:2, assigneeName:"田中", due:"2026-06-01" },
+  { id:203, sec:"today", title:"標準コード規約レビュー", desc:"コーディング規約 v1.1 のレビュー反映", status:"NOT_STARTED", priority:"MEDIUM", vis:"TENANT", ownerId:1, ownerName:"山田 太郎", assigneeId:3, assigneeName:"鈴木", due:"2026-06-01" },
+  { id:204, sec:"today", title:"週次レポート提出", desc:"今週の進捗サマリ", status:"NOT_STARTED", priority:"LOW", vis:"PRIVATE", ownerId:2, ownerName:"田中", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-01" },
+  // (3) これから
+  { id:301, sec:"soon", title:"ER 図最終確認", desc:"tasks.completed_at 追加後の ER 図整合", status:"NOT_STARTED", priority:"MEDIUM", vis:"TENANT", ownerId:3, ownerName:"鈴木", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-02" },
+  { id:302, sec:"soon", title:"OpenAPI 整合性 check", desc:"画面項目 ↔ A-XX スキーマ突き合わせ(#153)", status:"NOT_STARTED", priority:"HIGH", vis:"TENANT", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-02" },
+  { id:303, sec:"soon", title:"Keycloak realm 設定", desc:"APP_ADMIN / TENANT_ADMIN ロールマッピング", status:"NOT_STARTED", priority:"MEDIUM", vis:"STAKEHOLDERS", ownerId:1, ownerName:"山田 太郎", assigneeId:3, assigneeName:"鈴木", due:"2026-06-03" },
+  { id:304, sec:"soon", title:"S-15 ダッシュボード設計", desc:"テナント運営者向け集計(PRIVATE 除外)", status:"NOT_STARTED", priority:"MEDIUM", vis:"TENANT", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-03" },
+  // (4) 今日やったこと
+  { id:401, sec:"done", title:"ADR-0012 内容確認", desc:"エラーレスポンス record 採用 ADR", status:"DONE", priority:"MEDIUM", vis:"PRIVATE", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-30", completedAt:"14:45" },
+  { id:402, sec:"done", title:"PR #346 レビュー対応", desc:"指摘 3 件を反映", status:"DONE", priority:"HIGH", vis:"TENANT", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-31", completedAt:"11:30" },
+  { id:403, sec:"done", title:"Issue #146 起票", desc:"completed_at カラム新設の派生 Issue", status:"DONE", priority:"LOW", vis:"STAKEHOLDERS", ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-29", completedAt:"09:15" },
+];
+
+const SECTIONS = {
+  overdue:{ key:"overdue", cls:"sec-overdue", row:"row-overdue", icon:"bi-exclamation-triangle-fill", title:"期限超過", rule:"期限 < 今日 AND 未完了 ・ 期限ASC→優先度DESC" },
+  today:  { key:"today",   cls:"sec-today",   row:"row-today",   icon:"bi-sun-fill",                 title:"今日やること", rule:"期限 = 今日 AND 未完了 ・ 優先度DESC→作成日ASC" },
+  soon:   { key:"soon",    cls:"sec-soon",    row:"",            icon:"bi-calendar3-event",          title:"これから(明日・明後日)", rule:"今日 < 期限 ≤ 今日+3日 AND 未完了 ・ 期限ASC" },
+  done:   { key:"done",    cls:"sec-done",    row:"done-row",    icon:"bi-check2-circle",            title:"今日やったこと(振り返り)", rule:"完了 AND completed_at = 今日 ・ completed_at DESC" },
+};
+
+/* ----- meta helpers ----- */
+function statusMeta(s){return {NOT_STARTED:["未着手","st-NOT_STARTED"],IN_PROGRESS:["進行中","st-IN_PROGRESS"],DONE:["完了","st-DONE"],ON_HOLD:["保留","st-ON_HOLD"]}[s];}
+function priMeta(p){return {HIGH:["高","pri-HIGH"],MEDIUM:["中","pri-MEDIUM"],LOW:["低","pri-LOW"]}[p];}
+function visMeta(v){return {TENANT:["テナント","vis-TENANT","bi-globe2"],STAKEHOLDERS:["関係者","vis-STAKEHOLDERS","bi-people-fill"],PRIVATE:["非公開","vis-PRIVATE","bi-lock-fill"]}[v];}
+
+function dueLabel(t){
+  if(t.sec==="done") return {txt:t.completedAt+" 完了", cls:"text-muted-2"};
+  const d=(new Date(t.due)-new Date(TODAY))/86400000;
+  if(d<0) return {txt:`${t.due.slice(5).replace('-','/')}(${d}日)`, cls:"text-danger fw-bold"};
+  if(d===0) return {txt:"今日", cls:"fw-bold", c:"var(--c-today)"};
+  if(d===1) return {txt:"明日 "+t.due.slice(5).replace('-','/'), cls:""};
+  if(d===2) return {txt:"明後日 "+t.due.slice(5).replace('-','/'), cls:""};
+  return {txt:t.due.slice(5).replace('-','/'), cls:""};
+}
+
+/* ----- ADR-0005 three-role authorization ----- */
+function auth(t){
+  const isOwner = t.ownerId===CURRENT_USER.id;
+  const isAssignee = t.assigneeId===CURRENT_USER.id;
+  return {
+    isOwner, isAssignee,
+    role: isOwner ? "所有者" : (isAssignee ? "担当者" : "参照のみ"),
+    canStatus: isOwner||isAssignee,           // ステータス変更
+    canFields: isOwner,                       // 期限/担当者/優先度/タイトル/説明
+    canVisibility: isOwner,                   // ドロワーのみ
+    canStakeholder: isOwner||isAssignee,      // ドロワーのみ
+    canDelete: isOwner,                       // ドロワーのみ
+  };
+}
+
+/* ----- cell renderers ----- */
+function statusCell(t){
+  const [lbl,cls]=statusMeta(t.status); const a=auth(t);
+  if(!a.canStatus){
+    return `<span class="cell-locked" data-bs-toggle="tooltip" title="ステータス変更は所有者・担当者のみ(あなたは参照のみ)">
+      <span class="st-badge ${cls}">${lbl}</span><i class="bi bi-lock-fill lock-i"></i></span>`;
+  }
+  // editable: bootstrap dropdown
+  const opts=["NOT_STARTED","IN_PROGRESS","ON_HOLD","DONE"].map(s=>{const[l,c]=statusMeta(s);return `<li><a class="dropdown-item" href="#" onclick="setStatus(event,${t.id},'${s}')"><span class="st-badge ${c}">${l}</span></a></li>`;}).join("");
+  return `<span class="dropdown edit-status" onclick="event.stopPropagation()">
+    <span class="st-badge ${cls}" data-bs-toggle="dropdown" role="button" style="cursor:pointer;">${lbl}<i class="bi bi-caret-down-fill" style="font-size:8px;"></i></span>
+    <ul class="dropdown-menu">${opts}</ul></span>`;
+}
+function editText(t, field, value){
+  const a=auth(t);
+  if(!a.canFields){
+    return `<span class="cell-locked" data-bs-toggle="tooltip" title="${field}の変更は所有者のみ">${value}<i class="bi bi-lock-fill lock-i"></i></span>`;
+  }
+  return `<span class="editable" onclick="event.stopPropagation();inlineEdit(this,${t.id},'${field}')">${value}</span>`;
+}
+
+function rowHTML(t){
+  const a=auth(t); const sec=SECTIONS[t.sec];
+  const [pl,pc]=priMeta(t.priority); const [vl,vc,vi]=visMeta(t.vis);
+  const dl=dueLabel(t);
+  const titleCell = sec.key==="done"
+    ? `<span class="task-title">${t.title}</span>`
+    : editText(t,"タイトル",`<span class="task-title">${t.title}</span>`);
+  const assigneeCell = sec.key==="done" || !a.canFields
+    ? (a.canFields ? editText(t,"担当者",t.assigneeName) : `<span class="${a.canFields?'':'cell-locked'}" ${a.canFields?'':'data-bs-toggle="tooltip" title="担当者の変更は所有者のみ"'}>${t.assigneeName}${a.canFields?'':'<i class="bi bi-lock-fill lock-i"></i>'}</span>`)
+    : editText(t,"担当者",t.assigneeName);
+  const priCell = sec.key==="done"
+    ? `<span class="pri-badge ${pc}">${pl}</span>`
+    : (a.canFields ? `<span class="editable" onclick="event.stopPropagation();inlineEdit(this,${t.id},'優先度')"><span class="pri-badge ${pc}">${pl}</span></span>`
+                   : `<span class="cell-locked" data-bs-toggle="tooltip" title="優先度の変更は所有者のみ"><span class="pri-badge ${pc}">${pl}</span><i class="bi bi-lock-fill lock-i"></i></span>`);
+  const dueCell = sec.key==="done" || !a.canFields
+    ? `<span class="${dl.cls}" ${dl.c?`style="color:${dl.c}"`:''}>${dl.txt}</span>`
+    : `<span class="editable ${dl.cls}" ${dl.c?`style="color:${dl.c}"`:''} onclick="event.stopPropagation();inlineEdit(this,${t.id},'期限')">${dl.txt}</span>`;
+
+  return `<tr class="${sec.row}" data-id="${t.id}" onclick="openDetail(${t.id})">
+    <td class="col-status">${statusCell(t)}</td>
+    <td>${titleCell}<div class="task-desc">${t.desc}</div></td>
+    <td class="col-assignee">${assigneeCell}</td>
+    <td class="col-due">${dueCell}</td>
+    <td class="col-priority">${priCell}</td>
+    <td class="col-vis"><span class="vis-badge ${vc}"><i class="bi ${vi}"></i>${vl}</span></td>
+  </tr>`;
+}
+
+function sectionTableHTML(key){
+  const list=TASKS.filter(t=>t.sec===key);
+  return `<table class="tasks"><thead><tr>
+      <th>状態</th><th>タイトル</th><th>担当者</th><th>期限</th><th>優先度</th><th>公開範囲</th>
+    </tr></thead><tbody>${list.map(rowHTML).join("")}</tbody></table>`;
+}
+
+function sectionCardHTML(key){
+  const s=SECTIONS[key]; const n=TASKS.filter(t=>t.sec===key).length;
+  return `<section class="task-section ${s.cls}">
+    <div class="section-head">
+      <span class="sec-icon"><i class="bi ${s.icon}"></i></span>
+      <h2>${s.title}</h2><span class="sec-count">${n} 件</span>
+      <span class="sec-rule">${s.rule}</span>
+    </div>
+    ${sectionTableHTML(key)}
+  </section>`;
+}
+
+/* ----- Layout: Option C = accordion ((1)(2)展開 / (3)(4)畳む) ----- */
+function accordionItemHTML(key, open){
+  const s=SECTIONS[key]; const n=TASKS.filter(t=>t.sec===key).length;
+  return `<div class="accordion-item ${s.cls}">
+    <h2 class="accordion-header">
+      <button class="accordion-button ${open?'':'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#acc-${key}" aria-expanded="${open}">
+        <span class="sec-icon me-2"><i class="bi ${s.icon}"></i></span>
+        ${s.title}<span class="acc-count">${n} 件</span>
+        <span class="acc-rule">${s.rule}</span>
+      </button>
+    </h2>
+    <div id="acc-${key}" class="accordion-collapse collapse ${open?'show':''}">
+      <div class="accordion-body">${sectionTableHTML(key)}</div>
+    </div>
+  </div>`;
+}
+function renderDashboard(){
+  document.getElementById("dashboardSections").innerHTML =
+    `<div class="acc-wrap"><div class="accordion" id="dashAcc">
+      ${accordionItemHTML("overdue",true)}
+      ${accordionItemHTML("today",true)}
+      ${accordionItemHTML("soon",false)}
+      ${accordionItemHTML("done",false)}
+    </div></div>`;
+  initTooltips();
+}
+
+/* ----- interactions (minimal) ----- */
+function setStatus(e,id,s){
+  e.preventDefault();
+  const t=TASKS.find(x=>x.id===id); t.status=s;
+  if(s==="DONE"){ t.sec="done"; t.completedAt=new Date().toTimeString().slice(0,5); }
+  else if(t.sec==="done"){ const d=(new Date(t.due)-new Date(TODAY))/86400000; t.sec = d<0?"overdue":(d===0?"today":"soon"); t.completedAt=null; }
+  renderDashboard();
+}
+function inlineEdit(el,id,field){
+  if(el.querySelector("input")) return;
+  const t=TASKS.find(x=>x.id===id);
+  const cur = el.textContent.trim();
+  el.innerHTML = `<input class="inline-input" value="${cur}" />`;
+  const inp=el.querySelector("input"); inp.focus(); inp.select();
+  const commit=()=>{ const v=inp.value||cur; if(field==="タイトル"){t.title=v;} renderDashboard(); };
+  inp.addEventListener("blur",commit);
+  inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter"){commit();} if(ev.key==="Escape"){renderDashboard();} });
+}
+
+function openDetail(id){
+  const t=TASKS.find(x=>x.id===id); const a=auth(t);
+  const [sl,sc]=statusMeta(t.status); const [pl,pc]=priMeta(t.priority); const [vl,vc,vi]=visMeta(t.vis);
+  const lock=(can,who)=>can?"":`<div class="lock-note"><i class="bi bi-lock-fill"></i>${who}のみ操作可(あなたは${a.role})</div>`;
+  document.getElementById("detailLabel").innerHTML = `タスク詳細 <span class="text-muted-2 small">#${t.id}</span>`;
+  document.getElementById("detailBody").innerHTML = `
+    <div class="text-muted-2 small mb-2"><i class="bi bi-link-45deg"></i> URL は <code>/tasks/${t.id}</code> に同期(S-05)</div>
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="st-badge ${sc}">${sl}</span>
+      <span class="pri-badge ${pc}">優先度 ${pl}</span>
+      <span class="vis-badge ${vc}"><i class="bi ${vi}"></i>${vl}</span>
+    </div>
+    <h5 class="fw-bold mb-1">${t.title}</h5>
+    <p class="text-muted-2" style="font-size:13px;">${t.desc}</p>
+
+    <div class="drawer-section-label">あなたの役割</div>
+    <span class="badge ${a.isOwner?'text-bg-primary':a.isAssignee?'text-bg-info':'text-bg-secondary'}">${a.role}</span>
+
+    <div class="drawer-section-label">基本情報</div>
+    <div class="row g-2">
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">所有者</div><div class="field-readonly">${t.ownerName}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">担当者</div><div class="field-readonly">${t.assigneeName}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">期限</div><div class="field-readonly">${t.due}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">${t.completedAt?'完了':'作成'}</div><div class="field-readonly">${t.completedAt? '本日 '+t.completedAt : '2026-05-25'}</div></div>
+    </div>
+
+    <div class="drawer-section-label">公開範囲(visibility)</div>
+    <select class="form-select form-select-sm" ${a.canVisibility?'':'disabled'}>
+      <option ${t.vis==='TENANT'?'selected':''}>テナント(全員)</option>
+      <option ${t.vis==='STAKEHOLDERS'?'selected':''}>関係者限定</option>
+      <option ${t.vis==='PRIVATE'?'selected':''}>非公開</option>
+    </select>
+    ${lock(a.canVisibility,"所有者")}
+
+    <div class="drawer-section-label">関係者</div>
+    <div class="d-flex flex-wrap gap-1">
+      <span class="badge text-bg-light border">田中</span><span class="badge text-bg-light border">鈴木</span>
+      ${a.canStakeholder?'<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:11px;">+ 追加</button>':''}
+    </div>
+    ${lock(a.canStakeholder,"所有者・担当者")}
+
+    <div class="d-flex gap-2 mt-4 pt-3 border-top">
+      <button class="btn btn-primary flex-grow-1" ${a.canFields?'':'disabled'} data-bs-toggle="tooltip" title="${a.canFields?'/tasks/'+t.id+'/edit に同期':'編集は所有者のみ'}"><i class="bi bi-pencil me-1"></i>編集</button>
+      <button class="btn btn-outline-danger" ${a.canDelete?'':'disabled'} data-bs-toggle="tooltip" title="${a.canDelete?'論理削除(確認ダイアログ)':'削除は所有者のみ'}"><i class="bi bi-trash"></i></button>
+    </div>`;
+  bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("detailDrawer")).show();
+  initTooltips();
+}
+
+let tipList=[];
+function initTooltips(){
+  tipList.forEach(t=>t.dispose&&t.dispose());
+  tipList=[...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map(el=>new bootstrap.Tooltip(el));
+  [...document.querySelectorAll('[data-bs-toggle="popover"]')].forEach(el=>bootstrap.Popover.getOrCreateInstance(el));
+}
+function switchRole(r){
+  document.body.classList.toggle("role-admin", r==="admin");
+  document.body.classList.toggle("role-member", r!=="admin");
+}
+renderDashboard();
+</script>
+</body>
+</html>
