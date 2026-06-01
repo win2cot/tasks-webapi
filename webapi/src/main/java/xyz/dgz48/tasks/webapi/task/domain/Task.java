@@ -18,13 +18,13 @@ public class Task {
   private final Long tenantId;
   private final String title;
   @Nullable private final String description;
-  private final TaskStatus status;
+  private TaskStatus status;
   private final Priority priority;
   private Visibility visibility;
   private final Long ownerId;
   @Nullable private final Long assigneeId;
   private final LocalDate dueDate;
-  @Nullable private final LocalDateTime completedAt;
+  @Nullable private LocalDateTime completedAt;
   @Nullable private final LocalDateTime deletedAt;
   private final LocalDateTime createdAt;
   private final LocalDateTime updatedAt;
@@ -62,5 +62,23 @@ public class Task {
 
   public void changeVisibility(Visibility newVisibility) {
     this.visibility = newVisibility;
+  }
+
+  /**
+   * ステータス遷移と completed_at の制御(UseCase 明示セット方式 — Issue #330 議論結論)。
+   *
+   * <ul>
+   *   <li>非完了 → 完了: completed_at = now
+   *   <li>完了 → 非完了(再オープン): completed_at = null
+   *   <li>完了 → 完了(冪等): 既存 completed_at を維持
+   * </ul>
+   */
+  public void changeStatus(TaskStatus newStatus, LocalDateTime now) {
+    if (newStatus == TaskStatus.DONE && this.status != TaskStatus.DONE) {
+      this.completedAt = now;
+    } else if (newStatus != TaskStatus.DONE) {
+      this.completedAt = null;
+    }
+    this.status = newStatus;
   }
 }

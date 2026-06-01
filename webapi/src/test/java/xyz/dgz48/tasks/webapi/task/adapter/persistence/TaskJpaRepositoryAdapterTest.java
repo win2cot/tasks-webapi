@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,5 +89,68 @@ class TaskJpaRepositoryAdapterTest {
   void findByIdReturnsEmptyWhenNotFound() {
     var found = taskRepository.findById(999_999L);
     assertThat(found).isEmpty();
+  }
+
+  @Test
+  void save_updatesStatusAndCompletedAt() {
+    var tenant = new TenantJpaEntity("TENANT-ADP-2", "テナント B");
+    entityManager.persist(tenant);
+    var user = new UserJpaEntity("sub-adp-2", "adp2@example.com", "鈴木 次郎", "スズキ ジロウ", null);
+    entityManager.persist(user);
+    entityManager.flush();
+
+    var jpa =
+        new TaskJpaEntity(
+            tenant.getId(),
+            user.getId(),
+            "ステータス変更テスト",
+            null,
+            TaskStatus.IN_PROGRESS,
+            Priority.HIGH,
+            LocalDate.of(2026, 12, 31));
+    entityManager.persist(jpa);
+    entityManager.flush();
+    entityManager.clear();
+
+    Task loaded = taskRepository.findById(jpa.getId()).orElseThrow();
+    LocalDateTime completedAt = LocalDateTime.of(2026, 6, 1, 10, 0);
+    loaded.changeStatus(TaskStatus.DONE, completedAt);
+
+    Task saved = taskRepository.save(loaded);
+
+    assertThat(saved.getStatus()).isEqualTo(TaskStatus.DONE);
+    assertThat(saved.getCompletedAt()).isEqualTo(completedAt);
+  }
+
+  @Test
+  void save_clearsCompletedAt_whenReopened() {
+    var tenant = new TenantJpaEntity("TENANT-ADP-3", "テナント C");
+    entityManager.persist(tenant);
+    var user = new UserJpaEntity("sub-adp-3", "adp3@example.com", "田中 三郎", "タナカ サブロウ", null);
+    entityManager.persist(user);
+    entityManager.flush();
+
+    LocalDateTime firstCompletedAt = LocalDateTime.of(2026, 6, 1, 10, 0);
+    var jpa =
+        new TaskJpaEntity(
+            tenant.getId(),
+            user.getId(),
+            "再オープンテスト",
+            null,
+            TaskStatus.DONE,
+            Priority.MEDIUM,
+            LocalDate.of(2026, 12, 31));
+    jpa.updateStatus(TaskStatus.DONE, firstCompletedAt);
+    entityManager.persist(jpa);
+    entityManager.flush();
+    entityManager.clear();
+
+    Task loaded = taskRepository.findById(jpa.getId()).orElseThrow();
+    loaded.changeStatus(TaskStatus.IN_PROGRESS, firstCompletedAt.plusHours(1));
+
+    Task saved = taskRepository.save(loaded);
+
+    assertThat(saved.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+    assertThat(saved.getCompletedAt()).isNull();
   }
 }

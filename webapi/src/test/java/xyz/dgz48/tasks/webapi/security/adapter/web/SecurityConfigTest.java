@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -22,6 +23,7 @@ class SecurityConfigTest {
   @MockitoBean UserRepository userRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean GetTaskUseCase getTaskUseCase;
+  @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
 
   @Autowired MockMvc mockMvc;
 

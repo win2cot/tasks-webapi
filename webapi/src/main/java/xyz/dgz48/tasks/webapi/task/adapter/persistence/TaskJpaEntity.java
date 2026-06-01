@@ -110,4 +110,9 @@ public class TaskJpaEntity extends TenantFilteredEntity {
     this.visibility = Visibility.TENANT;
     this.dueDate = dueDate;
   }
+
+  public void updateStatus(TaskStatus newStatus, @Nullable LocalDateTime newCompletedAt) {
+    this.status = newStatus;
+    this.completedAt = newCompletedAt;
+  }
 }

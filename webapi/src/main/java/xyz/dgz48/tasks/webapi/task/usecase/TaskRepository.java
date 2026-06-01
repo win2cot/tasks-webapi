@@ -8,4 +8,7 @@ public interface TaskRepository {
 
   /** Hibernate Filter が有効な場合、現在テナントに属さないタスクは自動的に空を返す。 */
   Optional<Task> findById(Long id);
+
+  /** タスクを保存して最新の状態を返す。 */
+  Task save(Task task);
 }
