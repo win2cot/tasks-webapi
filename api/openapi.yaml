@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: タスク管理システム API
   description: |
-    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.4.8 / 要件定義書 v1.4.4 準拠)。
+    マルチテナントSaaS型タスク管理システムのREST API仕様(基本設計書 v1.5.1 / 要件定義書 v1.4.4 準拠)。
 
     認証はKeycloak経由のOIDC、本APIはJWTを Spring Security OAuth2 Resource Server で検証する。
     全リクエストには `Authorization: Bearer {access_token}` を付与し、
@@ -1185,29 +1185,6 @@ components:
           type: array
           items: { type: integer, format: int64 }
           description: "visibility=STAKEHOLDERS のとき指定可能"
-
-    TaskUpdateRequest:
-      description: |
-        タスク更新リクエスト(**所有者のみ**実行可能。Tenant Admin の特別権限なし、ADR-0005)。
-        本リクエストでは visibility および関係者リストは変更できない。
-        - 公開範囲(visibility)変更: PATCH /api/tasks/{id}/visibility を使用(所有者のみ)
-        - 関係者の追加/削除: POST/DELETE /api/tasks/{id}/stakeholders/... を使用(所有者・担当者)
-        - ステータス変更: PATCH /api/tasks/{id}/status を使用(所有者・担当者)
-
-        全フィールドが任意だが、少なくとも 1 つのフィールド指定が必須(minProperties: 1)。
-        空のリクエストボディはバリデーションエラー(400)で拒否する。
-      type: object
-      minProperties: 1
-      properties:
-        title:       { type: string, maxLength: 100 }
-        description:
-          type: [string, 'null']
-          maxLength: 2000
-        priority:    { $ref: "#/components/schemas/Priority" }
-        assigneeId:
-          type: [integer, 'null']
-          format: int64
-        dueDate:     { type: string, format: date }
 
     TaskPatchRequest:
       description: |
