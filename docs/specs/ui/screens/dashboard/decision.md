@@ -118,16 +118,18 @@ Version 1.0 / 2026-06-01 / 親 Issue #152 / #149
 7. **凡例 popover の常設化判断**:Claude Design 出力では公開範囲の凡例を popover で提供。デザインシステム素案で「初回オンボーディング表示」「設定で常時表示」等の方針を確定。
 8. **詳細ドロワーのフォーム設計**:Claude Design 出力の `detailBody` 動的レンダリングが参考実装になる(ADR-0005 の `canFields` / `canStatus` / `canStakeholder` / `canVisibility` / `canDelete` 5 フラグでフィールド活性を制御)。
 
-### #153 OpenAPI v1.4.5 突き合わせに引き継ぐ
+### #153 OpenAPI v1.5.0 突き合わせに引き継ぐ
+
+> **2026-06-01 時点**: OpenAPI v1.5.0(PR #349 / Issue #334)が main にマージ済み。`PATCH /api/tasks/{id}` 新設 + A-14 PUT 廃止が反映されている。下表は v1.5.0 と本書 UX 案の突き合わせ観点。
 
 | # | 検討項目 | 本書の前提 | 確認したいこと |
 |---|---|---|---|
-| 1 | リスト取得 API | `GET /api/tasks?ownerOrAssignee=me&dashboardScope=today` 相当(screen-flow.md §5.1 末尾) | OpenAPI 側にこのクエリが存在するか、または追加が必要か。4 セクション分を 1 回で取れるか |
+| 1 | リスト取得 API | `GET /api/tasks?ownerOrAssignee=me&dashboardScope=today` 相当(screen-flow.md §5.1 末尾) | OpenAPI v1.5.0 側にこのクエリが存在するか、または追加が必要か。4 セクション分を 1 回で取れるか |
 | 2 | 数値カード集計 API | 個人視点の集計エンドポイント未定 | A-28(`/api/tenant/dashboard/summary`)はテナント運営用。個人向け `/api/dashboard/summary` 相当の追加が必要か |
 | 3 | (3) これから の +3 日範囲 | 本書では「+3 日」固定 | クエリで動的に渡せるか(`?dueDateMaxOffset=3`)。Phase 2 の個人通知設定統合(screen-flow.md §5.1 注釈)に向けて拡張余地を残すか |
-| 4 | `completed_at` のレスポンス | datetime(JST、ISO 8601) | OpenAPI v1.4.5 で `Task` スキーマに `completedAt` が含まれているか(#330 で DDL 追加済) |
+| 4 | `completed_at` のレスポンス | datetime(JST、ISO 8601) | OpenAPI v1.5.0 で `Task` スキーマに `completedAt` が含まれているか(#330 で DDL 追加済) |
 | 5 | visibility 列のレスポンス | `visibility` enum: `TENANT` / `STAKEHOLDERS` / `PRIVATE` | OpenAPI スキーマと完全一致しているか |
-| 6 | 行内編集の PATCH エンドポイント | #329 で確定した `PATCH /api/tasks/{id}`(部分更新)+ A-16(status) + A-17(visibility) | OpenAPI v1.5.x 反映待ち。本書の行内編集 6 項目すべてが新 PATCH でカバーされるか |
+| 6 | 行内編集の PATCH エンドポイント | OpenAPI v1.5.0 で確定済の `PATCH /api/tasks/{id}`(部分更新、ADR-0014 の `JsonNullable<T>` 採用)+ A-16(status) + A-17(visibility) | 本書の行内編集 6 項目(ステータス / 期限 / 担当者 / 優先度 / タイトル / 説明)すべてが新 PATCH でカバーされるか |
 | 7 | 担当者プルダウンの候補取得 | テナント内ユーザー全件 | ユーザー一覧 API(A-?? 未定)が必要。N+1 防止の eager fetch 設計と整合 |
 | 8 | 詳細ドロワーの認可フラグ | Claude Design 出力では `canFields` / `canStatus` / `canStakeholder` / `canVisibility` / `canDelete` 5 フラグでクライアント側判定 | API レスポンスに認可フラグを含めるか、クライアント側で `currentUserId === task.ownerId` 判定するかの方針確定 |
 
@@ -141,7 +143,7 @@ Version 1.0 / 2026-06-01 / 親 Issue #152 / #149
 
 ## 4. 認可ポリシー整合確認
 
-本決定案が **基本設計書 §6.2.2 / §6.2.3 / ADR-0005 / screen-flow.md §4** と矛盾していないことを以下で確認した。
+ロール × 画面 × visibility の網羅マトリクスは `docs/specs/ui/access-matrix.md`(#151 成果物、PR #348 で main にマージ済み)を SSOT とする。本書は案 A の UI 表現が SSOT と矛盾しないことを以下で局所的に確認する。差分が生じた場合は access-matrix.md と基本設計書 §6.2.1 を優先する。
 
 | 観点 | 仕様 | 案 A での扱い | OK |
 |---|---|---|---|
@@ -159,7 +161,8 @@ Version 1.0 / 2026-06-01 / 親 Issue #152 / #149
 
 - 親 Issue: #152(本書) / #149(Sprint 0 画面設計)
 - SSOT: `docs/specs/ui/screen-flow.md` v1.1 §5
-- 引き継ぎ先: #153(OpenAPI 突合)/ #154(デザインシステム素案)/ #151(権限マトリクス、並行進行中)
+- 引き継ぎ先: #153(OpenAPI 突合)/ #154(デザインシステム素案)
+- 前提整合確認済み(本 PR 着手中に main にマージ済み): #151 権限マトリクス(`docs/specs/ui/access-matrix.md`、PR #348)/ OpenAPI v1.5.0(PR #349、`PATCH /api/tasks/{id}` 新設)
 - 関連 ADR: ADR-0005(タスク認可 3 役割)/ ADR-0010(Hibernate Filter)/ ADR-0011(ErrorResponse)/ ADR-0012(楽観ロック)/ ADR-0013(監査ログ diff)/ ADR-0014(JsonNullable for PATCH)
 - 関連 Issue: #329(PATCH 化)/ #330(`completed_at` カラム)/ #335(`ChangeTaskStatusUseCase` の completed_at 管理)
 
