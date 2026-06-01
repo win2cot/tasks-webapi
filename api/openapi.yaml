@@ -570,10 +570,11 @@ paths:
                 status: { $ref: "#/components/schemas/TaskStatus" }
       responses:
         "200":
-          description: OK
+          description: |-
+            OK。暫定レスポンス: `owner`/`editable`/`deletable` は B-3(#279)で追加予定のため、現在は `TaskDetailPartial` を返す。
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Task" }
+              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -1121,6 +1122,9 @@ components:
         visibility:  { $ref: "#/components/schemas/Visibility" }
         assigneeId:  { type: [integer, 'null'], format: int64 }
         dueDate:     { type: string, format: date }
+        completedAt:
+          type: [string, 'null']
+          format: date-time
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
 
