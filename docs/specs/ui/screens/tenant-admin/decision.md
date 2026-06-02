@@ -187,4 +187,6 @@ Version 1.0 / 2026-06-02 / 親 Issue #152 / #149
 - 親 Issue: #152(本書、本 PR で close)/ #149(Sprint 0 画面設計)
 - SSOT: `docs/specs/ui/screen-flow.md` v1.1 §3 / §2 / `docs/specs/基本設計書.md` §3.2 / `docs/specs/ui/access-matrix.md` §3 / §6 / `docs/specs/要件定義書.md` §2.3
 - 前提整合確認済み: PR #348(access-matrix.md)/ PR #349(OpenAPI v1.5.0)/ PR #350(S-03 採用案)/ PR #351(S-04 採用案)/ PR #352(S-05 採用案)
-- 引き継ぎ先: #
+- 引き継ぎ先: #153(OpenAPI 突合)/ #154(デザインシステム素案、特に管理コンソール用 chrome + KPI ストリップ + destructive 確認ダイアログ)
+- 関連 ADR: ADR-0005(タスク認可 3 役割 = SaaS Admin の業務特権なし、本画面でも整合)
+- 関連 Issue: #167(テナント解約 Phase 2)/ S-12 プラットフォーム監視(Sprint 1 以降)/ S-15 テナント運営者向けダッシュボード(Out of Scope #149)
