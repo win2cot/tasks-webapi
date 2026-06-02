@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>S-13 / S-14 テナント管理 — 案A 業務動線統合型(右ドロワー)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bs-body-font-family:"Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --app-bg:#f4f5f7;--app-surface:#ffffff;--app-border:#e5e7eb;--app-ink:#1f2733;--app-muted:#6b7280;
+    --app-primary:#3b5bdb;--app-primary-d:#2f49b0;
+    --c-overdue:#e03131;--c-today:#e8830c;--c-soon:#1c7ed6;--c-done:#2f9e44;
+    /* SaaS Admin(運営空間)アクセント */
+    --admin-accent:#5a4bd6;--admin-accent-soft:#efeefb;--admin-accent-border:#ddd9f5;
+    --c-active:#2f9e44;--c-suspended:#b8650b;
+    --bs-body-bg:var(--app-bg);--bs-body-color:var(--app-ink);
+  }
+  body{font-family:var(--bs-body-font-family);font-size:14px;-webkit-font-smoothing:antialiased;}
+  .text-muted-2{color:var(--app-muted)!important;}
+  code{color:#6a44c4;background:#f1edfa;padding:1px 5px;border-radius:4px;font-size:.86em;}
+
+  /* ---- App shell(業務動線から継承)---- */
+  .app-navbar{background:var(--app-surface);border-bottom:1px solid var(--app-border);height:56px;
+    box-shadow:inset 0 3px 0 var(--admin-accent);}
+  .app-brand{font-weight:700;letter-spacing:.02em;color:var(--app-ink);}
+  .app-brand .bi{color:var(--app-primary);}
+  .console-chip{font-size:12px;background:var(--admin-accent-soft);color:var(--admin-accent);
+    border:1px solid var(--admin-accent-border);padding:3px 11px;border-radius:999px;font-weight:700;display:inline-flex;align-items:center;gap:5px;}
+  .role-badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;background:#2a3142;color:#fff;padding:2px 8px;border-radius:5px;}
+  .app-layout{display:flex;min-height:calc(100vh - 56px);}
+  .app-sidebar{width:236px;flex:0 0 236px;background:var(--app-surface);border-right:1px solid var(--app-border);padding:16px 12px;}
+  .app-main{flex:1 1 auto;min-width:0;padding:22px 26px 60px;}
+  .nav-group-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:#9aa1ad;text-transform:uppercase;padding:0 12px;margin:14px 0 6px;}
+  .side-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#3f4855;text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;}
+  .side-link .bi{font-size:16px;color:#7a828f;}
+  .side-link:hover{background:#f2f4f7;}
+  .side-link.active{background:var(--admin-accent-soft);color:var(--admin-accent);}
+  .side-link.active .bi{color:var(--admin-accent);}
+  .side-link.is-disabled{opacity:.55;cursor:not-allowed;}
+  .side-link .badge{margin-left:auto;}
+  .scope-note{font-size:11px;color:var(--app-muted);background:#fafaff;border:1px solid var(--admin-accent-border);border-radius:8px;padding:9px 11px;margin-top:14px;line-height:1.55;}
+
+  .page-title{font-weight:700;font-size:20px;margin:0;}
+  .page-date{color:var(--app-muted);font-size:13px;}
+
+  /* ---- 上部フィルタバー(S-04 継承)---- */
+  .filter-bar{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;}
+  .filter-bar-head{display:flex;align-items:center;gap:10px;padding:12px 16px;flex-wrap:wrap;}
+  .filter-bar-title{font-size:13px;font-weight:600;color:#3f4855;display:flex;align-items:center;gap:7px;}
+  .seg{display:inline-flex;border:1px solid var(--app-border);border-radius:8px;overflow:hidden;background:#fff;}
+  .seg button{border:none;background:#fff;font-size:12.5px;font-weight:600;color:#566173;padding:6px 14px;cursor:pointer;border-right:1px solid var(--app-border);}
+  .seg button:last-child{border-right:none;}
+  .seg button:hover:not(.on){background:#f4f6fb;}
+  .seg button.on{background:var(--admin-accent);color:#fff;}
+  .search-wrap{position:relative;}
+  .search-wrap .bi{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9aa1ad;font-size:14px;}
+  .search-wrap input{padding-left:32px;width:248px;}
+
+  /* ---- テナント一覧テーブル(table.tasks 継承)---- */
+  .task-section{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;margin-top:14px;overflow:hidden;}
+  .section-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--app-border);}
+  .section-head .sec-icon{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:14px;background:var(--admin-accent);}
+  .section-head h2{font-size:15px;font-weight:700;margin:0;}
+  .section-head .sec-count{font-size:12px;color:var(--app-muted);font-weight:500;}
+  .section-head .sec-api{font-size:11px;color:#9aa1ad;margin-left:auto;font-weight:400;}
+  table.tenants{width:100%;margin:0;border-collapse:collapse;}
+  table.tenants th{font-size:11px;font-weight:600;color:#9aa1ad;text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;border-bottom:1px solid var(--app-border);text-align:left;background:#fafbfc;white-space:nowrap;}
+  table.tenants th.num{text-align:right;}
+  table.tenants td{padding:12px 16px;border-bottom:1px solid #f1f2f4;vertical-align:middle;}
+  table.tenants td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  table.tenants tr:last-child td{border-bottom:none;}
+  table.tenants tbody tr{cursor:pointer;}
+  table.tenants tbody tr:hover{background:#f7f8ff;}
+  table.tenants tbody tr.is-suspended{background:#fffdf8;}
+  table.tenants tbody tr.is-suspended:hover{background:#fff7ec;}
+  .t-name{font-weight:600;color:var(--app-ink);}
+  .t-id{font-size:11px;color:#9aa1ad;font-variant-numeric:tabular-nums;}
+  .t-avatar{width:30px;height:30px;border-radius:8px;background:var(--admin-accent-soft);color:var(--admin-accent);display:inline-grid;place-items:center;font-size:13px;font-weight:700;flex:0 0 30px;}
+  .empty-row td{text-align:center;color:#9aa1ad;padding:30px 14px;font-size:13px;}
+  .col-status{width:128px;}.col-users{width:104px;}.col-tasks{width:104px;}.col-created{width:128px;}.col-chevron{width:40px;text-align:right;}
+  .row-chevron{color:#c2c7d0;font-size:14px;}
+
+  /* ---- ステータスバッジ ---- */
+  .ts-badge{font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;}
+  .ts-ACTIVE{background:#e7f5ec;color:#207a3a;border-color:#c3e6cf;}
+  .ts-SUSPENDED{background:#fff3e2;color:#b8650b;border-color:#f3dcb6;}
+  .plan-badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:5px;background:#eef1f6;color:#566173;}
+
+  /* ---- ドロワー(S-05 継承)---- */
+  .offcanvas-end{width:480px;}
+  .drawer-section-label{font-size:11px;font-weight:700;color:#9aa1ad;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 8px;display:flex;align-items:center;gap:7px;}
+  .drawer-section-label .api{margin-left:auto;font-weight:500;color:#b4bac4;text-transform:none;letter-spacing:0;}
+  .field-readonly{background:#f6f7f9;border-radius:7px;padding:9px 12px;font-size:13.5px;border:1px solid var(--app-border);}
+  .metric-box{background:#fff;border:1px solid var(--app-border);border-radius:10px;padding:12px 14px;text-align:center;}
+  .metric-box .m-num{font-size:24px;font-weight:700;line-height:1.1;}
+  .metric-box .m-lbl{font-size:11px;color:var(--app-muted);margin-top:2px;}
+  .metric-box .m-note{font-size:10px;color:#aab0ba;margin-top:1px;}
+  .name-edit-wrap{display:flex;align-items:center;gap:8px;}
+  .name-edit-wrap input{font:inherit;font-size:18px;font-weight:700;border:1px solid var(--app-primary);border-radius:7px;padding:5px 10px;width:100%;}
+  .editable-name{font-size:18px;font-weight:700;border-bottom:1px dashed #b6bcc6;cursor:text;padding-bottom:1px;}
+  .editable-name:hover{background:var(--admin-accent-soft);border-bottom-color:var(--admin-accent);}
+
+  /* ---- 確認ダイアログ ---- */
+  .modal-warn-icon{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;flex:0 0 44px;}
+  .warn-suspend{background:#fff3e2;color:#b8650b;}
+  .warn-reactivate{background:#e7f5ec;color:#207a3a;}
+  .consequence{font-size:12.5px;color:#5a6270;background:#fbfbfc;border:1px solid var(--app-border);border-radius:9px;padding:11px 13px;line-height:1.65;}
+  .audit-chip{font-size:10.5px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#2a3142;color:#fff;padding:2px 7px;border-radius:4px;}
+
+  /* ---- toast ---- */
+  .toast-host{position:fixed;right:18px;bottom:18px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
+
+  /* ---- design notes(継承)---- */
+  .design-notes{margin-top:30px;border:1px dashed #c9ccd3;border-radius:12px;background:#fcfcfd;padding:18px 22px;}
+  .design-notes h3{font-size:13px;font-weight:700;letter-spacing:.04em;color:#5a6270;margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+  .design-notes dl{display:grid;grid-template-columns:96px 1fr;gap:6px 14px;margin:0;font-size:12.5px;}
+  .design-notes dt{font-weight:700;color:#404856;}
+  .design-notes dd{margin:0;color:#5a6270;}
+</style>
+</head>
+<body>
+
+<!-- ===== Top navbar(運営空間)===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top">
+  <div class="app-brand d-flex align-items-center gap-2">
+    <i class="bi bi-check2-square fs-5"></i><span>tasks-webapi</span>
+  </div>
+  <span class="console-chip"><i class="bi bi-hdd-stack"></i>管理コンソール</span>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <span class="text-muted-2 small d-none d-md-inline"><i class="bi bi-shield-lock me-1"></i>テナント運営軸のみ・業務 API 非到達</span>
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle d-grid" style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;background:#2a3142;color:#fff;">山</div>
+      <div class="d-none d-lg-block lh-1">
+        <div class="small fw-bold">山田 太郎</div>
+        <span class="role-badge">APP_ADMIN</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar(SaaS Admin 動線専用)===== -->
+  <aside class="app-sidebar d-none d-lg-block">
+    <div class="nav-group-label">プラットフォーム運用</div>
+    <a class="side-link active" href="#" onclick="return false"><i class="bi bi-buildings"></i>テナント一覧 <span class="badge text-bg-light text-muted-2">S-13</span></a>
+    <a class="side-link is-disabled" href="#" onclick="return false" title="Sprint 1 以降"><i class="bi bi-activity"></i>プラットフォーム監視 <span class="badge text-bg-light text-muted-2">S-12</span></a>
+    <a class="side-link is-disabled" href="#" onclick="return false" title="Tenant Admin 機能"><i class="bi bi-journal-text"></i>監査ログ</a>
+
+    <div class="nav-group-label">アカウント</div>
+    <a class="side-link" href="#" onclick="return false"><i class="bi bi-person-circle"></i>プロフィール</a>
+    <a class="side-link" href="#" onclick="return false"><i class="bi bi-box-arrow-right"></i>ログアウト</a>
+
+    <div class="scope-note">
+      <i class="bi bi-diagram-3 me-1"></i>業務動線(S-03〜S-06)とは<b>画面遷移として直結しません</b>。SaaS Admin はテナント運営軸のみを操作し、業務タスク / visibility / 3 役割評価はこの空間では効きません。
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="app-main">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <div>
+        <h1 class="page-title">テナント一覧</h1>
+        <div class="page-date"><i class="bi bi-link-45deg"></i> URL は <code>/admin/tenants</code> ・ 行クリックで右ドロワーに S-14 を展開(<code>/admin/tenants/{id}</code> 同期)</div>
+      </div>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span class="console-chip"><i class="bi bi-people"></i>合計 <b id="totalUsers">0</b> ユーザー</span>
+      </div>
+    </div>
+
+    <!-- フィルタバー -->
+    <div class="filter-bar">
+      <div class="filter-bar-head">
+        <span class="filter-bar-title"><i class="bi bi-funnel-fill"></i>状態</span>
+        <div class="seg" id="statusSeg">
+          <button class="on" data-v="ALL" onclick="setStatusFilter('ALL')">すべて</button>
+          <button data-v="ACTIVE" onclick="setStatusFilter('ACTIVE')">ACTIVE</button>
+          <button data-v="SUSPENDED" onclick="setStatusFilter('SUSPENDED')">SUSPENDED</button>
+        </div>
+        <div class="search-wrap ms-auto">
+          <i class="bi bi-search"></i>
+          <input id="nameSearch" class="form-control form-control-sm" placeholder="テナント名で部分一致検索" oninput="renderList()" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 一覧テーブル -->
+    <section class="task-section">
+      <div class="section-head">
+        <span class="sec-icon"><i class="bi bi-buildings"></i></span>
+        <h2>テナント</h2><span class="sec-count" id="listCount">0 件</span>
+        <span class="sec-api"><code>GET /api/tenants</code>(A-04 listTenants)・既定ソート createdAt DESC</span>
+      </div>
+      <table class="tenants">
+        <thead><tr>
+          <th>テナント</th>
+          <th class="col-status">状態</th>
+          <th class="col-users num">ユーザー数</th>
+          <th class="col-tasks num">タスク数</th>
+          <th class="col-created">作成日</th>
+          <th class="col-chevron"></th>
+        </tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+      <div class="d-flex align-items-center gap-2 px-3 py-2 border-top" style="font-size:12px;color:var(--app-muted);background:#fafbfc;">
+        <span>全 <b id="pagerTotal">0</b> 件中 1–<b id="pagerShown">0</b> 件を表示</span>
+        <div class="ms-auto d-flex align-items-center gap-1">
+          <button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>前へ</button>
+          <span class="px-2">1 / 1</span>
+          <button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>次へ</button>
+          <span class="ms-2">50 件 / ページ(<code>page</code> / <code>size</code>)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 設計判断ポイント -->
+    <div class="design-notes">
+      <h3><i class="bi bi-clipboard-data"></i>設計判断ポイント — 案A 業務動線統合型(右ドロワー)</h3>
+      <dl>
+        <dt>強み</dt><dd>S-04 の上部フィルタバー + 一覧 + S-05 の右ドロワーをそのまま流用。業務動線とコンポーネントが完全に一致するため学習コストが最小で、実装も既存基盤に素直に乗る。一覧を見たまま詳細を開閉でき、複数テナントの確認テンポが速い。</dd>
+        <dt>弱み</dt><dd>視覚が業務画面とほぼ同じため「別空間(運営軸)」の境界がヘッダの帯色・ラベル頼みになり弱め。ドロワー幅 480px では参考メトリクスや今後の運営情報が増えると手狭。URL 直アクセス時はフルページ fallback を別途用意する必要がある。</dd>
+        <dt>想定読者</dt><dd>業務側 UI に慣れた運用担当が片手間でテナント状態を確認・切替する兼務 SaaS Admin。一覧⇄詳細を素早く往復したい層。</dd>
+      </dl>
+    </div>
+  </main>
+</div>
+
+<!-- ===== S-14 詳細ドロワー ===== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer" aria-labelledby="detailLabel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title d-flex align-items-center gap-2" id="detailLabel"><i class="bi bi-buildings text-primary"></i>テナント詳細</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+  </div>
+  <div class="offcanvas-body" id="detailBody"></div>
+</div>
+
+<!-- ===== 状態切替 確認モーダル ===== -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" id="statusModalContent"></div>
+  </div>
+</div>
+
+<div class="toast-host" id="toastHost"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+/* ===================== データ(検証用ダミー)===================== */
+const CURRENT_USER = { name:"山田 太郎", role:"APP_ADMIN" };
+const TENANTS = [
+  { id:1, code:"tenant-a",  name:"テナントA株式会社",       status:"ACTIVE",    plan:"FREE", userCount:18, taskCount:421,  createdAt:"2025-12-03", updatedAt:"2026-05-20", suspendedAt:null },
+  { id:2, code:"tenant-b",  name:"テナントB商事",           status:"ACTIVE",    plan:"FREE", userCount:32, taskCount:1247, createdAt:"2025-08-15", updatedAt:"2026-05-18", suspendedAt:null },
+  { id:3, code:"tenant-c",  name:"テナントC工業",           status:"SUSPENDED", plan:"FREE", userCount:11, taskCount:283,  createdAt:"2024-11-20", updatedAt:"2026-03-12", suspendedAt:"2026-03-12" },
+  { id:4, code:"demo",      name:"デモ用テナント",           status:"ACTIVE",    plan:"FREE", userCount:3,  taskCount:12,   createdAt:"2026-05-01", updatedAt:"2026-05-01", suspendedAt:null },
+  { id:5, code:"tenant-d",  name:"テナントD物流",           status:"ACTIVE",    plan:"FREE", userCount:25, taskCount:892,  createdAt:"2025-04-10", updatedAt:"2026-04-22", suspendedAt:null },
+  { id:6, code:"tenant-e",  name:"テナントEメディア",       status:"SUSPENDED", plan:"FREE", userCount:7,  taskCount:65,   createdAt:"2024-06-01", updatedAt:"2025-09-30", suspendedAt:"2025-09-30" },
+  { id:7, code:"tenant-f",  name:"テナントF不動産",         status:"ACTIVE",    plan:"FREE", userCount:42, taskCount:2103, createdAt:"2024-02-14", updatedAt:"2026-05-12", suspendedAt:null },
+  { id:8, code:"tenant-g",  name:"テナントGスタートアップ", status:"ACTIVE",    plan:"FREE", userCount:5,  taskCount:34,   createdAt:"2026-05-28", updatedAt:"2026-05-28", suspendedAt:null },
+];
+
+let statusFilter = "ALL";
+
+/* ----- helpers ----- */
+function statusMeta(s){ return s==="ACTIVE"
+  ? ["ACTIVE","ts-ACTIVE","bi-check-circle-fill"]
+  : ["SUSPENDED","ts-SUSPENDED","bi-pause-circle-fill"]; }
+function fmtDate(d){ return d ? d.replace(/-/g,"/") : "—"; }
+function initial(name){ const m=name.match(/[A-Za-zＡ-Ｚ]|[ァ-ヶ]|[一-龠]|[ぁ-ん]/); return (m?m[0]:name[0]); }
+function nf(n){ return n.toLocaleString("ja-JP"); }
+
+/* ----- list render(状態フィルタ + 名前部分一致)----- */
+function visibleTenants(){
+  const kw = (document.getElementById("nameSearch").value||"").trim().toLowerCase();
+  return TENANTS
+    .filter(t=> statusFilter==="ALL" || t.status===statusFilter)
+    .filter(t=> !kw || t.name.toLowerCase().includes(kw) || (t.code||"").includes(kw))
+    .slice().sort((a,b)=> b.createdAt.localeCompare(a.createdAt)); /* createdAt DESC */
+}
+function rowHTML(t){
+  const [sl,sc,si]=statusMeta(t.status);
+  return `<tr class="${t.status==='SUSPENDED'?'is-suspended':''}" onclick="openDetail(${t.id})">
+    <td>
+      <div class="d-flex align-items-center gap-2">
+        <span class="t-avatar">${initial(t.name)}</span>
+        <div>
+          <div class="t-name">${t.name}</div>
+          <div class="t-id">ID ${t.id} ・ <code>${t.code}</code> ・ <span class="plan-badge">${t.plan}</span></div>
+        </div>
+      </div>
+    </td>
+    <td class="col-status"><span class="ts-badge ${sc}"><i class="bi ${si}"></i>${sl}</span></td>
+    <td class="col-users num">${nf(t.userCount)}</td>
+    <td class="col-tasks num">${nf(t.taskCount)}</td>
+    <td class="col-created">${fmtDate(t.createdAt)}</td>
+    <td class="col-chevron"><i class="bi bi-chevron-right row-chevron"></i></td>
+  </tr>`;
+}
+function renderList(){
+  const list = visibleTenants();
+  document.getElementById("listBody").innerHTML = list.length
+    ? list.map(rowHTML).join("")
+    : `<tr class="empty-row"><td colspan="6"><i class="bi bi-inbox me-1"></i>該当するテナントはありません</td></tr>`;
+  document.getElementById("listCount").textContent = `${list.length} 件`;
+  document.getElementById("pagerTotal").textContent = list.length;
+  document.getElementById("pagerShown").textContent = list.length;
+  document.getElementById("totalUsers").textContent = nf(TENANTS.reduce((s,t)=>s+t.userCount,0));
+}
+function setStatusFilter(v){
+  statusFilter=v;
+  [...document.querySelectorAll("#statusSeg button")].forEach(b=>b.classList.toggle("on", b.dataset.v===v));
+  renderList();
+}
+
+/* ----- S-14 詳細ドロワー ----- */
+function openDetail(id){
+  renderDetail(id);
+  bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("detailDrawer")).show();
+}
+function renderDetail(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const [sl,sc,si]=statusMeta(t.status);
+  const isActive = t.status==="ACTIVE";
+  document.getElementById("detailLabel").innerHTML =
+    `<i class="bi bi-buildings text-primary"></i>テナント詳細 <span class="text-muted-2 small">#${t.id}</span>`;
+  document.getElementById("detailBody").innerHTML = `
+    <div class="text-muted-2 small mb-2"><i class="bi bi-link-45deg"></i> URL は <code>/admin/tenants/${t.id}</code> に同期(S-14)</div>
+
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="ts-badge ${sc}"><i class="bi ${si}"></i>${sl}</span>
+      <span class="plan-badge">${t.plan}</span>
+      <span class="text-muted-2 small ms-auto"><code>${t.code}</code></span>
+    </div>
+
+    <div class="drawer-section-label">テナント名 <span class="api"><code>PUT /api/tenants/${t.id}</code>(A-06)</span></div>
+    <div id="nameView" class="name-edit-wrap">
+      <span class="editable-name" onclick="startNameEdit(${t.id})" title="クリックで編集(SaaS Admin)">${t.name}</span>
+      <button class="btn btn-sm btn-light ms-auto" onclick="startNameEdit(${t.id})"><i class="bi bi-pencil"></i></button>
+    </div>
+
+    <div class="drawer-section-label">参考メトリクス <span class="api">参照のみ</span></div>
+    <div class="row g-2">
+      <div class="col-6"><div class="metric-box"><div class="m-num">${nf(t.userCount)}</div><div class="m-lbl">所属ユーザー数</div><div class="m-note">/ 最大 50 名</div></div></div>
+      <div class="col-6"><div class="metric-box"><div class="m-num">${nf(t.taskCount)}</div><div class="m-lbl">タスク数</div><div class="m-note">業務データ(無傷)</div></div></div>
+    </div>
+
+    <div class="drawer-section-label">タイムスタンプ</div>
+    <div class="row g-2">
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">作成日</div><div class="field-readonly">${fmtDate(t.createdAt)}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">更新日</div><div class="field-readonly">${fmtDate(t.updatedAt)}</div></div>
+      ${t.suspendedAt?`<div class="col-12"><div class="text-muted-2" style="font-size:11px;">停止日</div><div class="field-readonly" style="color:var(--c-suspended);">${fmtDate(t.suspendedAt)} に SUSPENDED</div></div>`:''}
+    </div>
+
+    <div class="drawer-section-label">状態切替 <span class="api"><code>PATCH /api/tenants/${t.id}/status</code>(A-26)</span></div>
+    <div class="consequence mb-3">
+      <i class="bi bi-info-circle me-1"></i>${isActive
+        ? '停止すると所属ユーザーは当該テナントへの業務 API アクセスが 403 で拒否されます(ログイン自体は通過、データは無傷)。'
+        : '再有効化すると所属ユーザーの業務 API アクセスが復帰します。'}
+      監査ログに <span class="audit-chip">${isActive?'TENANT_SUSPENDED':'TENANT_REACTIVATED'}</span> を記録。
+    </div>
+    ${isActive
+      ? `<button class="btn btn-outline-warning w-100" onclick="confirmStatus(${t.id})"><i class="bi bi-pause-circle me-1"></i>このテナントを停止(SUSPEND)</button>`
+      : `<button class="btn btn-success w-100" onclick="confirmStatus(${t.id})"><i class="bi bi-play-circle me-1"></i>このテナントを再有効化(ACTIVATE)</button>`}
+    <div class="text-muted-2 small mt-2 text-center"><i class="bi bi-shield-check me-1"></i>操作可能なのは SaaS Admin(APP_ADMIN)のみ</div>
+  `;
+}
+
+/* ----- テナント名 行内編集 ----- */
+function startNameEdit(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const host=document.getElementById("nameView");
+  host.innerHTML = `<input id="nameInput" value="${t.name.replace(/"/g,'&quot;')}" maxlength="255" />
+    <button class="btn btn-sm btn-primary" onclick="commitName(${id})"><i class="bi bi-check-lg"></i></button>
+    <button class="btn btn-sm btn-light" onclick="renderDetail(${id})">取消</button>`;
+  const inp=document.getElementById("nameInput"); inp.focus(); inp.select();
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter")commitName(id); if(e.key==="Escape")renderDetail(id); });
+}
+function commitName(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const v=(document.getElementById("nameInput").value||"").trim();
+  if(v){ t.name=v; t.updatedAt="2026-06-02"; toast(`テナント名を「${v}」に更新しました`,"success"); }
+  renderDetail(id); renderList();
+}
+
+/* ----- 状態切替 確認モーダル(案A: 停止は名前入力確認 / 再有効化は簡易)----- */
+function confirmStatus(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const toSuspend = t.status==="ACTIVE";
+  const body = toSuspend
+    ? `<div class="modal-header border-0 pb-0">
+         <div class="d-flex align-items-start gap-3">
+           <div class="modal-warn-icon warn-suspend"><i class="bi bi-pause-circle-fill"></i></div>
+           <div><h5 class="modal-title mb-1">テナントを停止しますか?</h5>
+           <div class="text-muted-2 small">${t.name}(ID ${t.id})</div></div>
+         </div>
+         <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+       </div>
+       <div class="modal-body">
+         <div class="consequence mb-3">所属ユーザー <b>${nf(t.userCount)} 名</b>はログインはできますが、当該テナントの業務 API アクセスが <b>403</b> で拒否されます。タスク <b>${nf(t.taskCount)} 件</b>を含むデータは削除されず、いつでも再有効化できます。</div>
+         <label class="form-label small fw-bold">確認のためテナント名を入力してください</label>
+         <input id="confirmName" class="form-control" placeholder="${t.name}" oninput="document.getElementById('doStatusBtn').disabled = this.value.trim() !== '${t.name}'" />
+         <div class="form-text">監査ログに <span class="audit-chip">TENANT_SUSPENDED</span> として記録されます。</div>
+       </div>
+       <div class="modal-footer border-0 pt-0">
+         <button class="btn btn-light" data-bs-dismiss="modal">取消</button>
+         <button id="doStatusBtn" class="btn btn-warning" disabled onclick="applyStatus(${t.id})"><i class="bi bi-pause-circle me-1"></i>停止する</button>
+       </div>`
+    : `<div class="modal-header border-0 pb-0">
+         <div class="d-flex align-items-start gap-3">
+           <div class="modal-warn-icon warn-reactivate"><i class="bi bi-play-circle-fill"></i></div>
+           <div><h5 class="modal-title mb-1">テナントを再有効化しますか?</h5>
+           <div class="text-muted-2 small">${t.name}(ID ${t.id})</div></div>
+         </div>
+         <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+       </div>
+       <div class="modal-body">
+         <div class="consequence">所属ユーザー <b>${nf(t.userCount)} 名</b>の業務 API アクセスが復帰します。監査ログに <span class="audit-chip">TENANT_REACTIVATED</span> を記録します。</div>
+       </div>
+       <div class="modal-footer border-0 pt-0">
+         <button class="btn btn-light" data-bs-dismiss="modal">取消</button>
+         <button id="doStatusBtn" class="btn btn-success" onclick="applyStatus(${t.id})"><i class="bi bi-play-circle me-1"></i>再有効化する</button>
+       </div>`;
+  document.getElementById("statusModalContent").innerHTML = body;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("statusModal")).show();
+}
+function applyStatus(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const wasActive = t.status==="ACTIVE";
+  t.status = wasActive ? "SUSPENDED" : "ACTIVE";
+  t.updatedAt = "2026-06-02";
+  t.suspendedAt = wasActive ? "2026-06-02" : null;
+  bootstrap.Modal.getInstance(document.getElementById("statusModal")).hide();
+  renderDetail(id); renderList();
+  toast(wasActive ? `「${t.name}」を停止しました(TENANT_SUSPENDED)` : `「${t.name}」を再有効化しました(TENANT_REACTIVATED)`, wasActive?"warn":"success");
+}
+
+/* ----- toast ----- */
+function toast(msg,kind){
+  const el=document.createElement("div");
+  const color = kind==="success" ? "#207a3a" : kind==="warn" ? "#b8650b" : "#3f4855";
+  const icon  = kind==="success" ? "bi-check-circle-fill" : kind==="warn" ? "bi-pause-circle-fill" : "bi-info-circle-fill";
+  el.className="shadow-sm";
+  el.style.cssText=`background:#fff;border:1px solid var(--app-border);border-left:4px solid ${color};border-radius:9px;padding:11px 14px;font-size:13px;max-width:340px;display:flex;align-items:center;gap:9px;`;
+  el.innerHTML=`<i class="bi ${icon}" style="color:${color};font-size:16px;"></i><span>${msg}</span>`;
+  document.getElementById("toastHost").appendChild(el);
+  setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity="0"; setTimeout(()=>el.remove(),400); }, 3200);
+}
+
+renderList();
+</script>
+</body>
+</html>
