@@ -48,7 +48,7 @@ info:
     - `409 Conflict` — リソースの競合状態(詳細は基本設計書 §5.4.1。エンドポイント個別のシナリオはレスポンス description 参照)
     - `422 Unprocessable Content` — 前提リソース未存在(招待時に Keycloak 未登録 等。詳細は基本設計書 §5.4.2)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.5.0"
+  version: "1.6.0"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -773,6 +773,57 @@ paths:
             業務 API のため SaaS Admin(`APP_ADMIN`)が呼び出した場合は 403(§6.2.1「SaaS Admin の扱い」)。
             その他、テナント越境アクセスや `X-Tenant-Id` 不整合の場合も 403 を返す。
 
+  /api/dashboard/tasks:
+    get:
+      tags: [Dashboard]
+      summary: ダッシュボード当日対応+振り返りリスト(S-03、4 セクション一括)
+      description: |
+        S-03 ダッシュボードの「当日対応 + 振り返り」リスト(screen-flow.md §5.1)を
+        4 セクション分まとめて 1 回で返す個人視点エンドポイント。
+
+        - 対象は **ログイン中ユーザーが所有者または担当者** のタスク(owner OR assignee の論理和)。
+          案 B(専用エンドポイント)採用により `ownerOrAssignee=me` はパスの意味論に内包し、クエリでは受け取らない。
+        - §6.2.1 のタスク参照認可フィルタ(3 役割評価、ADR-0005 / Hibernate Filter ADR-0010)適用後の集合を対象とする。
+          `PRIVATE` は所有者・担当者のみ、`STAKEHOLDERS` は所有者・担当者・関係者のみ、`TENANT` はテナント全員。
+        - 「今日」はサーバ側のシステム日付(`Asia/Tokyo`、JST 全層統一の方針に従う)で確定する。クライアントからは渡さない。
+        - 各セクションの抽出条件・ソート順はサーバが確定して返す(クライアントは描画のみ。再振り分け・再ソート不要):
+
+          | セクション | 抽出条件 | ソート順 |
+          |---|---|---|
+          | `overdue`(期限超過) | `dueDate < 今日` AND `status ≠ DONE` | dueDate ASC → priority DESC |
+          | `today`(今日やること) | `dueDate = 今日` AND `status ≠ DONE` | priority DESC → createdAt ASC |
+          | `upcoming`(これから) | `今日 < dueDate ≤ 今日 + dueWithinDays` AND `status ≠ DONE` | dueDate ASC → priority DESC |
+          | `completedToday`(今日やったこと) | `status = DONE` AND `completedAt の日付 = 今日`(期限は不問) | completedAt DESC |
+
+        - **Tenant Admin であっても通常の参照認可フィルタが適用される**(特別権限なし、ADR-0005)。
+        - 数値カード集計は別エンドポイント `GET /api/dashboard/summary`(S-03)を参照。本エンドポイントはリスト本体を返す。
+        - 件数が大量になった場合のセクション内ページングは本フェーズでは未対応(リストは認可通過後の当日スコープに限定され有界)。将来別 Issue で検討。
+      operationId: getDashboardTasks
+      parameters:
+        - name: dueWithinDays
+          in: query
+          description: |
+            `upcoming`(これから)セクションの先読み日数。`今日 < dueDate ≤ 今日 + dueWithinDays` の範囲を抽出する。
+            既定は 3(今日 + 明日 + 明後日。screen-flow.md §5.1「3 日間の根拠」)。
+            Phase 2 の個人通知設定統合に向けてクライアントから可変指定可能とする。
+          schema:
+            type: integer
+            default: 3
+            minimum: 1
+            maximum: 14
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardTaskSections" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+          description: |-
+            業務 API のため SaaS Admin(`APP_ADMIN`)が呼び出した場合は 403(§6.2.1「SaaS Admin の扱い」)。
+            その他、テナント越境アクセスや `X-Tenant-Id` 不整合の場合も 403 を返す。
+
   /api/tenant/dashboard/summary:
     get:
       tags: [Dashboard]
@@ -1278,6 +1329,34 @@ components:
             優先度別件数(高・中・低)。集計対象は `statusBreakdown` と同一(§6.2.1 の 3 役割評価で参照可能なタスク全体)。
           additionalProperties: { type: integer }
           example: { HIGH: 4, MEDIUM: 10, LOW: 5 }
+
+    DashboardTaskSections:
+      description: |
+        ダッシュボード「当日対応 + 振り返り」リスト(S-03 / `GET /api/dashboard/tasks`)のレスポンス。
+        screen-flow.md §5.1 の 4 セクションを構造化して返す。各配列は **サーバ側でセクション別ソート済**(クライアントは描画のみ、再振り分け・再ソート不要)。
+
+        - 共通前提: §6.2.1 のタスク参照認可フィルタ(3 役割評価、ADR-0005)通過後、かつ **ログイン中ユーザーが所有者または担当者**(owner OR assignee の論理和)のタスクに限定。
+        - 「今日」はサーバ側システム日付(`Asia/Tokyo`、JST)で確定。
+        - 同一タスクは抽出条件が排他のため複数セクションに重複しない。
+      type: object
+      required: [overdue, today, upcoming, completedToday]
+      properties:
+        overdue:
+          type: array
+          description: "期限超過: `dueDate < 今日` AND `status ≠ DONE`。ソート: dueDate ASC → priority DESC。"
+          items: { $ref: "#/components/schemas/Task" }
+        today:
+          type: array
+          description: "今日やること: `dueDate = 今日` AND `status ≠ DONE`。ソート: priority DESC → createdAt ASC。"
+          items: { $ref: "#/components/schemas/Task" }
+        upcoming:
+          type: array
+          description: "これから: `今日 < dueDate ≤ 今日 + dueWithinDays` AND `status ≠ DONE`。ソート: dueDate ASC → priority DESC。"
+          items: { $ref: "#/components/schemas/Task" }
+        completedToday:
+          type: array
+          description: "今日やったこと(振り返り): `status = DONE` AND `completedAt の日付 = 今日`(期限は不問)。ソート: completedAt DESC。"
+          items: { $ref: "#/components/schemas/Task" }
 
     TenantDashboardSummary:
       description: |
