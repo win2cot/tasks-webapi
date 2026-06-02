@@ -505,7 +505,7 @@ paths:
               schema: { type: string }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+              schema: { $ref: "#/components/schemas/TaskDetail" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
@@ -548,7 +548,7 @@ paths:
               schema: { type: string }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+              schema: { $ref: "#/components/schemas/TaskDetail" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -596,11 +596,10 @@ paths:
                 status: { $ref: "#/components/schemas/TaskStatus" }
       responses:
         "200":
-          description: |-
-            OK。暫定レスポンス: `owner`/`editable`/`deletable` は B-3(#279)で追加予定のため、現在は `TaskDetailPartial` を返す。
+          description: OK — 変更後のタスク全体を返す
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+              schema: { $ref: "#/components/schemas/TaskDetail" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -1140,12 +1139,12 @@ components:
         editable:    { type: boolean, description: "ログインユーザーが編集可能か" }
         deletable:   { type: boolean }
 
-    TaskDetailPartial:
+    TaskDetail:
       description: |
-        `GET /api/tasks/{id}` の暫定レスポンス。
-        `owner`(UserSummary) / `editable` / `deletable` / `stakeholders` は B-3(#279)で追加予定。
+        `GET /api/tasks/{id}` / `PATCH /api/tasks/{id}` / `PATCH /api/tasks/{id}/status` のレスポンス。
+        `editable`/`deletable` は ADR-0005 の 3 役割評価(所有者・担当者・関係者)に基づいて UseCase 層で算出する。
       type: object
-      required: [id, tenantId, title, status, priority, visibility, dueDate, createdAt, updatedAt]
+      required: [id, tenantId, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
       properties:
         id:          { type: integer, format: int64 }
         tenantId:    { type: integer, format: int64 }
@@ -1154,13 +1153,19 @@ components:
         priority:    { $ref: "#/components/schemas/Priority" }
         status:      { $ref: "#/components/schemas/TaskStatus" }
         visibility:  { $ref: "#/components/schemas/Visibility" }
-        assigneeId:  { type: [integer, 'null'], format: int64 }
+        owner:       { $ref: "#/components/schemas/UserSummary" }
+        assignee:
+          oneOf:
+            - $ref: "#/components/schemas/UserSummary"
+            - type: 'null'
         dueDate:     { type: string, format: date }
         completedAt:
           type: [string, 'null']
           format: date-time
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
+        editable:    { type: boolean, description: "ログインユーザーが編集可能か(所有者のみ true、ADR-0005)" }
+        deletable:   { type: boolean, description: "ログインユーザーが論理削除可能か(所有者のみ true、ADR-0005)" }
 
     TaskCreateRequest:
       description: |
