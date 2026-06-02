@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>S-13 / S-14 テナント管理 — 案C マスターディテール(左一覧 + 右詳細)</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bs-body-font-family:"Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --app-bg:#f4f5f7;--app-surface:#ffffff;--app-border:#e5e7eb;--app-ink:#1f2733;--app-muted:#6b7280;
+    --app-primary:#3b5bdb;--app-primary-d:#2f49b0;
+    --c-overdue:#e03131;--c-today:#e8830c;--c-soon:#1c7ed6;--c-done:#2f9e44;
+    --admin-accent:#5a4bd6;--admin-accent-soft:#efeefb;--admin-accent-border:#ddd9f5;
+    --c-active:#2f9e44;--c-suspended:#b8650b;
+    --bs-body-bg:var(--app-bg);--bs-body-color:var(--app-ink);
+  }
+  body{font-family:var(--bs-body-font-family);font-size:14px;-webkit-font-smoothing:antialiased;}
+  .text-muted-2{color:var(--app-muted)!important;}
+  code{color:#6a44c4;background:#f1edfa;padding:1px 5px;border-radius:4px;font-size:.86em;}
+
+  .app-navbar{background:var(--app-surface);border-bottom:1px solid var(--app-border);height:56px;box-shadow:inset 0 3px 0 var(--admin-accent);}
+  .app-brand{font-weight:700;letter-spacing:.02em;color:var(--app-ink);}
+  .app-brand .bi{color:var(--app-primary);}
+  .console-chip{font-size:12px;background:var(--admin-accent-soft);color:var(--admin-accent);border:1px solid var(--admin-accent-border);padding:3px 11px;border-radius:999px;font-weight:700;display:inline-flex;align-items:center;gap:5px;}
+  .role-badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;background:#2a3142;color:#fff;padding:2px 8px;border-radius:5px;}
+
+  .app-layout{display:flex;min-height:calc(100vh - 56px);}
+  .app-sidebar{width:218px;flex:0 0 218px;background:var(--app-surface);border-right:1px solid var(--app-border);padding:16px 12px;}
+  .nav-group-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:#9aa1ad;text-transform:uppercase;padding:0 12px;margin:14px 0 6px;}
+  .side-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#3f4855;text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;}
+  .side-link .bi{font-size:16px;color:#7a828f;}
+  .side-link:hover{background:#f2f4f7;}
+  .side-link.active{background:var(--admin-accent-soft);color:var(--admin-accent);}
+  .side-link.active .bi{color:var(--admin-accent);}
+  .side-link.is-disabled{opacity:.55;cursor:not-allowed;}
+  .side-link .badge{margin-left:auto;}
+  .scope-note{font-size:11px;color:var(--app-muted);background:#fafaff;border:1px solid var(--admin-accent-border);border-radius:8px;padding:9px 11px;margin-top:14px;line-height:1.55;}
+
+  .app-main{flex:1 1 auto;min-width:0;padding:18px 22px 40px;display:flex;flex-direction:column;}
+  .page-title{font-weight:700;font-size:20px;margin:0;}
+  .page-sub{color:var(--app-muted);font-size:13px;}
+
+  /* ---- マスターディテール 2 分割 ---- */
+  .md-split{display:flex;gap:16px;align-items:stretch;flex:1 1 auto;min-height:0;}
+  .md-left{flex:0 0 392px;width:392px;display:flex;flex-direction:column;background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;overflow:hidden;}
+  .md-right{flex:1 1 auto;min-width:0;background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+  @media(max-width:1100px){.md-split{flex-direction:column;}.md-left{width:100%;flex-basis:auto;max-height:none;}}
+
+  .ml-head{padding:12px 14px;border-bottom:1px solid var(--app-border);background:#fafbfc;}
+  .ml-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .ml-toolbar h2{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:7px;}
+  .ml-toolbar .cnt{font-size:11.5px;color:var(--app-muted);}
+  .seg{display:inline-flex;border:1px solid var(--app-border);border-radius:7px;overflow:hidden;background:#fff;}
+  .seg button{border:none;background:#fff;font-size:11.5px;font-weight:600;color:#566173;padding:5px 10px;cursor:pointer;border-right:1px solid var(--app-border);}
+  .seg button:last-child{border-right:none;}
+  .seg button:hover:not(.on){background:#f4f6fb;}
+  .seg button.on{background:var(--admin-accent);color:#fff;}
+  .search-wrap{position:relative;flex:1 1 auto;}
+  .search-wrap .bi{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9aa1ad;font-size:13px;}
+  .search-wrap input{padding-left:30px;width:100%;}
+
+  /* ---- 左: 簡易行リスト ---- */
+  .ml-list{overflow-y:auto;flex:1 1 auto;}
+  .t-item{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid #f1f2f4;cursor:pointer;border-left:3px solid transparent;}
+  .t-item:hover{background:#f7f8ff;}
+  .t-item.active{background:var(--admin-accent-soft);border-left-color:var(--admin-accent);}
+  .t-item.is-suspended .t-avatar{background:#fff3e2;color:#b8650b;}
+  .t-avatar{width:34px;height:34px;border-radius:9px;background:var(--admin-accent-soft);color:var(--admin-accent);display:inline-grid;place-items:center;font-size:14px;font-weight:700;flex:0 0 34px;}
+  .t-item .t-body{min-width:0;flex:1 1 auto;}
+  .t-item .t-name{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .t-item .t-meta{font-size:11px;color:var(--app-muted);display:flex;align-items:center;gap:8px;margin-top:1px;}
+  .t-item .t-meta .dot{width:3px;height:3px;border-radius:50%;background:#c2c7d0;}
+  .t-dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;}
+  .t-dot.d-active{background:var(--c-active);}
+  .t-dot.d-suspended{background:var(--c-suspended);}
+  .empty-list{text-align:center;color:#9aa1ad;padding:36px 14px;font-size:13px;}
+  .ml-foot{padding:8px 14px;border-top:1px solid var(--app-border);background:#fafbfc;font-size:11.5px;color:var(--app-muted);display:flex;align-items:center;gap:8px;}
+
+  /* ---- 右: 詳細 ---- */
+  .mr-scroll{overflow-y:auto;flex:1 1 auto;}
+  .mr-head{padding:18px 22px;border-bottom:1px solid var(--app-border);display:flex;align-items:flex-start;gap:14px;}
+  .mr-avatar{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;font-size:20px;font-weight:700;flex:0 0 48px;background:var(--admin-accent-soft);color:var(--admin-accent);}
+  .editable-name{font-size:22px;font-weight:700;border-bottom:1px dashed #b6bcc6;cursor:text;padding-bottom:1px;}
+  .editable-name:hover{background:var(--admin-accent-soft);border-bottom-color:var(--admin-accent);}
+  .name-row input{font:inherit;font-size:20px;font-weight:700;border:1px solid var(--app-primary);border-radius:7px;padding:4px 10px;width:100%;max-width:380px;}
+  .mr-url{font-size:12px;color:var(--app-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:4px;}
+  .mr-body{padding:20px 22px;}
+  .sec-label{font-size:11px;font-weight:700;color:#9aa1ad;text-transform:uppercase;letter-spacing:.05em;margin:0 0 9px;display:flex;align-items:center;gap:7px;}
+  .sec-label .api{margin-left:auto;font-weight:500;color:#b4bac4;text-transform:none;letter-spacing:0;}
+  .metric-box{background:#fff;border:1px solid var(--app-border);border-radius:10px;padding:13px;text-align:center;}
+  .metric-box .m-num{font-size:26px;font-weight:700;line-height:1.05;}
+  .metric-box .m-lbl{font-size:11.5px;color:var(--app-muted);margin-top:3px;}
+  .metric-box .m-note{font-size:10px;color:#aab0ba;margin-top:1px;}
+  .meta-row{display:flex;padding:10px 0;border-bottom:1px solid #f1f2f4;font-size:13.5px;}
+  .meta-row:last-child{border-bottom:none;}
+  .meta-row .mk{width:100px;flex:0 0 100px;color:var(--app-muted);font-size:12px;font-weight:600;}
+  .consequence{font-size:12.5px;color:#5a6270;background:#fbfbfc;border:1px solid var(--app-border);border-radius:9px;padding:11px 13px;line-height:1.65;}
+  .audit-chip{font-size:10.5px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#2a3142;color:#fff;padding:2px 7px;border-radius:4px;}
+  .status-hero{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:11px;}
+  .status-hero.s-active{background:#eef9f1;border:1px solid #c3e6cf;}
+  .status-hero.s-suspended{background:#fff6ea;border:1px solid #f3dcb6;}
+  .status-hero .sh-icon{font-size:24px;}
+  .status-hero.s-active .sh-icon{color:var(--c-active);}
+  .status-hero.s-suspended .sh-icon{color:var(--c-suspended);}
+
+  .ts-badge{font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;}
+  .ts-ACTIVE{background:#e7f5ec;color:#207a3a;border-color:#c3e6cf;}
+  .ts-SUSPENDED{background:#fff3e2;color:#b8650b;border-color:#f3dcb6;}
+  .plan-badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:5px;background:#eef1f6;color:#566173;}
+
+  .empty-detail{flex:1 1 auto;display:grid;place-items:center;color:#aab0ba;text-align:center;padding:40px;}
+  .empty-detail .bi{font-size:42px;color:#d3d7de;}
+
+  .modal-warn-icon{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;flex:0 0 44px;}
+  .warn-suspend{background:#fff3e2;color:#b8650b;}
+  .warn-reactivate{background:#e7f5ec;color:#207a3a;}
+  .toast-host{position:fixed;right:18px;bottom:18px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
+
+  .design-notes{margin-top:18px;border:1px dashed #c9ccd3;border-radius:12px;background:#fcfcfd;padding:18px 22px;}
+  .design-notes h3{font-size:13px;font-weight:700;letter-spacing:.04em;color:#5a6270;margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+  .design-notes dl{display:grid;grid-template-columns:96px 1fr;gap:6px 14px;margin:0;font-size:12.5px;}
+  .design-notes dt{font-weight:700;color:#404856;}
+  .design-notes dd{margin:0;color:#5a6270;}
+</style>
+</head>
+<body>
+
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top">
+  <div class="app-brand d-flex align-items-center gap-2"><i class="bi bi-check2-square fs-5"></i><span>tasks-webapi</span></div>
+  <span class="console-chip"><i class="bi bi-hdd-stack"></i>管理コンソール</span>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <span class="text-muted-2 small d-none d-md-inline"><i class="bi bi-shield-lock me-1"></i>テナント運営軸のみ・業務 API 非到達</span>
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle d-grid" style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;background:#2a3142;color:#fff;">山</div>
+      <div class="d-none d-lg-block lh-1"><div class="small fw-bold">山田 太郎</div><span class="role-badge">APP_ADMIN</span></div>
+    </div>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="app-sidebar d-none d-lg-block">
+    <div class="nav-group-label">プラットフォーム運用</div>
+    <a class="side-link active" href="#" onclick="return false"><i class="bi bi-buildings"></i>テナント一覧 <span class="badge text-bg-light text-muted-2">S-13</span></a>
+    <a class="side-link is-disabled" href="#" onclick="return false" title="Sprint 1 以降"><i class="bi bi-activity"></i>監視 <span class="badge text-bg-light text-muted-2">S-12</span></a>
+    <a class="side-link is-disabled" href="#" onclick="return false" title="Tenant Admin 機能"><i class="bi bi-journal-text"></i>監査ログ</a>
+    <div class="nav-group-label">アカウント</div>
+    <a class="side-link" href="#" onclick="return false"><i class="bi bi-person-circle"></i>プロフィール</a>
+    <a class="side-link" href="#" onclick="return false"><i class="bi bi-box-arrow-right"></i>ログアウト</a>
+    <div class="scope-note"><i class="bi bi-diagram-3 me-1"></i>業務動線(S-03〜S-06)とは画面遷移として<b>直結しません</b>。業務タスク・visibility・3 役割評価はこの空間では効きません。</div>
+  </aside>
+
+  <main class="app-main">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <div>
+        <h1 class="page-title">テナント管理</h1>
+        <div class="page-sub"><i class="bi bi-link-45deg"></i> 左で選択 → 右に S-14 を同時表示(<code>/admin/tenants</code> ⇄ <code>/admin/tenants/{id}</code>)</div>
+      </div>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span class="console-chip"><i class="bi bi-check-circle"></i>ACTIVE <b id="kActive">0</b></span>
+        <span class="console-chip" style="background:#fff3e2;color:#b8650b;border-color:#f3dcb6;"><i class="bi bi-pause-circle"></i>SUSPENDED <b id="kSusp">0</b></span>
+      </div>
+    </div>
+
+    <div class="md-split">
+      <!-- 左: マスター一覧 -->
+      <div class="md-left">
+        <div class="ml-head">
+          <div class="ml-toolbar">
+            <h2><i class="bi bi-buildings" style="color:var(--admin-accent);"></i>テナント</h2>
+            <span class="cnt" id="listCount">0 件</span>
+            <div class="seg ms-auto" id="statusSeg">
+              <button class="on" data-v="ALL" onclick="setStatusFilter('ALL')">すべて</button>
+              <button data-v="ACTIVE" onclick="setStatusFilter('ACTIVE')">ACTIVE</button>
+              <button data-v="SUSPENDED" onclick="setStatusFilter('SUSPENDED')">停止</button>
+            </div>
+          </div>
+          <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input id="nameSearch" class="form-control form-control-sm" placeholder="テナント名で部分一致検索" oninput="renderList()" />
+          </div>
+        </div>
+        <div class="ml-list" id="listBody"></div>
+        <div class="ml-foot">
+          <i class="bi bi-database"></i><span><code>GET /api/tenants</code>(A-04)・createdAt DESC</span>
+          <span class="ms-auto">50 件 / ページ</span>
+        </div>
+      </div>
+
+      <!-- 右: ディテール -->
+      <div class="md-right" id="detailPane"></div>
+    </div>
+
+    <div class="design-notes">
+      <h3><i class="bi bi-clipboard-data"></i>設計判断ポイント — 案C マスターディテール(左一覧 + 右詳細)</h3>
+      <dl>
+        <dt>強み</dt><dd>一覧と詳細を常時同時表示。左で次々選択するだけで右に S-14 が即時差し替わり、複数テナントを連続して確認・状態切替するパワーユーザの操作効率が最も高い。一覧の文脈を失わずに 1 件を深掘りでき、選択行はハイライトで追跡できる。</dd>
+        <dt>弱み</dt><dd>左ペインに 392px を固定で割くため、右の詳細幅が狭まり 1 件の情報量はフルページ案に劣る。タブレット縦・狭幅では上下 2 段に折り返り、同時表示の利点が薄れる。1 件をじっくり見る用途には冗長。</dd>
+        <dt>想定読者</dt><dd>多数テナントを横断して棚卸し・一括点検する運用パワーユーザ。「次々に切り替えて状態を確認」する頻度が高い PC 中心の専任 SaaS Admin。</dd>
+      </dl>
+    </div>
+  </main>
+</div>
+
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content" id="statusModalContent"></div></div>
+</div>
+<div class="toast-host" id="toastHost"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+const CURRENT_USER = { name:"山田 太郎", role:"APP_ADMIN" };
+const TENANTS = [
+  { id:1, code:"tenant-a",  name:"テナントA株式会社",       status:"ACTIVE",    plan:"FREE", userCount:18, taskCount:421,  createdAt:"2025-12-03", updatedAt:"2026-05-20", suspendedAt:null },
+  { id:2, code:"tenant-b",  name:"テナントB商事",           status:"ACTIVE",    plan:"FREE", userCount:32, taskCount:1247, createdAt:"2025-08-15", updatedAt:"2026-05-18", suspendedAt:null },
+  { id:3, code:"tenant-c",  name:"テナントC工業",           status:"SUSPENDED", plan:"FREE", userCount:11, taskCount:283,  createdAt:"2024-11-20", updatedAt:"2026-03-12", suspendedAt:"2026-03-12" },
+  { id:4, code:"demo",      name:"デモ用テナント",           status:"ACTIVE",    plan:"FREE", userCount:3,  taskCount:12,   createdAt:"2026-05-01", updatedAt:"2026-05-01", suspendedAt:null },
+  { id:5, code:"tenant-d",  name:"テナントD物流",           status:"ACTIVE",    plan:"FREE", userCount:25, taskCount:892,  createdAt:"2025-04-10", updatedAt:"2026-04-22", suspendedAt:null },
+  { id:6, code:"tenant-e",  name:"テナントEメディア",       status:"SUSPENDED", plan:"FREE", userCount:7,  taskCount:65,   createdAt:"2024-06-01", updatedAt:"2025-09-30", suspendedAt:"2025-09-30" },
+  { id:7, code:"tenant-f",  name:"テナントF不動産",         status:"ACTIVE",    plan:"FREE", userCount:42, taskCount:2103, createdAt:"2024-02-14", updatedAt:"2026-05-12", suspendedAt:null },
+  { id:8, code:"tenant-g",  name:"テナントGスタートアップ", status:"ACTIVE",    plan:"FREE", userCount:5,  taskCount:34,   createdAt:"2026-05-28", updatedAt:"2026-05-28", suspendedAt:null },
+];
+let statusFilter="ALL";
+let selectedId=null;
+
+function statusMeta(s){ return s==="ACTIVE"
+  ? ["ACTIVE","ts-ACTIVE","bi-check-circle-fill","d-active"]
+  : ["SUSPENDED","ts-SUSPENDED","bi-pause-circle-fill","d-suspended"]; }
+function fmtDate(d){ return d ? d.replace(/-/g,"/") : "—"; }
+function initial(name){ const m=name.match(/[A-Za-zＡ-Ｚ]|[ァ-ヶ]|[一-龠]|[ぁ-ん]/); return (m?m[0]:name[0]); }
+function nf(n){ return n.toLocaleString("ja-JP"); }
+
+function visibleTenants(){
+  const kw=(document.getElementById("nameSearch").value||"").trim().toLowerCase();
+  return TENANTS
+    .filter(t=> statusFilter==="ALL" || t.status===statusFilter)
+    .filter(t=> !kw || t.name.toLowerCase().includes(kw) || (t.code||"").includes(kw))
+    .slice().sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
+}
+function itemHTML(t){
+  const [sl,sc,si,dc]=statusMeta(t.status);
+  return `<div class="t-item ${t.id===selectedId?'active':''} ${t.status==='SUSPENDED'?'is-suspended':''}" onclick="selectTenant(${t.id})">
+    <span class="t-avatar">${initial(t.name)}</span>
+    <div class="t-body">
+      <div class="t-name">${t.name}</div>
+      <div class="t-meta">
+        <span>ID ${t.id}</span><span class="dot"></span>
+        <span><i class="bi bi-people"></i> ${nf(t.userCount)}</span><span class="dot"></span>
+        <span><i class="bi bi-list-check"></i> ${nf(t.taskCount)}</span>
+      </div>
+    </div>
+    <span class="t-dot ${dc}" title="${sl}"></span>
+  </div>`;
+}
+function renderList(){
+  const list=visibleTenants();
+  document.getElementById("listBody").innerHTML = list.length
+    ? list.map(itemHTML).join("")
+    : `<div class="empty-list"><i class="bi bi-inbox d-block mb-2" style="font-size:28px;"></i>該当するテナントはありません</div>`;
+  document.getElementById("listCount").textContent=`${list.length} 件`;
+  document.getElementById("kActive").textContent=TENANTS.filter(t=>t.status==="ACTIVE").length;
+  document.getElementById("kSusp").textContent=TENANTS.filter(t=>t.status==="SUSPENDED").length;
+}
+function setStatusFilter(v){
+  statusFilter=v;
+  [...document.querySelectorAll("#statusSeg button")].forEach(b=>b.classList.toggle("on", b.dataset.v===v));
+  renderList();
+}
+
+function selectTenant(id){ selectedId=id; renderList(); renderDetail(); }
+
+function renderDetail(){
+  const pane=document.getElementById("detailPane");
+  if(selectedId==null){
+    pane.innerHTML=`<div class="empty-detail"><div><i class="bi bi-arrow-left-circle d-block mb-2"></i>左の一覧からテナントを選択すると<br>ここに詳細(S-14)を表示します</div></div>`;
+    return;
+  }
+  const t=TENANTS.find(x=>x.id===selectedId);
+  const [sl,sc,si]=statusMeta(t.status);
+  const isActive=t.status==="ACTIVE";
+  pane.innerHTML=`
+    <div class="mr-head">
+      <span class="mr-avatar">${initial(t.name)}</span>
+      <div class="flex-grow-1" style="min-width:0;">
+        <div id="nameRow" class="name-row d-flex align-items-center gap-2">
+          <span class="editable-name" onclick="startNameEdit()" title="クリックで編集(SaaS Admin)">${t.name}</span>
+          <button class="btn btn-sm btn-light" onclick="startNameEdit()"><i class="bi bi-pencil"></i></button>
+        </div>
+        <div class="mr-url">/admin/tenants/${t.id} ・ <span style="color:var(--admin-accent);">${t.code}</span></div>
+      </div>
+      <span class="ts-badge ${sc}"><i class="bi ${si}"></i>${sl}</span>
+    </div>
+
+    <div class="mr-scroll"><div class="mr-body">
+      <div class="status-hero ${isActive?'s-active':'s-suspended'} mb-4">
+        <i class="bi ${si} sh-icon"></i>
+        <div style="min-width:0;">
+          <div class="fw-bold" style="font-size:14px;">現在の状態: ${sl}</div>
+          <div class="text-muted-2 small">${isActive
+            ? '所属ユーザーは業務 API を利用できます。'
+            : `${fmtDate(t.suspendedAt)} に停止・業務 API は 403 で拒否中(データ無傷)`}</div>
+        </div>
+        <div class="ms-auto">
+          ${isActive
+            ? `<button class="btn btn-sm btn-outline-warning" onclick="confirmStatus(${t.id})"><i class="bi bi-pause-circle me-1"></i>停止</button>`
+            : `<button class="btn btn-sm btn-success" onclick="confirmStatus(${t.id})"><i class="bi bi-play-circle me-1"></i>再有効化</button>`}
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="sec-label">基本情報 <span class="api"><code>PUT /api/tenants/${t.id}</code>(A-06)</span></div>
+          <div class="meta-row"><div class="mk">テナント ID</div><div>${t.id}</div></div>
+          <div class="meta-row"><div class="mk">コード</div><div><code>${t.code}</code></div></div>
+          <div class="meta-row"><div class="mk">プラン</div><div><span class="plan-badge">${t.plan}</span></div></div>
+          <div class="meta-row"><div class="mk">作成日</div><div>${fmtDate(t.createdAt)}</div></div>
+          <div class="meta-row"><div class="mk">更新日</div><div>${fmtDate(t.updatedAt)}</div></div>
+          ${t.suspendedAt?`<div class="meta-row"><div class="mk">停止日</div><div style="color:var(--c-suspended);">${fmtDate(t.suspendedAt)}</div></div>`:''}
+        </div>
+        <div class="col-lg-5">
+          <div class="sec-label">参考メトリクス <span class="api">参照のみ</span></div>
+          <div class="row g-2">
+            <div class="col-6"><div class="metric-box"><div class="m-num">${nf(t.userCount)}</div><div class="m-lbl">ユーザー数</div><div class="m-note">/ 最大 50 名</div></div></div>
+            <div class="col-6"><div class="metric-box"><div class="m-num">${nf(t.taskCount)}</div><div class="m-lbl">タスク数</div><div class="m-note">業務データ</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-label mt-4">状態切替 <span class="api"><code>PATCH /api/tenants/${t.id}/status</code>(A-26)</span></div>
+      <div class="consequence mb-3">
+        <i class="bi bi-info-circle me-1"></i>${isActive
+          ? '停止すると所属ユーザーの業務 API アクセスが 403 で拒否されます(ログインは通過・データ無傷)。'
+          : '再有効化すると所属ユーザーの業務 API アクセスが復帰します。'}
+        監査ログに <span class="audit-chip">${isActive?'TENANT_SUSPENDED':'TENANT_REACTIVATED'}</span> を記録。
+      </div>
+      ${isActive
+        ? `<button class="btn btn-outline-warning" onclick="confirmStatus(${t.id})"><i class="bi bi-pause-circle me-1"></i>このテナントを停止する</button>`
+        : `<button class="btn btn-success" onclick="confirmStatus(${t.id})"><i class="bi bi-play-circle me-1"></i>このテナントを再有効化する</button>`}
+      <div class="text-muted-2 small mt-2"><i class="bi bi-shield-check me-1"></i>操作可能なのは SaaS Admin(APP_ADMIN)のみ</div>
+    </div></div>`;
+}
+
+function startNameEdit(){
+  const t=TENANTS.find(x=>x.id===selectedId);
+  const host=document.getElementById("nameRow");
+  host.innerHTML=`<input id="nameInput" value="${t.name.replace(/"/g,'&quot;')}" maxlength="255" />
+    <button class="btn btn-sm btn-primary" onclick="commitName()"><i class="bi bi-check-lg"></i></button>
+    <button class="btn btn-sm btn-light" onclick="renderDetail()">取消</button>`;
+  const inp=document.getElementById("nameInput"); inp.focus(); inp.select();
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter")commitName(); if(e.key==="Escape")renderDetail(); });
+}
+function commitName(){
+  const t=TENANTS.find(x=>x.id===selectedId);
+  const v=(document.getElementById("nameInput").value||"").trim();
+  if(v){ t.name=v; t.updatedAt="2026-06-02"; toast(`テナント名を「${v}」に更新しました`,"success"); }
+  renderDetail(); renderList();
+}
+
+/* 案C: パワーユーザ向け簡易 Yes/No 確認(影響は明示)*/
+function confirmStatus(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const toSuspend=t.status==="ACTIVE";
+  const body = toSuspend
+    ? `<div class="modal-header border-0 pb-0">
+         <div class="d-flex align-items-start gap-3">
+           <div class="modal-warn-icon warn-suspend"><i class="bi bi-pause-circle-fill"></i></div>
+           <div><h5 class="modal-title mb-1">停止しますか?</h5><div class="text-muted-2 small">${t.name}(ID ${t.id})</div></div>
+         </div>
+         <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+       </div>
+       <div class="modal-body"><div class="consequence">所属ユーザー <b>${nf(t.userCount)} 名</b>はログインできなくなります(業務 API が 403)。タスク <b>${nf(t.taskCount)} 件</b>を含むデータは無傷で、いつでも再有効化できます。監査ログに <span class="audit-chip">TENANT_SUSPENDED</span> を記録します。</div></div>
+       <div class="modal-footer border-0 pt-0">
+         <button class="btn btn-light" data-bs-dismiss="modal">いいえ</button>
+         <button class="btn btn-warning" onclick="applyStatus(${t.id})"><i class="bi bi-pause-circle me-1"></i>はい、停止する</button>
+       </div>`
+    : `<div class="modal-header border-0 pb-0">
+         <div class="d-flex align-items-start gap-3">
+           <div class="modal-warn-icon warn-reactivate"><i class="bi bi-play-circle-fill"></i></div>
+           <div><h5 class="modal-title mb-1">再有効化しますか?</h5><div class="text-muted-2 small">${t.name}(ID ${t.id})</div></div>
+         </div>
+         <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+       </div>
+       <div class="modal-body"><div class="consequence">所属ユーザー <b>${nf(t.userCount)} 名</b>の業務 API アクセスが復帰します。監査ログに <span class="audit-chip">TENANT_REACTIVATED</span> を記録します。</div></div>
+       <div class="modal-footer border-0 pt-0">
+         <button class="btn btn-light" data-bs-dismiss="modal">いいえ</button>
+         <button class="btn btn-success" onclick="applyStatus(${t.id})"><i class="bi bi-play-circle me-1"></i>はい、再有効化する</button>
+       </div>`;
+  document.getElementById("statusModalContent").innerHTML=body;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("statusModal")).show();
+}
+function applyStatus(id){
+  const t=TENANTS.find(x=>x.id===id);
+  const wasActive=t.status==="ACTIVE";
+  t.status=wasActive?"SUSPENDED":"ACTIVE";
+  t.updatedAt="2026-06-02";
+  t.suspendedAt=wasActive?"2026-06-02":null;
+  bootstrap.Modal.getInstance(document.getElementById("statusModal")).hide();
+  renderDetail(); renderList();
+  toast(wasActive?`「${t.name}」を停止しました(TENANT_SUSPENDED)`:`「${t.name}」を再有効化しました(TENANT_REACTIVATED)`, wasActive?"warn":"success");
+}
+
+function toast(msg,kind){
+  const el=document.createElement("div");
+  const color=kind==="success"?"#207a3a":kind==="warn"?"#b8650b":"#3f4855";
+  const icon=kind==="success"?"bi-check-circle-fill":kind==="warn"?"bi-pause-circle-fill":"bi-info-circle-fill";
+  el.style.cssText=`background:#fff;border:1px solid var(--app-border);border-left:4px solid ${color};border-radius:9px;padding:11px 14px;font-size:13px;max-width:340px;display:flex;align-items:center;gap:9px;box-shadow:0 6px 22px rgba(31,39,51,.12);`;
+  el.innerHTML=`<i class="bi ${icon}" style="color:${color};font-size:16px;"></i><span>${msg}</span>`;
+  document.getElementById("toastHost").appendChild(el);
+  setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity="0"; setTimeout(()=>el.remove(),400); },3200);
+}
+
+renderList();
+selectTenant(1); /* 初期選択 */
+</script>
+</body>
+</html>
