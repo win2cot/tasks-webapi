@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>S-05 / S-06 タスク詳細 — 案C メタデータグリッド型</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bs-body-font-family:"Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --app-bg:#f4f5f7;--app-surface:#ffffff;--app-border:#e5e7eb;--app-ink:#1f2733;--app-muted:#6b7280;
+    --app-primary:#3b5bdb;--c-overdue:#e03131;--c-today:#e8830c;--c-soon:#1c7ed6;--c-done:#2f9e44;
+    --bs-body-bg:var(--app-bg);--bs-body-color:var(--app-ink);
+  }
+  body{font-family:var(--bs-body-font-family);font-size:14px;}
+  .text-muted-2{color:var(--app-muted)!important;}
+  code{color:#7048b6;background:#f3eef9;padding:1px 5px;border-radius:4px;font-size:.86em;}
+
+  .app-navbar{background:var(--app-surface);border-bottom:1px solid var(--app-border);height:56px;}
+  .app-brand{font-weight:700;letter-spacing:.02em;color:var(--app-ink);}
+  .app-brand .bi{color:var(--app-primary);}
+  .tenant-chip{font-size:12px;background:#eef2ff;color:#3b4cca;border:1px solid #dbe1ff;padding:3px 10px;border-radius:999px;font-weight:500;}
+  .app-layout{display:flex;min-height:calc(100vh - 56px);}
+  .app-sidebar{width:236px;flex:0 0 236px;background:var(--app-surface);border-right:1px solid var(--app-border);padding:16px 12px;}
+  .app-main{flex:1 1 auto;min-width:0;padding:22px 26px 60px;}
+  .nav-group-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:#9aa1ad;text-transform:uppercase;padding:0 12px;margin:14px 0 6px;}
+  .side-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#3f4855;text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;}
+  .side-link .bi{font-size:16px;color:#7a828f;}
+  .side-link:hover{background:#f2f4f7;}
+  .side-link.active{background:#eef2ff;color:var(--app-primary);}
+  .side-link .badge{margin-left:auto;}
+  .admin-only{display:none;}
+  body.role-admin .admin-only{display:block;}
+
+  .mock-bar{background:#fbfbfd;border-bottom:1px dashed #cfd3da;padding:8px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:56px;z-index:1018;}
+  .mock-tag{font-size:10px;font-weight:700;letter-spacing:.06em;color:#9aa1ad;text-transform:uppercase;display:flex;align-items:center;gap:5px;}
+  .mock-group{display:flex;align-items:center;gap:7px;}
+  .mock-group > label{font-size:11px;font-weight:700;color:#6b7280;margin:0;}
+  .seg{display:inline-flex;border:1px solid var(--app-border);border-radius:8px;overflow:hidden;background:#fff;}
+  .seg button{border:none;background:#fff;font-size:12px;font-weight:600;color:#566173;padding:5px 11px;cursor:pointer;display:flex;align-items:center;gap:5px;border-right:1px solid var(--app-border);}
+  .seg button:last-child{border-right:none;}
+  .seg button.on{background:var(--app-primary);color:#fff;}
+  .seg button:disabled{color:#c2c7d0;cursor:not-allowed;background:#f7f8fa;}
+  .seg button .who{font-weight:400;opacity:.85;font-size:11px;}
+
+  .url-bar{display:inline-flex;align-items:center;gap:8px;background:#f3f4f6;border:1px solid var(--app-border);border-radius:8px;padding:6px 12px;font-size:12.5px;color:#566173;}
+  .url-bar .bi{color:#9aa1ad;}
+  .url-bar .mode-ref{color:var(--app-primary);font-weight:600;}
+  .url-bar .mode-edit{color:var(--c-today);font-weight:600;}
+  .page-title{font-weight:700;font-size:20px;margin:0;}
+
+  .cap-card{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;padding:12px 16px;}
+  .cap-role{font-size:13px;font-weight:700;}
+  .cap-flags{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;}
+  .cap-flag{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;}
+  .cap-yes{background:#e7f5ec;color:#207a3a;border-color:#c3e6cf;}
+  .cap-no{background:#f3f4f6;color:#9aa1ad;border-color:#e5e7eb;}
+
+  /* ---- 案C: メタデータグリッド ---- */
+  .detail-wrap{max-width:920px;}
+  .card-box{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;overflow:hidden;}
+  .c-title-head{padding:20px 22px;border-bottom:1px solid var(--app-border);}
+  .task-title-lg{font-size:23px;font-weight:700;line-height:1.4;margin:8px 0 0;}
+
+  .prop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--app-border);}
+  @media(max-width:820px){.prop-grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:560px){.prop-grid{grid-template-columns:1fr;}}
+  .prop{background:var(--app-surface);padding:13px 16px;min-height:74px;position:relative;}
+  .prop .pk{font-size:11px;color:var(--app-muted);font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .prop .pk .api{margin-left:auto;font-weight:500;color:#b4bac4;}
+  .prop .pv{font-size:13.5px;}
+  .prop.editable-prop{cursor:pointer;}
+  .prop.editable-prop:hover{background:#f7f9ff;}
+  .prop .pencil{position:absolute;top:11px;right:12px;font-size:11px;color:#c2c7d0;opacity:0;transition:opacity .12s;}
+  .prop.editable-prop:hover .pencil{opacity:1;color:var(--app-primary);}
+  .prop.meta-ro{background:#fafbfc;}
+
+  .task-desc{color:#46505f;font-size:14px;line-height:1.85;white-space:pre-wrap;}
+  .card-head{display:flex;align-items:center;gap:9px;padding:11px 18px;border-bottom:1px solid var(--app-border);}
+  .card-head .ci{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:#fff;font-size:13px;background:var(--app-primary);}
+  .card-head h2{font-size:13.5px;font-weight:700;margin:0;}
+  .card-head .api{font-size:11px;color:#9aa1ad;margin-left:auto;font-weight:500;}
+  .card-pad{padding:16px 18px;}
+
+  .vis-badge{font-size:12px;font-weight:500;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent;}
+  .vis-TENANT{background:#e7f5ec;color:#207a3a;border-color:#c3e6cf;}
+  .vis-STAKEHOLDERS{background:#e7f0fb;color:#1f5fb0;border-color:#c2d8f2;}
+  .vis-PRIVATE{background:#f3eef7;color:#7a4ba8;border-color:#e0d2ee;}
+  .pri-badge{font-size:12px;font-weight:600;padding:3px 11px;border-radius:6px;}
+  .pri-HIGH{background:#fdeaea;color:#c92a2a;}.pri-MEDIUM{background:#fff3e2;color:#b8650b;}.pri-LOW{background:#eef1f6;color:#566173;}
+  .st-badge{font-size:12px;font-weight:600;padding:4px 11px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;}
+  .st-NOT_STARTED{background:#eef1f6;color:#566173;}.st-IN_PROGRESS{background:#e7f0fb;color:#1f5fb0;}.st-DONE{background:#e7f5ec;color:#207a3a;}.st-ON_HOLD{background:#fff3e2;color:#b8650b;}
+  .user-chip{display:inline-flex;align-items:center;gap:7px;}
+  .avatar-mini{width:24px;height:24px;border-radius:50%;background:#eef2ff;color:#3b4cca;display:inline-grid;place-items:center;font-size:11px;font-weight:700;flex:0 0 24px;}
+
+  .cell-locked{color:#aab0ba!important;cursor:not-allowed;display:inline-flex;align-items:center;gap:4px;}
+  .lock-i{font-size:11px;color:#c2c7d0;}
+  .lock-note{font-size:11px;color:#a0a6b0;display:flex;align-items:center;gap:5px;margin-top:6px;}
+
+  .sh-chip{display:inline-flex;align-items:center;gap:7px;background:#f6f7f9;border:1px solid var(--app-border);border-radius:999px;padding:4px 6px 4px 7px;font-size:12.5px;}
+  .sh-chip .x{border:none;background:none;color:#9aa1ad;cursor:pointer;line-height:1;padding:2px;border-radius:50%;display:grid;place-items:center;}
+  .sh-chip .x:hover{background:#fdeaea;color:#c92a2a;}
+  .sh-chip .x:disabled{color:#d6dae0;cursor:not-allowed;}
+  .sh-chip .x:disabled:hover{background:none;}
+
+  .conflict-banner{display:none;border:1px solid #f3c0c0;background:#fdf1f1;border-radius:10px;padding:12px 14px;margin-bottom:16px;}
+  body.show-conflict .conflict-banner{display:block;}
+
+  .design-notes{margin-top:30px;border:1px dashed #c9ccd3;border-radius:12px;background:#fcfcfd;padding:18px 22px;max-width:920px;}
+  .design-notes h3{font-size:13px;font-weight:700;letter-spacing:.04em;color:#5a6270;margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+  .design-notes dl{display:grid;grid-template-columns:96px 1fr;gap:6px 14px;margin:0;font-size:12.5px;}
+  .design-notes dt{font-weight:700;color:#404856;}
+  .design-notes dd{margin:0;color:#5a6270;}
+  .role-note{font-size:11.5px;color:var(--app-muted);background:#fbfbfc;border:1px solid var(--app-border);border-radius:8px;padding:8px 12px;}
+  .offcanvas-end{width:460px;}
+</style>
+</head>
+<body class="role-member">
+
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top">
+  <div class="app-brand d-flex align-items-center gap-2"><i class="bi bi-check2-square fs-5"></i><span>tasks-webapi</span></div>
+  <span class="tenant-chip"><i class="bi bi-building me-1"></i>テナントA株式会社</span>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <label for="roleSel" class="text-muted-2 small mb-0 d-none d-md-inline">ロール</label>
+      <select id="roleSel" class="form-select form-select-sm" style="width:148px;" onchange="switchRole(this.value)">
+        <option value="member">Member</option><option value="admin">Tenant Admin</option>
+      </select>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle bg-primary-subtle text-primary d-grid" style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;">山</div>
+      <span class="small d-none d-lg-inline">山田 太郎</span>
+    </div>
+  </div>
+</nav>
+
+<div class="mock-bar">
+  <span class="mock-tag"><i class="bi bi-sliders"></i>検証コントロール</span>
+  <div class="mock-group">
+    <label>視点</label>
+    <div class="seg" id="vpSeg">
+      <button data-vp="owner" class="on" onclick="setViewpoint('owner')">所有者<span class="who">山田</span></button>
+      <button data-vp="assignee" onclick="setViewpoint('assignee')">担当者<span class="who">田中</span></button>
+      <button data-vp="stakeholder" onclick="setViewpoint('stakeholder')">関係者<span class="who">鈴木</span></button>
+    </div>
+  </div>
+  <div class="mock-group">
+    <label>モード</label>
+    <div class="seg" id="modeSeg">
+      <button data-mode="view" class="on" onclick="setMode('view')"><i class="bi bi-eye"></i>参照 S-05</button>
+      <button data-mode="edit" id="editModeBtn" onclick="setMode('edit')"><i class="bi bi-pencil"></i>編集 S-06</button>
+    </div>
+  </div>
+  <button class="btn btn-sm btn-outline-primary ms-auto" onclick="openDrawer()"><i class="bi bi-layout-sidebar-inset-reverse me-1"></i>ドロワーで開く</button>
+</div>
+
+<div class="app-layout">
+  <aside class="app-sidebar d-none d-lg-block">
+    <div class="nav-group-label">メイン</div>
+    <a class="side-link" href="option-a-condensed-stack.html"><i class="bi bi-speedometer2"></i>ダッシュボード</a>
+    <a class="side-link" href="option-b-side-calendar.html"><i class="bi bi-list-check"></i>タスク一覧 <span class="badge text-bg-light text-muted-2">S-04</span></a>
+    <div class="admin-only">
+      <div class="nav-group-label">テナント運営</div>
+      <a class="side-link" href="#"><i class="bi bi-graph-up-arrow"></i>運営者ダッシュボード <span class="badge text-bg-light text-muted-2">S-15</span></a>
+      <a class="side-link" href="#"><i class="bi bi-people"></i>ユーザー管理 <span class="badge text-bg-light text-muted-2">S-08</span></a>
+    </div>
+    <div class="nav-group-label">アカウント</div>
+    <a class="side-link" href="#"><i class="bi bi-person-circle"></i>プロフィール</a>
+    <a class="side-link" href="#"><i class="bi bi-bell"></i>通知設定</a>
+  </aside>
+
+  <main class="app-main" data-screen-label="S-05/06 フルページ">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
+      <a href="option-b-side-calendar.html" class="btn btn-sm btn-light"><i class="bi bi-arrow-left me-1"></i>一覧に戻る</a>
+      <div id="urlBar" class="url-bar"></div>
+      <span class="text-muted-2 small ms-auto"><i class="bi bi-window-stack me-1"></i>フルページ表示(直URL/タブ復元 fallback)</span>
+    </div>
+
+    <div class="cap-card my-3 detail-wrap" id="capCard"></div>
+    <div class="role-note mb-3 admin-only detail-wrap">
+      <i class="bi bi-shield-lock me-1"></i>Tenant Admin でも業務タスクへの特権はありません(ADR-0005)。本画面の操作可否は <b>所有者 / 担当者 / 関係者</b> の3役割評価のみで決まります。
+    </div>
+
+    <div id="fullpageForm" class="detail-wrap"></div>
+
+    <div class="design-notes">
+      <h3><i class="bi bi-clipboard-data"></i>設計判断ポイント — 案C メタデータグリッド型(Meta Grid / Notion 風)</h3>
+      <dl>
+        <dt>強み</dt><dd>全メタ項目をラベル+値のタイルで一画面に敷き詰め、情報密度が3案中最大。各タイルにホバーで ✏ が出て認可可能な項目だけ即編集に入れる。Notion / Asana 経験者に直感的で、項目の俯瞰性が高い。</dd>
+        <dt>弱み</dt><dd>密度が高いぶん視覚的な強弱が付きにくく、「次に何をすべきか」の誘導は弱い。狭幅では2→1カラムに畳まれ密度の利点が薄れ、ドロワー(狭幅)とフルページで体験差が出やすい。</dd>
+        <dt>想定読者</dt><dd>項目を素早くスキャン・一括編集したいパワーユーザー、PM。多数のタスクを高速にさばく運用フェーズ向き。</dd>
+      </dl>
+    </div>
+  </main>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer">
+  <div class="offcanvas-header border-bottom">
+    <div>
+      <h5 class="offcanvas-title mb-0" id="detailLabel">タスク詳細 <span class="text-muted-2 small">#152</span></h5>
+      <div id="drawerUrl" class="text-muted-2" style="font-size:11.5px;margin-top:2px;"></div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" id="drawerForm"></div>
+</div>
+
+<div class="modal fade" id="delModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>タスクを削除しますか?</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><p class="mb-2"><b>#152 Issue #152 タスク詳細画面の方向性検証</b> を論理削除します。</p><p class="text-muted-2 small mb-0">論理削除(<code>DELETE /api/tasks/152</code>・A-15)です。物理削除は行われず、所有者のみ実行できます。</p></div>
+    <div class="modal-footer"><button class="btn btn-light" data-bs-dismiss="modal">取消</button><button class="btn btn-danger" data-bs-dismiss="modal"><i class="bi bi-trash me-1"></i>論理削除する</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+/* ===================== 共有コア(S-03/S-04 継承)===================== */
+const USERS=[{id:1,name:"山田 太郎"},{id:2,name:"田中 一郎"},{id:3,name:"鈴木 花子"},{id:4,name:"佐藤 次郎"}];
+const TASK={id:152,title:"Issue #152 タスク詳細画面の方向性検証",
+  desc:"Claude Design でコア4画面のうち S-05 / S-06 タスク詳細の方向性を 2〜3 案で生成・比較し、1案に絞り込む。\nハイファイ完成ではなく方向性確定がゴール。",
+  status:"IN_PROGRESS",priority:"HIGH",vis:"STAKEHOLDERS",due:"2026-06-03",
+  ownerId:1,assigneeId:2,stakeholders:[3,4],
+  createdAt:"2026-06-01 09:15",updatedAt:"2026-06-02 14:30",completedAt:null,etag:'W/"v3-2026060214300"'};
+let viewpoint="owner";let mode="view";const VP_USER={owner:1,assignee:2,stakeholder:3};
+
+function uname(id){const u=USERS.find(u=>u.id===id);return u?u.name:"—";}
+function initials(id){return uname(id).slice(0,1);}
+function statusMeta(s){return {NOT_STARTED:["未着手","st-NOT_STARTED"],IN_PROGRESS:["進行中","st-IN_PROGRESS"],DONE:["完了","st-DONE"],ON_HOLD:["保留","st-ON_HOLD"]}[s];}
+function priMeta(p){return {HIGH:["高","pri-HIGH"],MEDIUM:["中","pri-MEDIUM"],LOW:["低","pri-LOW"]}[p];}
+function visMeta(v){return {TENANT:["テナント全員","vis-TENANT","bi-globe2"],STAKEHOLDERS:["関係者限定","vis-STAKEHOLDERS","bi-people-fill"],PRIVATE:["非公開","vis-PRIVATE","bi-lock-fill"]}[v];}
+
+function auth(){
+  const uid=VP_USER[viewpoint];
+  const isOwner=TASK.ownerId===uid,isAssignee=TASK.assigneeId===uid,isStakeholder=TASK.stakeholders.includes(uid);
+  return {uid,isOwner,isAssignee,isStakeholder,
+    role:isOwner?"所有者":isAssignee?"担当者":isStakeholder?"関係者":"参照のみ",
+    canFields:isOwner,canStatus:isOwner||isAssignee,canVisibility:isOwner,canStakeholder:isOwner||isAssignee,canDelete:isOwner};
+}
+function capCardHTML(){
+  const a=auth();
+  const flag=(ok,label,api)=>`<span class="cap-flag ${ok?'cap-yes':'cap-no'}"><i class="bi ${ok?'bi-check-lg':'bi-lock-fill'}"></i>${label}<span class="text-muted-2" style="font-weight:500;opacity:.8;">${api}</span></span>`;
+  return `<div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="cap-role">あなたの役割: <span class="badge ${a.isOwner?'text-bg-primary':a.isAssignee?'text-bg-info':'text-bg-secondary'}">${a.role}</span></span>
+      <span class="text-muted-2 small">(視点 = ${uname(a.uid)})</span></div>
+    <div class="cap-flags">
+      ${flag(a.canFields,"全項目編集","A-29")}${flag(a.canStatus,"ステータス変更","A-16")}${flag(a.canVisibility,"公開範囲変更","A-17")}${flag(a.canStakeholder,"関係者の追加/削除","A-19/20")}${flag(a.canDelete,"論理削除","A-15")}
+    </div>`;
+}
+
+/* ---- 共有フィールドパーツ ---- */
+function statusControl(){
+  const a=auth();const[lbl,cls]=statusMeta(TASK.status);
+  if(mode==="edit") return `<select class="form-select form-select-sm" onchange="TASK.status=this.value;render()">${["NOT_STARTED","IN_PROGRESS","ON_HOLD","DONE"].map(s=>`<option value="${s}" ${s===TASK.status?'selected':''}>${statusMeta(s)[0]}</option>`).join("")}</select>`;
+  if(!a.canStatus) return `<span class="cell-locked" data-bs-toggle="tooltip" title="ステータス変更は所有者・担当者のみ(あなたは${a.role})"><span class="st-badge ${cls}">${lbl}</span><i class="bi bi-lock-fill lock-i"></i></span>`;
+  const opts=["NOT_STARTED","IN_PROGRESS","ON_HOLD","DONE"].map(s=>{const[l,c]=statusMeta(s);return `<li><a class="dropdown-item d-flex align-items-center gap-2" href="#" onclick="event.preventDefault();event.stopPropagation();TASK.status='${s}';render()"><span class="st-badge ${c}">${l}</span></a></li>`;}).join("");
+  return `<span class="dropdown" onclick="event.stopPropagation()"><span class="st-badge ${cls}" data-bs-toggle="dropdown" role="button" style="cursor:pointer;">${lbl}<i class="bi bi-caret-down-fill" style="font-size:8px;"></i></span><ul class="dropdown-menu">${opts}</ul></span>`;
+}
+function priControl(){
+  const[pl,pc]=priMeta(TASK.priority);
+  if(mode==="edit"){
+    const r=(v,cls,l)=>`<input type="radio" class="btn-check" name="cPri" id="cPri-${v}" ${v===TASK.priority?'checked':''} onchange="TASK.priority='${v}';render()"><label class="btn btn-sm ${cls}" for="cPri-${v}">${l}</label>`;
+    return `<div class="btn-group" role="group">${r('HIGH','btn-outline-danger','高')}${r('MEDIUM','btn-outline-warning','中')}${r('LOW','btn-outline-secondary','低')}</div>`;
+  }
+  return `<span class="pri-badge ${pc}">${pl}</span>`;
+}
+function dueControl(){
+  if(mode==="edit") return `<input type="date" class="form-control form-control-sm" value="${TASK.due}" onchange="TASK.due=this.value;render()">`;
+  const overdue=TASK.due<"2026-06-02";
+  return `<span class="${overdue?'text-danger fw-bold':''}">${TASK.due}(火)</span>`;
+}
+function assigneeControl(){
+  if(mode==="edit") return `<select class="form-select form-select-sm" onchange="TASK.assigneeId=+this.value;render()">${USERS.map(u=>`<option value="${u.id}" ${u.id===TASK.assigneeId?'selected':''}>${u.name}${u.id===1?'(自分)':''}</option>`).join("")}</select>`;
+  return `<span class="user-chip"><span class="avatar-mini">${initials(TASK.assigneeId)}</span>${uname(TASK.assigneeId)}</span>`;
+}
+function visControl(){
+  const[vl,vc,vi]=visMeta(TASK.vis);
+  if(mode==="edit"){
+    const r=(v,cls,ic,l)=>`<input type="radio" class="btn-check" name="cVis" id="cVis-${v}" ${v===TASK.vis?'checked':''} onchange="TASK.vis='${v}';render()"><label class="btn btn-sm ${cls}" for="cVis-${v}"><i class="bi ${ic} me-1"></i>${l}</label>`;
+    return `<div class="btn-group" role="group">${r('TENANT','btn-outline-success','bi-globe2','テナント')}${r('STAKEHOLDERS','btn-outline-primary','bi-people-fill','関係者')}${r('PRIVATE','btn-outline-secondary','bi-lock-fill','非公開')}</div>`;
+  }
+  return `<span class="vis-badge ${vc}"><i class="bi ${vi}"></i>${vl}</span>`;
+}
+function stakeholderList(){
+  const a=auth();
+  const chips=TASK.stakeholders.map(id=>`<span class="sh-chip"><span class="avatar-mini">${initials(id)}</span>${uname(id)}<button class="x" ${a.canStakeholder?'':'disabled'} ${a.canStakeholder?`onclick="removeStakeholder(${id})"`:'data-bs-toggle="tooltip" title="関係者の削除は所有者・担当者のみ(A-20)"'}><i class="bi bi-x"></i></button></span>`).join("");
+  const addBtn=a.canStakeholder
+    ? `<button class="btn btn-sm btn-outline-primary" onclick="addStakeholder()"><i class="bi bi-plus-lg me-1"></i>関係者を追加</button>`
+    : `<button class="btn btn-sm btn-outline-secondary" disabled data-bs-toggle="tooltip" title="関係者の追加は所有者・担当者のみ(A-19)"><i class="bi bi-plus-lg me-1"></i>関係者を追加 <i class="bi bi-lock-fill lock-i"></i></button>`;
+  return `<div class="d-flex flex-wrap align-items-center gap-2">${chips}${addBtn}</div>
+    <div class="lock-note"><i class="bi bi-people"></i>STAKEHOLDERS 公開時のみ関係者に参照権限が発火(指名は visibility 非依存・ADR-0005 §3.4)</div>`;
+}
+function conflictBannerHTML(){
+  return `<div class="conflict-banner"><div class="d-flex align-items-start gap-2"><i class="bi bi-exclamation-octagon-fill text-danger fs-5"></i><div class="flex-grow-1">
+    <div class="fw-bold" style="color:#c92a2a;">編集の競合を検知しました(412 Precondition Failed)</div>
+    <div class="text-muted-2 small mt-1">あなたが編集中に他のユーザーがこのタスクを更新しました。<code>If-Match: ${TASK.etag}</code> がサーバ最新版と不一致です(ADR-0012)。</div>
+    <div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-danger" onclick="toggleConflict(false)"><i class="bi bi-arrow-clockwise me-1"></i>最新を再取得</button><button class="btn btn-sm btn-outline-secondary" onclick="toggleConflict(false)">差分を確認</button></div>
+  </div></div></div>`;
+}
+function actionButtons(){
+  const a=auth();
+  if(mode==="edit"){
+    return `<div class="d-flex gap-2 flex-wrap align-items-center">
+      <button class="btn btn-primary" onclick="saveEdit()"><i class="bi bi-check-lg me-1"></i>保存</button>
+      <button class="btn btn-light" onclick="setMode('view')">取消</button>
+      <span class="text-muted-2 small ms-1"><i class="bi bi-link-45deg"></i> <code>PATCH /api/tasks/152</code> ・ <code>If-Match: ${TASK.etag}</code> 必須(A-29 / ADR-0012)</span>
+      <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleConflict(true)"><i class="bi bi-lightning-charge me-1"></i>412 衝突をプレビュー</button>
+    </div>`;
+  }
+  const editBtn=a.canFields
+    ? `<button class="btn btn-primary" onclick="setMode('edit')"><i class="bi bi-pencil me-1"></i>編集</button>`
+    : `<button class="btn btn-primary" disabled data-bs-toggle="tooltip" title="編集は所有者のみ(あなたは${a.role}・A-29)"><i class="bi bi-pencil me-1"></i>編集 <i class="bi bi-lock-fill"></i></button>`;
+  const delBtn=a.canDelete?`<button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delModal"><i class="bi bi-trash me-1"></i>削除</button>`:``;
+  return `<div class="d-flex gap-2 flex-wrap">${editBtn}${delBtn}</div>`;
+}
+
+/* ---- 案C: プロパティタイル ---- */
+function prop(key,api,valueHTML,opt){
+  opt=opt||{};
+  /* opt.editField: 参照モードで所有者が ✏ クリックで編集モードへ。opt.locked: 非活性表示 */
+  const editable = opt.editField && mode==="view" && auth().canFields;
+  const cls = "prop"+(editable?" editable-prop":"")+(opt.metaRo?" meta-ro":"");
+  const click = editable?`onclick="setMode('edit')"`:"";
+  const pencil = editable?`<i class="bi bi-pencil pencil"></i>`:"";
+  const apiTag = api?`<span class="api">${api}</span>`:"";
+  return `<div class="${cls}" ${click}><div class="pk"><i class="bi ${opt.icon||'bi-dot'}"></i>${key}${apiTag}</div><div class="pv">${valueHTML}</div>${pencil}</div>`;
+}
+function formHTML(){
+  const[sl,sc]=statusMeta(TASK.status);const[pl,pc]=priMeta(TASK.priority);const[vl,vc,vi]=visMeta(TASK.vis);
+  const titleHead = mode==="edit"
+    ? `<div class="c-title-head"><label class="form-label small fw-bold mb-1">タイトル <span class="text-danger">*</span> <span class="text-muted-2 fw-normal">(100文字)</span></label><input class="form-control form-control-lg" maxlength="100" value="${TASK.title.replace(/"/g,'&quot;')}" oninput="TASK.title=this.value"></div>`
+    : `<div class="c-title-head"><div class="d-flex align-items-center gap-2 flex-wrap"><span class="st-badge ${sc}">${sl}</span><span class="pri-badge ${pc}">優先度 ${pl}</span><span class="vis-badge ${vc}"><i class="bi ${vi}"></i>${vl}</span></div><h1 class="task-title-lg">${TASK.title}</h1></div>`;
+
+  const grid = `<div class="prop-grid">
+    ${prop("ステータス","A-16",statusControl(),{icon:"bi-flag"})}
+    ${prop("優先度","A-29",priControl(),{icon:"bi-bar-chart-steps",editField:"priority"})}
+    ${prop("期限日","A-29",dueControl(),{icon:"bi-calendar-event",editField:"due"})}
+    ${prop("担当者","A-29",assigneeControl(),{icon:"bi-person",editField:"assignee"})}
+    ${prop("公開範囲","A-17",visControl(),{icon:"bi-eye",editField:"vis"})}
+    ${prop("所有者","",`<span class="user-chip"><span class="avatar-mini">${initials(TASK.ownerId)}</span>${uname(TASK.ownerId)}</span>`,{icon:"bi-person-badge",metaRo:true})}
+    ${prop("作成日時","",TASK.createdAt,{icon:"bi-clock",metaRo:true})}
+    ${prop("更新日時","",TASK.updatedAt,{icon:"bi-clock-history",metaRo:true})}
+    ${prop("completed_at","",TASK.completedAt?TASK.completedAt:'<span class="text-muted-2">— (未完了)</span>',{icon:"bi-check2-circle",metaRo:true})}
+    ${prop("version (ETag)","",`<code>${TASK.etag}</code>`,{icon:"bi-hash",metaRo:true})}
+  </div>`;
+
+  const descBody = mode==="edit"
+    ? `<label class="form-label small fw-bold mb-1">説明 <span class="text-muted-2 fw-normal">(2000文字・Markdown将来)</span></label><textarea class="form-control" rows="5" maxlength="2000" oninput="TASK.desc=this.value">${TASK.desc}</textarea>`
+    : `<div class="task-desc">${TASK.desc}</div>`;
+
+  return `${conflictBannerHTML()}
+  <div class="card-box">
+    ${titleHead}
+    ${grid}
+  </div>
+  <div class="card-box mt-3"><div class="card-head"><span class="ci"><i class="bi bi-card-text"></i></span><h2>説明</h2><span class="api">A-29</span></div><div class="card-pad">${descBody}</div></div>
+  <div class="card-box mt-3"><div class="card-head"><span class="ci"><i class="bi bi-people-fill"></i></span><h2>関係者 <span class="text-muted-2" style="font-size:12px;font-weight:500;">${TASK.stakeholders.length}名</span></h2><span class="api">A-19 / A-20</span></div><div class="card-pad">${stakeholderList()}</div></div>
+  <div class="card-box mt-3"><div class="card-pad">${actionButtons()}</div></div>`;
+}
+
+function render(){
+  document.getElementById("capCard").innerHTML=capCardHTML();
+  const html=formHTML();
+  document.getElementById("fullpageForm").innerHTML=html;
+  document.getElementById("drawerForm").innerHTML=html;
+  document.getElementById("urlBar").innerHTML = mode==="edit"
+    ? `<i class="bi bi-link-45deg"></i><code>/tasks/152/edit</code> <span class="mode-edit">編集モード(S-06)</span>`
+    : `<i class="bi bi-link-45deg"></i><code>/tasks/152</code> <span class="mode-ref">参照モード(S-05)</span>`;
+  document.getElementById("drawerUrl").innerHTML = mode==="edit"
+    ? `<i class="bi bi-link-45deg"></i> /tasks/152/edit ・<span style="color:var(--c-today);font-weight:600;">編集 S-06</span>`
+    : `<i class="bi bi-link-45deg"></i> /tasks/152 ・<span style="color:var(--app-primary);font-weight:600;">参照 S-05</span>`;
+  document.getElementById("detailLabel").innerHTML=(mode==="edit"?"タスク編集":"タスク詳細")+` <span class="text-muted-2 small">#152</span>`;
+  document.querySelectorAll("#vpSeg button").forEach(b=>b.classList.toggle("on",b.dataset.vp===viewpoint));
+  document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+  initTooltips();
+}
+function setViewpoint(vp){
+  viewpoint=vp;const a=auth();
+  const editBtn=document.getElementById("editModeBtn");
+  editBtn.disabled=!a.canFields;editBtn.title=a.canFields?"":"編集は所有者のみ(A-29)";
+  if(!a.canFields&&mode==="edit"){mode="view";toggleConflict(false);}
+  render();
+}
+function setMode(m){const a=auth();if(m==="edit"&&!a.canFields)return;mode=m;if(m==="view")toggleConflict(false);render();}
+function switchRole(r){document.body.classList.toggle("role-admin",r==="admin");document.body.classList.toggle("role-member",r!=="admin");}
+function openDrawer(){bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("detailDrawer")).show();}
+function toggleConflict(on){document.body.classList.toggle("show-conflict",!!on);}
+function saveEdit(){TASK.updatedAt=new Date().toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).replace(/\//g,'-');mode="view";toggleConflict(false);render();}
+function removeStakeholder(id){TASK.stakeholders=TASK.stakeholders.filter(x=>x!==id);render();}
+function addStakeholder(){const cand=USERS.map(u=>u.id).filter(id=>id!==TASK.ownerId&&id!==TASK.assigneeId&&!TASK.stakeholders.includes(id));if(cand.length)TASK.stakeholders.push(cand[0]);render();}
+let tipList=[];
+function initTooltips(){tipList.forEach(t=>t.dispose&&t.dispose());tipList=[...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map(el=>new bootstrap.Tooltip(el));}
+setViewpoint("owner");
+</script>
+</body>
+</html>
