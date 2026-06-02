@@ -48,7 +48,7 @@ info:
     - `409 Conflict` — リソースの競合状態(詳細は基本設計書 §5.4.1。エンドポイント個別のシナリオはレスポンス description 参照)
     - `422 Unprocessable Content` — 前提リソース未存在(招待時に Keycloak 未登録 等。詳細は基本設計書 §5.4.2)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.6.0"
+  version: "1.7.0"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -1048,7 +1048,7 @@ components:
 
     Tenant:
       type: object
-      required: [id, code, name, plan, status, createdAt, updatedAt]
+      required: [id, code, name, plan, status, createdAt, updatedAt, userCount, taskCount]
       properties:
         id:        { type: integer, format: int64 }
         code:
@@ -1064,6 +1064,16 @@ components:
         status:    { $ref: "#/components/schemas/TenantStatus" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        userCount:
+          type: integer
+          format: int64
+          readOnly: true
+          description: "テナントに所属するユーザー数(`user_tenants` 件数。論理削除済みユーザーを除く)"
+        taskCount:
+          type: integer
+          format: int64
+          readOnly: true
+          description: "テナントの未削除タスク数(`tasks.deleted_at IS NULL` の件数)"
 
     TenantCreateRequest:
       description: |
