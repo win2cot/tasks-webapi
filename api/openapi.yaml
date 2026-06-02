@@ -48,7 +48,7 @@ info:
     - `409 Conflict` — リソースの競合状態(詳細は基本設計書 §5.4.1。エンドポイント個別のシナリオはレスポンス description 参照)
     - `422 Unprocessable Content` — 前提リソース未存在(招待時に Keycloak 未登録 等。詳細は基本設計書 §5.4.2)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.5.0"
+  version: "1.6.0"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -167,20 +167,20 @@ paths:
         コレクション全体への列挙拒否では存在秘匿の必要がないため慣習どおり `403` を採用する。
 
         **デフォルトソート順**: `createdAt DESC`(最近作成されたテナントを先頭)。
-
-        **ページネーション**: Phase 1 ではページネーション未対応(全件返却)。テナント数が増加した時点で
-        Phase 2 にて `page` / `size` パラメータの導入を検討する。
       operationId: listTenants
       security:
         - bearerAuth: []
+      parameters:
+        - { name: status,   in: query, description: "状態フィルタ (ACTIVE / SUSPENDED、省略時は全件)",  schema: { $ref: "#/components/schemas/TenantStatus" } }
+        - { name: keyword,  in: query, description: "テナント名部分一致検索",                            schema: { type: string } }
+        - { name: page,     in: query, description: "ページ番号 (0 始まり)",                            schema: { type: integer, default: 0, minimum: 0 } }
+        - { name: size,     in: query, description: "1ページあたりの件数 (最大 100)",                    schema: { type: integer, default: 50, minimum: 1, maximum: 100 } }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/Tenant" }
+              schema: { $ref: "#/components/schemas/TenantPage" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
@@ -444,8 +444,8 @@ paths:
         - { name: priority,       in: query, description: "絞り込み: 優先度 (HIGH / MEDIUM / LOW)", schema: { $ref: "#/components/schemas/Priority" } }
         - { name: visibility,     in: query, description: "絞り込み: 公開範囲 (TENANT / STAKEHOLDERS / PRIVATE)", schema: { type: string, enum: [TENANT, STAKEHOLDERS, PRIVATE] } }
         - { name: keyword,        in: query, schema: { type: string }, description: "タイトル/説明部分一致" }
-        - { name: page,           in: query, description: "ページ番号 (0 始まり)", schema: { type: integer, default: 0 } }
-        - { name: size,           in: query, description: "1ページあたりの件数 (最大 100)", schema: { type: integer, default: 50, maximum: 100 } }
+        - { name: page,           in: query, description: "ページ番号 (0 始まり)", schema: { type: integer, default: 0, minimum: 0 } }
+        - { name: size,           in: query, description: "1ページあたりの件数 (最大 100)", schema: { type: integer, default: 50, minimum: 1, maximum: 100 } }
         - name: sort
           in: query
           description: |
@@ -957,6 +957,10 @@ components:
     Role:
       type: string
       enum: [TENANT_ADMIN, MEMBER]
+    TenantStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED]
+      description: "`SUSPENDED` のテナントに所属するユーザーは業務 API へのアクセスが 403 で拒否される。物理削除(`DELETED`)は Phase 2"
 
     # --- ユーザー / テナント ---
     UserProfile:
@@ -1006,7 +1010,7 @@ components:
             最大 50 文字。衝突時はサフィックス `-2`, `-3` ... を付与してリトライする(設計上のリトライ上限は実装時に決定、超過時は 409)。
         name:      { type: string, description: "テナント表示名" }
         plan:      { type: string, enum: [FREE, STANDARD, ENTERPRISE], description: "本フェーズは `FREE` 固定。`STANDARD`/`ENTERPRISE` は Phase 2(契約管理)" }
-        status:    { type: string, enum: [ACTIVE, SUSPENDED], description: "`SUSPENDED` のテナントに所属するユーザーは業務 API へのアクセスが 403 で拒否される。物理削除(`DELETED`)は Phase 2" }
+        status:    { $ref: "#/components/schemas/TenantStatus" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -1044,7 +1048,7 @@ components:
       type: object
       required: [status]
       properties:
-        status: { type: string, enum: [ACTIVE, SUSPENDED] }
+        status: { $ref: "#/components/schemas/TenantStatus" }
 
     TenantCreatedResponse:
       description: |
@@ -1225,6 +1229,18 @@ components:
         number:        { type: integer, description: "現在のページ番号(0始まり)" }
         size:          { type: integer }
         overdueCount:  { type: integer, description: "期限切れ未完了タスク件数(参考)" }
+
+    TenantPage:
+      type: object
+      required: [content, totalElements, totalPages, number, size]
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/Tenant" }
+        totalElements: { type: integer, format: int64 }
+        totalPages:    { type: integer }
+        number:        { type: integer, description: "現在のページ番号(0始まり)" }
+        size:          { type: integer }
 
     Stakeholder:
       type: object
