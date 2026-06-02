@@ -167,20 +167,20 @@ paths:
         コレクション全体への列挙拒否では存在秘匿の必要がないため慣習どおり `403` を採用する。
 
         **デフォルトソート順**: `createdAt DESC`(最近作成されたテナントを先頭)。
-
-        **ページネーション**: Phase 1 ではページネーション未対応(全件返却)。テナント数が増加した時点で
-        Phase 2 にて `page` / `size` パラメータの導入を検討する。
       operationId: listTenants
       security:
         - bearerAuth: []
+      parameters:
+        - { name: status,   in: query, description: "状態フィルタ (ACTIVE / SUSPENDED、省略時は全件)",  schema: { $ref: "#/components/schemas/TenantStatus" } }
+        - { name: keyword,  in: query, description: "テナント名部分一致検索",                            schema: { type: string } }
+        - { name: page,     in: query, description: "ページ番号 (0 始まり)",                            schema: { type: integer, default: 0, minimum: 0 } }
+        - { name: size,     in: query, description: "1ページあたりの件数 (最大 100)",                    schema: { type: integer, default: 50, minimum: 1, maximum: 100 } }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/Tenant" }
+              schema: { $ref: "#/components/schemas/TenantPage" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
@@ -444,8 +444,8 @@ paths:
         - { name: priority,       in: query, description: "絞り込み: 優先度 (HIGH / MEDIUM / LOW)", schema: { $ref: "#/components/schemas/Priority" } }
         - { name: visibility,     in: query, description: "絞り込み: 公開範囲 (TENANT / STAKEHOLDERS / PRIVATE)", schema: { type: string, enum: [TENANT, STAKEHOLDERS, PRIVATE] } }
         - { name: keyword,        in: query, schema: { type: string }, description: "タイトル/説明部分一致" }
-        - { name: page,           in: query, description: "ページ番号 (0 始まり)", schema: { type: integer, default: 0 } }
-        - { name: size,           in: query, description: "1ページあたりの件数 (最大 100)", schema: { type: integer, default: 50, maximum: 100 } }
+        - { name: page,           in: query, description: "ページ番号 (0 始まり)", schema: { type: integer, default: 0, minimum: 0 } }
+        - { name: size,           in: query, description: "1ページあたりの件数 (最大 100)", schema: { type: integer, default: 50, minimum: 1, maximum: 100 } }
         - name: sort
           in: query
           description: |
@@ -505,7 +505,7 @@ paths:
               schema: { type: string }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+              schema: { $ref: "#/components/schemas/TaskDetail" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
@@ -548,7 +548,7 @@ paths:
               schema: { type: string }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+              schema: { $ref: "#/components/schemas/TaskDetail" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -596,11 +596,10 @@ paths:
                 status: { $ref: "#/components/schemas/TaskStatus" }
       responses:
         "200":
-          description: |-
-            OK。暫定レスポンス: `owner`/`editable`/`deletable` は B-3(#279)で追加予定のため、現在は `TaskDetailPartial` を返す。
+          description: OK — 変更後のタスク全体を返す
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TaskDetailPartial" }
+              schema: { $ref: "#/components/schemas/TaskDetail" }
         "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -1009,6 +1008,10 @@ components:
     Role:
       type: string
       enum: [TENANT_ADMIN, MEMBER]
+    TenantStatus:
+      type: string
+      enum: [ACTIVE, SUSPENDED]
+      description: "`SUSPENDED` のテナントに所属するユーザーは業務 API へのアクセスが 403 で拒否される。物理削除(`DELETED`)は Phase 2"
 
     # --- ユーザー / テナント ---
     UserProfile:
@@ -1058,7 +1061,7 @@ components:
             最大 50 文字。衝突時はサフィックス `-2`, `-3` ... を付与してリトライする(設計上のリトライ上限は実装時に決定、超過時は 409)。
         name:      { type: string, description: "テナント表示名" }
         plan:      { type: string, enum: [FREE, STANDARD, ENTERPRISE], description: "本フェーズは `FREE` 固定。`STANDARD`/`ENTERPRISE` は Phase 2(契約管理)" }
-        status:    { type: string, enum: [ACTIVE, SUSPENDED], description: "`SUSPENDED` のテナントに所属するユーザーは業務 API へのアクセスが 403 で拒否される。物理削除(`DELETED`)は Phase 2" }
+        status:    { $ref: "#/components/schemas/TenantStatus" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -1096,7 +1099,7 @@ components:
       type: object
       required: [status]
       properties:
-        status: { type: string, enum: [ACTIVE, SUSPENDED] }
+        status: { $ref: "#/components/schemas/TenantStatus" }
 
     TenantCreatedResponse:
       description: |
@@ -1191,12 +1194,12 @@ components:
         editable:    { type: boolean, description: "ログインユーザーが編集可能か" }
         deletable:   { type: boolean }
 
-    TaskDetailPartial:
+    TaskDetail:
       description: |
-        `GET /api/tasks/{id}` の暫定レスポンス。
-        `owner`(UserSummary) / `editable` / `deletable` / `stakeholders` は B-3(#279)で追加予定。
+        `GET /api/tasks/{id}` / `PATCH /api/tasks/{id}` / `PATCH /api/tasks/{id}/status` のレスポンス。
+        `editable`/`deletable` は ADR-0005 の 3 役割評価(所有者・担当者・関係者)に基づいて UseCase 層で算出する。
       type: object
-      required: [id, tenantId, title, status, priority, visibility, dueDate, createdAt, updatedAt]
+      required: [id, tenantId, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
       properties:
         id:          { type: integer, format: int64 }
         tenantId:    { type: integer, format: int64 }
@@ -1205,13 +1208,19 @@ components:
         priority:    { $ref: "#/components/schemas/Priority" }
         status:      { $ref: "#/components/schemas/TaskStatus" }
         visibility:  { $ref: "#/components/schemas/Visibility" }
-        assigneeId:  { type: [integer, 'null'], format: int64 }
+        owner:       { $ref: "#/components/schemas/UserSummary" }
+        assignee:
+          oneOf:
+            - $ref: "#/components/schemas/UserSummary"
+            - type: 'null'
         dueDate:     { type: string, format: date }
         completedAt:
           type: [string, 'null']
           format: date-time
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
+        editable:    { type: boolean, description: "ログインユーザーが編集可能か(所有者のみ true、ADR-0005)" }
+        deletable:   { type: boolean, description: "ログインユーザーが論理削除可能か(所有者のみ true、ADR-0005)" }
 
     TaskCreateRequest:
       description: |
@@ -1271,6 +1280,18 @@ components:
         number:        { type: integer, description: "現在のページ番号(0始まり)" }
         size:          { type: integer }
         overdueCount:  { type: integer, description: "期限切れ未完了タスク件数(参考)" }
+
+    TenantPage:
+      type: object
+      required: [content, totalElements, totalPages, number, size]
+      properties:
+        content:
+          type: array
+          items: { $ref: "#/components/schemas/Tenant" }
+        totalElements: { type: integer, format: int64 }
+        totalPages:    { type: integer }
+        number:        { type: integer, description: "現在のページ番号(0始まり)" }
+        size:          { type: integer }
 
     Stakeholder:
       type: object
