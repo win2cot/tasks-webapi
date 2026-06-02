@@ -42,9 +42,11 @@
 ## 利用方法
 
 ### 設計仕様書
+
 GitHub上ではそのままレンダリングされます。VS Codeでは Markdown プレビュー(`Ctrl+Shift+V`)で表示。
 
 ### Flyway SQL
+
 ```bash
 ./gradlew :webapi:flywayMigrate \
   -Pflyway.url=jdbc:mysql://localhost:3306/taskflow \
@@ -52,6 +54,7 @@ GitHub上ではそのままレンダリングされます。VS Codeでは Markdo
 ```
 
 ### OpenAPI
+
 ```bash
 # Lint
 npx @stoplight/spectral-cli lint api/openapi.yaml
@@ -62,12 +65,15 @@ docker run -p 8080:8080 -e SWAGGER_JSON=/api/openapi.yaml \
 ```
 
 ### Mermaid
+
 GitHub上ではMarkdown内の ` ```mermaid ` ブロックで自動レンダリング。
 ローカル:
+
 ```bash
 npm install -g @mermaid-js/mermaid-cli
 mmdc -i docs/diagrams/sequence-01-oidc-login.mmd -o /tmp/login.png
 ```
+
 VS Code拡張: "Mermaid Preview"
 
 ## 整合性メモ

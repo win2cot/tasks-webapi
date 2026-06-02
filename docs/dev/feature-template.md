@@ -47,7 +47,7 @@ Version 1.0
 
 新 feature を `<feature>` とするとき、以下のサブパッケージを切る。
 
-```
+```text
 xyz.dgz48.tasks.webapi.<feature>
 ├── package-info.java              ← @NullMarked(必須)
 ├── domain
@@ -246,12 +246,14 @@ package xyz.dgz48.tasks.webapi.shared;
 ```
 
 **参照してよいもの**:
+
 - `shared.exception.DomainException` — 業務例外の基底クラス
 - `shared.web.ErrorResponse` / `shared.web.ErrorCode` — エラーレスポンス型
 - `shared.domain.TenantContext` — 現在テナント ID の取得
 - `shared.adapter.persistence.TenantFilteredEntity` — Hibernate Filter 基底クラス
 
 **やってはいけないこと**:
+
 - 業務ロジックを `shared` に逃がすこと
 - Spring Bean / Service / Repository / JPA Entity を `shared` に追加すること
 - `shared` の内部型を使って feature 間依存を迂回すること
@@ -324,7 +326,7 @@ Issue #273 で実装した `GET /api/tasks/{id}` が、4層構造の実証実装
 
 **データフロー**:
 
-```
+```text
 HTTP GET /api/tasks/{id}
   → TaskController.get()
     → GetTaskUseCase.execute()        ← @Transactional(readOnly = true)

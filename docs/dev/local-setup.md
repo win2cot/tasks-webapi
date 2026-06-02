@@ -14,7 +14,7 @@
 2. [リポジトリ取得](#2-リポジトリ取得)
 3. [Docker Compose 起動](#3-docker-compose-起動)
 4. [環境変数設定](#4-環境変数設定)
-5. [`./gradlew :webapi:bootRun` 起動](#5-gradlew-webapi-bootrun-起動)
+5. [`./gradlew :webapi:bootRun` 起動](#5-gradlew-webapibootrun-起動)
 6. [Keycloak Realm 動作確認](#6-keycloak-realm-動作確認)
 7. [Frontend skeleton 起動](#7-frontend-skeleton-起動)
 8. [動作確認 E2E](#8-動作確認-e2e)
@@ -86,7 +86,7 @@ docker compose -f docker-compose.local.yml ps
 
 期待する出力:
 
-```
+```text
 NAME                STATUS          PORTS
 tasks-webapi-mysql-1      Up (healthy)    0.0.0.0:3306->3306/tcp
 tasks-webapi-keycloak-1   Up              0.0.0.0:18080->8080/tcp
@@ -161,7 +161,7 @@ source .env.local && ./gradlew :webapi:bootRun
 
 起動ログに以下が出力されれば成功:
 
-```
+```text
 Flyway Community Edition ... by Redgate ...
 Successfully applied N migration(s) to schema `tasks`
 Tomcat started on port 8080

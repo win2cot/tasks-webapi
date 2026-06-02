@@ -1,0 +1,10 @@
+{
+  // 和文ドキュメント向け調整
+  "default": true,
+  "MD013": false,                     // 行長制限は和文に不向き
+  "MD033": false,                     // inline HTML 許容（<details> 等）
+  "MD041": false,                     // 先頭 H1 強制を緩和
+  "MD024": { "siblings_only": true }, // 同名見出しは兄弟階層のみ禁止
+  "MD028": false,                     // 連続する別 callout(blockquote)間の空行を許容
+  "MD060": false                      // テーブルのパイプ前後スペース(既存は compact 統一)
+}

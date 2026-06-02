@@ -12,7 +12,7 @@
   - [選択肢 A: Hibernate Envers(エンティティ単位の自動 version 化テーブル)](#選択肢-a-hibernate-enversエンティティ単位の自動-version-化テーブル)
   - [選択肢 B: 自前 audit_logs + UseCase 層で field-by-field diff を計算](#選択肢-b-自前-audit_logs--usecase-層で-field-by-field-diff-を計算)
   - [選択肢 C: Spring AOP + アノテーションで diff 計算を declarative 化](#選択肢-c-spring-aop--アノテーションで-diff-計算を-declarative-化)
-  - [選択肢 D: アプリケーションログ(構造化ログ)に diff を出力するのみ](#選択肢-d-アプリケーションログ構造化ログに-diff-を出力するのみ)
+  - [選択肢 D: アプリケーションログ(構造化ログ)に diff を出力するのみ](#選択肢-d-アプリケーションログ構造化ログに-diff-を出力するのみ専用テーブルは持たない)
 - [3. 決定(Decision)](#3-決定decision)
 - [4. 理由(Rationale)](#4-理由rationale)
 - [5. 影響(Consequences)](#5-影響consequences)
