@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>S-04 タスク一覧 — 案A 日付ストリップ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bs-body-font-family:"Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --app-bg:#f4f5f7;
+    --app-surface:#ffffff;
+    --app-border:#e5e7eb;
+    --app-ink:#1f2733;
+    --app-muted:#6b7280;
+    --app-primary:#3b5bdb;
+    --c-overdue:#e03131;
+    --c-today:#e8830c;
+    --c-soon:#1c7ed6;
+    --c-done:#2f9e44;
+    --bs-body-bg:var(--app-bg);
+    --bs-body-color:var(--app-ink);
+  }
+  body{font-family:var(--bs-body-font-family);font-size:14px;}
+  .text-muted-2{color:var(--app-muted)!important;}
+
+  /* ---- App shell (S-03 継承) ---- */
+  .app-navbar{background:var(--app-surface);border-bottom:1px solid var(--app-border);height:56px;}
+  .app-brand{font-weight:700;letter-spacing:.02em;color:var(--app-ink);}
+  .app-brand .bi{color:var(--app-primary);}
+  .tenant-chip{font-size:12px;background:#eef2ff;color:#3b4cca;border:1px solid #dbe1ff;padding:3px 10px;border-radius:999px;font-weight:500;}
+  .app-layout{display:flex;min-height:calc(100vh - 56px);}
+  .app-sidebar{width:236px;flex:0 0 236px;background:var(--app-surface);border-right:1px solid var(--app-border);padding:16px 12px;}
+  .app-main{flex:1 1 auto;min-width:0;padding:22px 26px 60px;}
+  .nav-group-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:#9aa1ad;text-transform:uppercase;padding:0 12px;margin:14px 0 6px;}
+  .side-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#3f4855;text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;}
+  .side-link .bi{font-size:16px;color:#7a828f;}
+  .side-link:hover{background:#f2f4f7;}
+  .side-link.active{background:#eef2ff;color:var(--app-primary);}
+  .side-link.active .bi{color:var(--app-primary);}
+  .side-link .badge{margin-left:auto;}
+  .admin-only{display:none;}
+  body.role-admin .admin-only{display:block;}
+
+  /* ---- Page header ---- */
+  .page-title{font-weight:700;font-size:20px;margin:0;}
+  .page-date{color:var(--app-muted);font-size:13px;}
+
+  /* ---- 案A: 日付ストリップ ---- */
+  .date-strip{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:8px;}
+  .date-chip{flex:0 0 auto;min-width:78px;border:1px solid var(--app-border);background:#fafbfc;border-radius:10px;padding:7px 6px;text-align:center;cursor:pointer;line-height:1.25;}
+  .date-chip:hover{border-color:#c4ccff;background:#f2f4ff;}
+  .date-chip .dc-dow{font-size:10.5px;color:var(--app-muted);font-weight:500;}
+  .date-chip .dc-day{font-size:17px;font-weight:700;}
+  .date-chip .dc-cnt{font-size:10px;color:var(--app-muted);}
+  .date-chip.is-active{border-color:var(--app-primary);background:#eef2ff;box-shadow:0 0 0 1px var(--app-primary) inset;}
+  .date-chip.is-active .dc-day{color:var(--app-primary);}
+  .date-chip.is-today .dc-dow{color:var(--c-today);font-weight:700;}
+  .date-chip.is-weekend .dc-day{color:#b06a6a;}
+  .strip-nav{flex:0 0 auto;width:34px;height:48px;border-radius:9px;border:1px solid var(--app-border);background:#fff;color:#566173;display:grid;place-items:center;cursor:pointer;}
+  .strip-nav:hover{background:#f2f4f7;}
+
+  /* ---- 案A: 折り畳みフィルタ ---- */
+  .filter-bar{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;margin-top:14px;}
+  .filter-bar-head{display:flex;align-items:center;gap:10px;padding:11px 16px;flex-wrap:wrap;}
+  .filter-toggle{font-size:13px;font-weight:600;color:#3f4855;background:none;border:none;display:flex;align-items:center;gap:7px;cursor:pointer;}
+  .filter-toggle .bi-chevron-down{transition:transform .18s;}
+  .filter-bar.open .filter-toggle .bi-chevron-down{transform:rotate(180deg);}
+  .filter-body{display:none;border-top:1px solid var(--app-border);padding:16px;}
+  .filter-bar.open .filter-body{display:block;}
+  .filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px 16px;}
+  @media(max-width:900px){.filter-grid{grid-template-columns:repeat(2,1fr);} }
+  .filter-grid label.fl{font-size:11px;font-weight:700;color:#9aa1ad;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;}
+  .chip-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .f-chip{font-size:12px;font-weight:500;background:#eef2ff;color:#3b4cca;border:1px solid #dbe1ff;border-radius:999px;padding:3px 6px 3px 11px;display:inline-flex;align-items:center;gap:6px;}
+  .f-chip button{border:none;background:none;color:#3b4cca;line-height:1;padding:0;cursor:pointer;font-size:13px;display:grid;place-items:center;}
+  .sort-select{width:auto;}
+  .filter-body .btn{white-space:nowrap;}
+
+  /* ---- Section (S-03 継承) ---- */
+  .task-section{background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;margin-top:16px;overflow:hidden;}
+  .section-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--app-border);}
+  .section-head .sec-icon{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:14px;}
+  .section-head h2{font-size:15px;font-weight:700;margin:0;}
+  .section-head .sec-count{font-size:12px;color:var(--app-muted);font-weight:500;}
+  .section-head .sec-rule{font-size:11px;color:#9aa1ad;margin-left:auto;font-weight:400;}
+  .sec-overdue .sec-icon{background:var(--c-overdue);}
+  .sec-today .sec-icon{background:var(--c-today);}
+  .sec-overdue{border-top:3px solid var(--c-overdue);}
+
+  /* ---- Task table (S-03 継承) ---- */
+  table.tasks{width:100%;margin:0;border-collapse:collapse;}
+  table.tasks th{font-size:11px;font-weight:600;color:#9aa1ad;text-transform:uppercase;letter-spacing:.04em;padding:8px 14px;border-bottom:1px solid var(--app-border);text-align:left;background:#fafbfc;white-space:nowrap;cursor:pointer;user-select:none;}
+  table.tasks th .bi{font-size:10px;opacity:.6;}
+  table.tasks td{padding:10px 14px;border-bottom:1px solid #f1f2f4;vertical-align:middle;}
+  table.tasks tr:last-child td{border-bottom:none;}
+  table.tasks tbody tr{cursor:pointer;}
+  table.tasks tbody tr:hover{background:#f8f9fb;}
+  .row-overdue{border-left:3px solid var(--c-overdue);}
+  .row-today{border-left:3px solid var(--c-today);}
+  .col-due{white-space:nowrap;}
+  .col-status{width:120px;}
+  .col-owner{width:104px;}
+  .col-assignee{width:104px;}
+  .col-priority{width:70px;}
+  .col-vis{width:108px;}
+  .task-title{font-weight:500;color:var(--app-ink);}
+  .task-desc{font-size:11.5px;color:var(--app-muted);margin-top:1px;}
+  .empty-row td{text-align:center;color:#9aa1ad;padding:26px 14px;font-size:13px;}
+
+  /* ---- inline edit (S-03 継承) ---- */
+  .editable{border-bottom:1px dashed #b6bcc6;cursor:text;padding-bottom:1px;}
+  .editable:hover{background:#eef2ff;border-bottom-color:var(--app-primary);}
+  .edit-status{cursor:pointer;}
+  .cell-locked{color:#aab0ba!important;cursor:not-allowed;}
+  .cell-locked .badge{opacity:.55;}
+  .lock-i{font-size:10px;margin-left:3px;color:#c2c7d0;}
+  .inline-input{font:inherit;border:1px solid var(--app-primary);border-radius:5px;padding:2px 6px;width:100%;max-width:220px;}
+
+  /* ---- badges (S-03 継承) ---- */
+  .vis-badge{font-size:11px;font-weight:500;padding:4px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;border:1px solid transparent;}
+  .vis-TENANT{background:#e7f5ec;color:#207a3a;border-color:#c3e6cf;}
+  .vis-STAKEHOLDERS{background:#e7f0fb;color:#1f5fb0;border-color:#c2d8f2;}
+  .vis-PRIVATE{background:#f3eef7;color:#7a4ba8;border-color:#e0d2ee;}
+  .pri-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;}
+  .pri-HIGH{background:#fdeaea;color:#c92a2a;}
+  .pri-MEDIUM{background:#fff3e2;color:#b8650b;}
+  .pri-LOW{background:#eef1f6;color:#566173;}
+  .st-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;}
+  .st-NOT_STARTED{background:#eef1f6;color:#566173;}
+  .st-IN_PROGRESS{background:#e7f0fb;color:#1f5fb0;}
+  .st-DONE{background:#e7f5ec;color:#207a3a;}
+  .st-ON_HOLD{background:#fff3e2;color:#b8650b;}
+  .owner-mini{width:22px;height:22px;border-radius:50%;background:#eef2ff;color:#3b4cca;display:inline-grid;place-items:center;font-size:10px;font-weight:700;margin-right:6px;}
+
+  /* ---- drawer (S-03 継承) ---- */
+  .offcanvas-end{width:440px;}
+  .drawer-section-label{font-size:11px;font-weight:700;color:#9aa1ad;text-transform:uppercase;letter-spacing:.05em;margin:18px 0 7px;}
+  .field-readonly{background:#f6f7f9;border-radius:7px;padding:9px 12px;font-size:13.5px;border:1px solid var(--app-border);}
+  .lock-note{font-size:11px;color:#a0a6b0;display:flex;align-items:center;gap:5px;margin-top:4px;}
+
+  /* ---- pager ---- */
+  .pager{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--app-border);font-size:12px;color:var(--app-muted);background:#fafbfc;}
+
+  /* ---- design notes (S-03 継承) ---- */
+  .design-notes{margin-top:30px;border:1px dashed #c9ccd3;border-radius:12px;background:#fcfcfd;padding:18px 22px;}
+  .design-notes h3{font-size:13px;font-weight:700;letter-spacing:.04em;color:#5a6270;margin:0 0 10px;display:flex;align-items:center;gap:7px;}
+  .design-notes dl{display:grid;grid-template-columns:96px 1fr;gap:6px 14px;margin:0;font-size:12.5px;}
+  .design-notes dt{font-weight:700;color:#404856;}
+  .design-notes dd{margin:0;color:#5a6270;}
+  .role-note{font-size:11.5px;color:var(--app-muted);background:#fbfbfc;border:1px solid var(--app-border);border-radius:8px;padding:8px 12px;}
+</style>
+</head>
+<body class="role-member">
+
+<!-- ===== Top navbar (S-03 継承) ===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top">
+  <div class="app-brand d-flex align-items-center gap-2">
+    <i class="bi bi-check2-square fs-5"></i><span>tasks-webapi</span>
+  </div>
+  <span class="tenant-chip"><i class="bi bi-building me-1"></i>テナントA株式会社</span>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <label for="roleSel" class="text-muted-2 small mb-0 d-none d-md-inline">ロール</label>
+      <select id="roleSel" class="form-select form-select-sm" style="width:148px;" onchange="switchRole(this.value)">
+        <option value="member">Member</option>
+        <option value="admin">Tenant Admin</option>
+      </select>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle bg-primary-subtle text-primary d-grid" style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;">山</div>
+      <span class="small d-none d-lg-inline">山田 太郎</span>
+    </div>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar (S-03 継承・タスク一覧 active) ===== -->
+  <aside class="app-sidebar d-none d-lg-block">
+    <div class="nav-group-label">メイン</div>
+    <a class="side-link" href="#"><i class="bi bi-speedometer2"></i>ダッシュボード</a>
+    <a class="side-link active" href="#"><i class="bi bi-list-check"></i>タスク一覧 <span class="badge text-bg-light text-muted-2">S-04</span></a>
+
+    <div class="admin-only">
+      <div class="nav-group-label">テナント運営</div>
+      <a class="side-link" href="#"><i class="bi bi-graph-up-arrow"></i>運営者ダッシュボード <span class="badge text-bg-light text-muted-2">S-15</span></a>
+      <a class="side-link" href="#"><i class="bi bi-people"></i>ユーザー管理 <span class="badge text-bg-light text-muted-2">S-08</span></a>
+    </div>
+
+    <div class="nav-group-label">アカウント</div>
+    <a class="side-link" href="#"><i class="bi bi-person-circle"></i>プロフィール</a>
+    <a class="side-link" href="#"><i class="bi bi-bell"></i>通知設定</a>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="app-main">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <div>
+        <h1 class="page-title">タスク一覧</h1>
+        <div class="page-date"><i class="bi bi-link-45deg"></i> URL は <code>/tasks</code> ・ 期限切れ常時表示 + 選択日リスト</div>
+      </div>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="popover" data-bs-html="true" data-bs-trigger="focus" title="凡例" data-bs-content="
+          <div class='small'>
+          <div class='mb-1'><span class='vis-badge vis-TENANT'><i class='bi bi-globe2'></i>テナント</span> 全員参照可</div>
+          <div class='mb-1'><span class='vis-badge vis-STAKEHOLDERS'><i class='bi bi-people-fill'></i>関係者</span> 所有者∪担当者∪関係者</div>
+          <div><span class='vis-badge vis-PRIVATE'><i class='bi bi-lock-fill'></i>非公開</span> 所有者∪担当者のみ</div>
+          </div>">
+          <i class="bi bi-info-circle me-1"></i>公開範囲の凡例
+        </button>
+        <button class="btn btn-sm btn-primary" onclick="openNew()">
+          <i class="bi bi-plus-lg me-1"></i>新規
+        </button>
+      </div>
+    </div>
+
+    <div class="role-note mb-3 admin-only">
+      <i class="bi bi-shield-lock me-1"></i>Tenant Admin に切り替えてもサイドナビの運営メニューが増えるだけで、<b>業務タスクの操作権限は変わりません</b>(ADR-0005:所有者 / 担当者 / 関係者の3役割で評価。Tenant Admin に特権なし)。
+    </div>
+
+    <!-- 日付ストリップ -->
+    <div class="date-strip">
+      <button class="strip-nav" onclick="shiftDate(-1)" title="前日"><i class="bi bi-chevron-left"></i></button>
+      <div id="dateChips" class="d-flex gap-2 flex-grow-1" style="overflow-x:auto;"></div>
+      <button class="strip-nav" onclick="shiftDate(1)" title="翌日"><i class="bi bi-chevron-right"></i></button>
+      <div class="d-flex align-items-center gap-2 ps-1 flex-shrink-0" style="border-left:1px solid var(--app-border);padding-left:10px;">
+        <input type="date" id="datePicker" class="form-control form-control-sm" style="width:150px;" onchange="selectDate(this.value)" />
+        <button class="btn btn-sm btn-outline-secondary" onclick="goToday()"><i class="bi bi-arrow-counterclockwise me-1"></i>今日に戻る</button>
+      </div>
+    </div>
+
+    <!-- 折り畳みフィルタ -->
+    <div id="filterBar" class="filter-bar">
+      <div class="filter-bar-head">
+        <button class="filter-toggle" onclick="toggleFilter()">
+          <i class="bi bi-funnel"></i>フィルタ<i class="bi bi-chevron-down"></i>
+        </button>
+        <div id="filterChips" class="chip-row"></div>
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <label for="sortSel" class="text-muted-2 small mb-0"><i class="bi bi-sort-down me-1"></i>並び替え</label>
+          <select id="sortSel" class="form-select form-select-sm sort-select" onchange="setSort(this.value)">
+            <option value="dueDate,asc">期限(昇順)</option>
+            <option value="dueDate,desc">期限(降順)</option>
+            <option value="priority,desc">優先度(高→低)</option>
+            <option value="priority,asc">優先度(低→高)</option>
+            <option value="createdAt,asc">作成日(古い順)</option>
+            <option value="createdAt,desc">作成日(新しい順)</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-body">
+        <div class="filter-grid">
+          <div>
+            <label class="fl">ステータス</label>
+            <select id="fStatus" class="form-select form-select-sm">
+              <option value="">すべて</option>
+              <option value="NOT_STARTED">未着手</option>
+              <option value="IN_PROGRESS">進行中</option>
+              <option value="ON_HOLD">保留</option>
+              <option value="DONE">完了</option>
+            </select>
+          </div>
+          <div>
+            <label class="fl">所有者</label>
+            <select id="fOwner" class="form-select form-select-sm"></select>
+          </div>
+          <div>
+            <label class="fl">担当者</label>
+            <select id="fAssignee" class="form-select form-select-sm"></select>
+          </div>
+          <div>
+            <label class="fl">優先度</label>
+            <select id="fPriority" class="form-select form-select-sm">
+              <option value="">すべて</option>
+              <option value="HIGH">高</option>
+              <option value="MEDIUM">中</option>
+              <option value="LOW">低</option>
+            </select>
+          </div>
+          <div>
+            <label class="fl">公開範囲</label>
+            <select id="fVis" class="form-select form-select-sm">
+              <option value="">すべて</option>
+              <option value="TENANT">テナント</option>
+              <option value="STAKEHOLDERS">関係者</option>
+              <option value="PRIVATE">非公開</option>
+            </select>
+          </div>
+          <div>
+            <label class="fl">キーワード</label>
+            <input id="fKeyword" class="form-control form-control-sm" placeholder="タイトル・説明を部分一致" />
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-sm btn-primary" onclick="applyFilters()"><i class="bi bi-search me-1"></i>適用</button>
+          <button class="btn btn-sm btn-light" onclick="clearFilters()">クリア</button>
+          <span class="text-muted-2 small ms-auto align-self-center">OpenAPI <code>GET /api/tasks</code> parameters と一致</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections render here -->
+    <div id="sections"></div>
+
+    <!-- Design judgment notes -->
+    <div class="design-notes">
+      <h3><i class="bi bi-clipboard-data"></i>設計判断ポイント — 案A 日付ストリップ(Date Strip)</h3>
+      <dl>
+        <dt>強み</dt><dd>横方向の日付ストリップで前後数日を件数つきで一望でき、ワンタップで日移動。フィルタは初期折り畳みで普段は邪魔にならず、画面の主役を常に「期限切れ + 選択日」の2テーブルに保てる。S-03 の縦積み哲学をそのまま継承し、ダッシュボードと並べて違和感がない。</dd>
+        <dt>弱み</dt><dd>日付ストリップは±3日程度しか見えず、月をまたぐ俯瞰や遠い未来日への移動はピッカー頼み。フィルタが折り畳まれているため「絞り込み機能の存在」に気づきにくい(チップ表示で補う)。</dd>
+        <dt>想定読者</dt><dd>当日〜数日のワークリストを上から消化する Member。日次運用で「今日と前後」を素早く行き来したい個人実務者。</dd>
+      </dl>
+    </div>
+  </main>
+</div>
+
+<!-- ===== New task drawer (S-03 継承) ===== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="newTaskDrawer" aria-labelledby="newTaskLabel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="newTaskLabel"><i class="bi bi-plus-circle me-2 text-primary"></i>新規タスク</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="text-muted-2 small mb-3"><i class="bi bi-link-45deg"></i> URL は <code>/tasks/new</code> に同期(S-06)・初期値: 期限 = 表示中の日付</div>
+    <form onsubmit="return false">
+      <div class="mb-3">
+        <label class="form-label small fw-bold">タイトル <span class="text-danger">*</span></label>
+        <input class="form-control" maxlength="100" placeholder="例: 設計レビュー" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">説明</label>
+        <textarea class="form-control" rows="3" maxlength="2000" placeholder="任意・最大2000文字"></textarea>
+      </div>
+      <div class="row g-3">
+        <div class="col-6">
+          <label class="form-label small fw-bold">期限日 <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" id="newDue" />
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-bold">担当者</label>
+          <select class="form-select"><option>未割当</option><option>山田 太郎</option><option>田中</option><option>鈴木</option><option>佐藤</option></select>
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label small fw-bold">優先度 <span class="text-danger">*</span></label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="np" id="np-h"><label class="btn btn-outline-danger" for="np-h">高</label>
+          <input type="radio" class="btn-check" name="np" id="np-m" checked><label class="btn btn-outline-warning" for="np-m">中</label>
+          <input type="radio" class="btn-check" name="np" id="np-l"><label class="btn btn-outline-secondary" for="np-l">低</label>
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label small fw-bold">公開範囲 <span class="text-danger">*</span></label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="nv" id="nv-t" checked><label class="btn btn-outline-success" for="nv-t"><i class="bi bi-globe2"></i> テナント</label>
+          <input type="radio" class="btn-check" name="nv" id="nv-s"><label class="btn btn-outline-primary" for="nv-s"><i class="bi bi-people-fill"></i> 関係者</label>
+          <input type="radio" class="btn-check" name="nv" id="nv-p"><label class="btn btn-outline-secondary" for="nv-p"><i class="bi bi-lock-fill"></i> 非公開</label>
+        </div>
+      </div>
+      <div class="mt-3">
+        <label class="form-label small fw-bold">関係者 <span class="text-muted-2 fw-normal">(公開範囲に依らず指名可)</span></label>
+        <select class="form-select" multiple size="3"><option>田中</option><option>鈴木</option><option>佐藤</option></select>
+      </div>
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary flex-grow-1" data-bs-dismiss="offcanvas">作成</button>
+        <button class="btn btn-light" data-bs-dismiss="offcanvas">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Detail drawer (S-03 継承) ===== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer" aria-labelledby="detailLabel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="detailLabel">タスク詳細</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+  </div>
+  <div class="offcanvas-body" id="detailBody"><!-- filled by JS --></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+/* ===================== 共有コア(S-03 採用案から継承)=====================
+   ADR-0005 の 3 役割評価 / メタ定義 / セルレンダラ / ドロワー / フィルタ / ソート。
+   各案 HTML はこのコアを取り込み、レイアウト固有の renderAll() を定義する。     */
+
+const CURRENT_USER = { id:1, name:"山田 太郎" };
+const TODAY = "2026-06-02"; /* 火 */
+const USERS = [
+  { id:1, name:"山田 太郎" },
+  { id:2, name:"田中" },
+  { id:3, name:"鈴木" },
+  { id:4, name:"佐藤" },
+];
+
+/* ownerId / assigneeId が ADR-0005 の 3 役割評価を駆動する。
+   - 101/103/201/203/204/205: 自分が所有者(全項目編集可)
+   - 102: 自分が担当者のみ(ステータスのみ可、他項目ロック)
+   - 104/202: 自分は所有者でも担当者でもない(参照のみ・全ロック) */
+const TASKS = [
+  /* 期限超過(常時表示・未完了のみ) */
+  { id:101, title:"API 仕様レビュー", desc:"OpenAPI v1.5.0 の 403/404 description を 3 役割ルールに突き合わせ", status:"IN_PROGRESS", priority:"HIGH",   vis:"TENANT",       ownerId:1, ownerName:"山田 太郎", assigneeId:2, assigneeName:"田中",   due:"2026-05-28", created:"2026-05-20" },
+  { id:102, title:"デザインシステム素案", desc:"行内編集セル / ポップオーバー / ドロワーの共通基盤(#154)", status:"NOT_STARTED", priority:"MEDIUM", vis:"STAKEHOLDERS", ownerId:3, ownerName:"鈴木",      assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-30", created:"2026-05-22" },
+  { id:103, title:"テナント招待メール文面", desc:"セルフサインアップ(モデルB)の招待メール本文", status:"IN_PROGRESS", priority:"HIGH",   vis:"PRIVATE",     ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-05-31", created:"2026-05-25" },
+  { id:104, title:"ER 図ドラフト", desc:"tasks.completed_at 追加後の ER 図整合", status:"NOT_STARTED", priority:"MEDIUM", vis:"TENANT",       ownerId:2, ownerName:"田中",      assigneeId:3, assigneeName:"鈴木",   due:"2026-06-01", created:"2026-05-26" },
+  /* 選択日 2026-06-02 */
+  { id:201, title:"OpenAPI 整合性 check", desc:"画面項目 ↔ A-XX スキーマ突き合わせ(#153)", status:"NOT_STARTED", priority:"HIGH",   vis:"TENANT",       ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-02", created:"2026-05-28" },
+  { id:202, title:"Keycloak realm 設定確認", desc:"APP_ADMIN / TENANT_ADMIN ロールマッピング", status:"IN_PROGRESS", priority:"MEDIUM", vis:"STAKEHOLDERS", ownerId:2, ownerName:"田中",      assigneeId:3, assigneeName:"鈴木",   due:"2026-06-02", created:"2026-05-27" },
+  { id:203, title:"Sprint 1 計画見直し", desc:"バックログ整理とベロシティ確認", status:"NOT_STARTED", priority:"HIGH",   vis:"TENANT",       ownerId:1, ownerName:"山田 太郎", assigneeId:2, assigneeName:"田中",   due:"2026-06-02", created:"2026-05-29" },
+  { id:204, title:"ADR-0015 ドラフト", desc:"行内編集ポップオーバーの UI 決定記録", status:"NOT_STARTED", priority:"MEDIUM", vis:"PRIVATE",     ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-02", created:"2026-05-30" },
+  { id:205, title:"マイルストーン整理", desc:"Sprint 1〜3 のマイルストーン棚卸し", status:"ON_HOLD", priority:"LOW", vis:"TENANT",       ownerId:1, ownerName:"山田 太郎", assigneeId:1, assigneeName:"山田 太郎", due:"2026-06-02", created:"2026-05-31" },
+];
+
+/* ----- meta helpers ----- */
+function statusMeta(s){return {NOT_STARTED:["未着手","st-NOT_STARTED"],IN_PROGRESS:["進行中","st-IN_PROGRESS"],DONE:["完了","st-DONE"],ON_HOLD:["保留","st-ON_HOLD"]}[s];}
+function priMeta(p){return {HIGH:["高","pri-HIGH"],MEDIUM:["中","pri-MEDIUM"],LOW:["低","pri-LOW"]}[p];}
+function visMeta(v){return {TENANT:["テナント","vis-TENANT","bi-globe2"],STAKEHOLDERS:["関係者","vis-STAKEHOLDERS","bi-people-fill"],PRIVATE:["非公開","vis-PRIVATE","bi-lock-fill"]}[v];}
+
+function isOverdue(t){ return t.due < TODAY && t.status !== "DONE"; }
+
+function dueLabel(t){
+  const d=(new Date(t.due+"T00:00:00")-new Date(TODAY+"T00:00:00"))/86400000;
+  const md=t.due.slice(5).replace('-','/');
+  if(d<0)  return {txt:`${md}(${d}日)`, cls:"text-danger fw-bold"};
+  if(d===0)return {txt:"今日", cls:"fw-bold", c:"var(--c-today)"};
+  if(d===1)return {txt:"明日 "+md, cls:""};
+  if(d===2)return {txt:"明後日 "+md, cls:""};
+  return {txt:md, cls:""};
+}
+
+/* ----- ADR-0005 three-role authorization ----- */
+function auth(t){
+  const isOwner = t.ownerId===CURRENT_USER.id;
+  const isAssignee = t.assigneeId===CURRENT_USER.id;
+  return {
+    isOwner, isAssignee,
+    role: isOwner ? "所有者" : (isAssignee ? "担当者" : "参照のみ"),
+    canStatus: isOwner||isAssignee,      /* A-16 ステータス変更 */
+    canFields: isOwner,                  /* A-29 期限/担当者/優先度/タイトル/説明 */
+    canVisibility: isOwner,              /* A-17 公開範囲(ドロワーのみ) */
+    canStakeholder: isOwner||isAssignee, /* A-19/A-20 関係者(ドロワーのみ) */
+    canDelete: isOwner,                  /* A-15 論理削除(ドロワーのみ) */
+  };
+}
+
+/* ----- cell renderers ----- */
+function statusCell(t){
+  const [lbl,cls]=statusMeta(t.status); const a=auth(t);
+  if(!a.canStatus){
+    return `<span class="cell-locked" data-bs-toggle="tooltip" title="ステータス変更は所有者・担当者のみ(あなたは${a.role})">
+      <span class="st-badge ${cls}">${lbl}</span><i class="bi bi-lock-fill lock-i"></i></span>`;
+  }
+  const opts=["NOT_STARTED","IN_PROGRESS","ON_HOLD","DONE"].map(s=>{const[l,c]=statusMeta(s);return `<li><a class="dropdown-item" href="#" onclick="setStatus(event,${t.id},'${s}')"><span class="st-badge ${c}">${l}</span></a></li>`;}).join("");
+  return `<span class="dropdown edit-status" onclick="event.stopPropagation()">
+    <span class="st-badge ${cls}" data-bs-toggle="dropdown" role="button" style="cursor:pointer;">${lbl}<i class="bi bi-caret-down-fill" style="font-size:8px;"></i></span>
+    <ul class="dropdown-menu">${opts}</ul></span>`;
+}
+function editText(t, field, value){
+  const a=auth(t);
+  if(!a.canFields){
+    return `<span class="cell-locked" data-bs-toggle="tooltip" title="${field}の変更は所有者のみ(あなたは${a.role})">${value}<i class="bi bi-lock-fill lock-i"></i></span>`;
+  }
+  return `<span class="editable" onclick="event.stopPropagation();inlineEdit(this,${t.id},'${field}')">${value}</span>`;
+}
+function ownerCell(t){
+  const ini=t.ownerName.slice(0,1);
+  return `<span class="d-inline-flex align-items-center"><span class="owner-mini">${ini}</span>${t.ownerName}</span>`;
+}
+
+function rowHTML(t, rowCls){
+  const a=auth(t);
+  const [pl,pc]=priMeta(t.priority); const [vl,vc,vi]=visMeta(t.vis);
+  const dl=dueLabel(t);
+  const titleCell = editText(t,"タイトル",`<span class="task-title">${t.title}</span>`);
+  const assigneeCell = a.canFields
+    ? editText(t,"担当者",t.assigneeName)
+    : `<span class="cell-locked" data-bs-toggle="tooltip" title="担当者の変更は所有者のみ(あなたは${a.role})">${t.assigneeName}<i class="bi bi-lock-fill lock-i"></i></span>`;
+  const priCell = a.canFields
+    ? `<span class="editable" onclick="event.stopPropagation();inlineEdit(this,${t.id},'優先度')"><span class="pri-badge ${pc}">${pl}</span></span>`
+    : `<span class="cell-locked" data-bs-toggle="tooltip" title="優先度の変更は所有者のみ(あなたは${a.role})"><span class="pri-badge ${pc}">${pl}</span><i class="bi bi-lock-fill lock-i"></i></span>`;
+  const dueCell = a.canFields
+    ? `<span class="editable ${dl.cls}" ${dl.c?`style="color:${dl.c}"`:''} onclick="event.stopPropagation();inlineEdit(this,${t.id},'期限')">${dl.txt}</span>`
+    : `<span class="${dl.cls}" ${dl.c?`style="color:${dl.c}"`:''}>${dl.txt}</span>`;
+  return `<tr class="${rowCls||''}" data-id="${t.id}" data-screen-label="task-${t.id}" onclick="openDetail(${t.id})">
+    <td class="col-status">${statusCell(t)}</td>
+    <td>${titleCell}<div class="task-desc">${t.desc}</div></td>
+    <td class="col-owner">${ownerCell(t)}</td>
+    <td class="col-assignee">${assigneeCell}</td>
+    <td class="col-due">${dueCell}</td>
+    <td class="col-priority">${priCell}</td>
+    <td class="col-vis"><span class="vis-badge ${vc}"><i class="bi ${vi}"></i>${vl}</span></td>
+  </tr>`;
+}
+
+/* ----- interactions (minimal) ----- */
+function setStatus(e,id,s){
+  e.preventDefault();
+  const t=TASKS.find(x=>x.id===id); t.status=s;
+  if(s==="DONE"){ t.completedAt=new Date().toTimeString().slice(0,5); } else { t.completedAt=null; }
+  renderAll();
+}
+function inlineEdit(el,id,field){
+  if(el.querySelector("input")) return;
+  const t=TASKS.find(x=>x.id===id);
+  const cur = el.textContent.trim();
+  el.innerHTML = `<input class="inline-input" value="${cur}" />`;
+  const inp=el.querySelector("input"); inp.focus(); inp.select();
+  const commit=()=>{ const v=inp.value||cur; if(field==="タイトル"){t.title=v;} if(field==="担当者"){t.assigneeName=v;} renderAll(); };
+  inp.addEventListener("blur",commit);
+  inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter"){commit();} if(ev.key==="Escape"){renderAll();} });
+}
+
+/* ----- filter state (OpenAPI listTasks parameters) ----- */
+const filterState = { status:"", ownerId:"", assigneeId:"", priority:"", visibility:"", keyword:"" };
+
+function filterTasks(list){
+  return list.filter(t=>{
+    if(filterState.status && t.status!==filterState.status) return false;
+    if(filterState.ownerId && t.ownerId!==+filterState.ownerId) return false;
+    if(filterState.assigneeId && t.assigneeId!==+filterState.assigneeId) return false;
+    if(filterState.priority && t.priority!==filterState.priority) return false;
+    if(filterState.visibility && t.vis!==filterState.visibility) return false;
+    if(filterState.keyword){ const k=filterState.keyword.toLowerCase(); if(!(t.title.toLowerCase().includes(k)||t.desc.toLowerCase().includes(k))) return false; }
+    return true;
+  });
+}
+function applyFilters(){
+  filterState.status     = val("fStatus");
+  filterState.ownerId    = val("fOwner");
+  filterState.assigneeId = val("fAssignee");
+  filterState.priority   = val("fPriority");
+  filterState.visibility = val("fVis");
+  filterState.keyword    = (val("fKeyword")||"").trim();
+  renderFilterChips(); renderAll();
+}
+function clearFilters(){
+  Object.keys(filterState).forEach(k=>filterState[k]="");
+  ["fStatus","fOwner","fAssignee","fPriority","fVis","fKeyword"].forEach(id=>{const el=document.getElementById(id); if(el) el.value="";});
+  renderFilterChips(); renderAll();
+}
+function val(id){ const el=document.getElementById(id); return el?el.value:""; }
+
+function renderFilterChips(){
+  const host=document.getElementById("filterChips"); if(!host) return;
+  const chips=[];
+  const labels={status:"ステータス",ownerId:"所有者",assigneeId:"担当者",priority:"優先度",visibility:"公開範囲",keyword:"キーワード"};
+  const disp=(k,v)=>{
+    if(k==="status") return statusMeta(v)[0];
+    if(k==="priority") return priMeta(v)[0];
+    if(k==="visibility") return visMeta(v)[0];
+    if(k==="ownerId"||k==="assigneeId"){ const u=USERS.find(u=>u.id===+v); return u?u.name:v; }
+    return v;
+  };
+  Object.keys(filterState).forEach(k=>{ if(filterState[k]) chips.push(
+    `<span class="f-chip">適用中: ${labels[k]}=${disp(k,filterState[k])}<button onclick="removeFilter('${k}')" title="解除"><i class="bi bi-x"></i></button></span>`); });
+  host.innerHTML = chips.length ? chips.join("") : `<span class="text-muted-2 small">適用なし(全件)</span>`;
+}
+function removeFilter(k){
+  filterState[k]="";
+  const map={status:"fStatus",ownerId:"fOwner",assigneeId:"fAssignee",priority:"fPriority",visibility:"fVis",keyword:"fKeyword"};
+  const el=document.getElementById(map[k]); if(el) el.value="";
+  renderFilterChips(); renderAll();
+}
+
+/* ----- sort (OpenAPI sort parameter) ----- */
+const PRI_ORDER={HIGH:3,MEDIUM:2,LOW:1};
+const ST_ORDER={NOT_STARTED:1,IN_PROGRESS:2,ON_HOLD:3,DONE:4};
+const sortState = { field:"dueDate", dir:"asc" };
+
+function applySort(list){
+  const f=sortState.field, sgn=sortState.dir==="asc"?1:-1;
+  return list.slice().sort((a,b)=>{
+    let av,bv;
+    if(f==="dueDate"){av=a.due;bv=b.due;}
+    else if(f==="priority"){av=PRI_ORDER[a.priority];bv=PRI_ORDER[b.priority];}
+    else if(f==="createdAt"){av=a.created;bv=b.created;}
+    else if(f==="status"){av=ST_ORDER[a.status];bv=ST_ORDER[b.status];}
+    else if(f==="owner"){av=a.ownerName;bv=b.ownerName;}
+    else {av=a.due;bv=b.due;}
+    if(av<bv) return -1*sgn; if(av>bv) return 1*sgn; return 0;
+  });
+}
+function setSort(value){ const [f,d]=value.split(","); sortState.field=f; sortState.dir=d||"asc"; renderAll(); }
+function cycleSort(field){
+  if(sortState.field===field){ sortState.dir = sortState.dir==="asc"?"desc":"asc"; }
+  else { sortState.field=field; sortState.dir="asc"; }
+  const sel=document.getElementById("sortSel");
+  if(sel && ["dueDate","priority","createdAt"].includes(field)) sel.value=`${field},${sortState.dir}`;
+  renderAll();
+}
+function sortCaret(field){
+  if(sortState.field!==field) return `<i class="bi bi-chevron-expand"></i>`;
+  return sortState.dir==="asc" ? `<i class="bi bi-caret-up-fill"></i>` : `<i class="bi bi-caret-down-fill"></i>`;
+}
+
+/* ----- detail drawer (S-05) ----- */
+function openDetail(id){
+  const t=TASKS.find(x=>x.id===id); const a=auth(t);
+  const [sl,sc]=statusMeta(t.status); const [pl,pc]=priMeta(t.priority); const [vl,vc,vi]=visMeta(t.vis);
+  const lock=(can,who)=>can?"":`<div class="lock-note"><i class="bi bi-lock-fill"></i>${who}のみ操作可(あなたは${a.role})</div>`;
+  document.getElementById("detailLabel").innerHTML = `タスク詳細 <span class="text-muted-2 small">#${t.id}</span>`;
+  document.getElementById("detailBody").innerHTML = `
+    <div class="text-muted-2 small mb-2"><i class="bi bi-link-45deg"></i> URL は <code>/tasks/${t.id}</code> に同期(S-05)</div>
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="st-badge ${sc}">${sl}</span>
+      <span class="pri-badge ${pc}">優先度 ${pl}</span>
+      <span class="vis-badge ${vc}"><i class="bi ${vi}"></i>${vl}</span>
+    </div>
+    <h5 class="fw-bold mb-1">${t.title}</h5>
+    <p class="text-muted-2" style="font-size:13px;">${t.desc}</p>
+
+    <div class="drawer-section-label">あなたの役割</div>
+    <span class="badge ${a.isOwner?'text-bg-primary':a.isAssignee?'text-bg-info':'text-bg-secondary'}">${a.role}</span>
+
+    <div class="drawer-section-label">基本情報</div>
+    <div class="row g-2">
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">所有者</div><div class="field-readonly">${t.ownerName}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">担当者</div><div class="field-readonly">${t.assigneeName}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">期限</div><div class="field-readonly">${t.due}</div></div>
+      <div class="col-6"><div class="text-muted-2" style="font-size:11px;">作成</div><div class="field-readonly">${t.created}</div></div>
+    </div>
+
+    <div class="drawer-section-label">公開範囲(visibility)・A-17 所有者のみ</div>
+    <select class="form-select form-select-sm" ${a.canVisibility?'':'disabled'}>
+      <option ${t.vis==='TENANT'?'selected':''}>テナント(全員)</option>
+      <option ${t.vis==='STAKEHOLDERS'?'selected':''}>関係者限定</option>
+      <option ${t.vis==='PRIVATE'?'selected':''}>非公開</option>
+    </select>
+    ${lock(a.canVisibility,"所有者")}
+
+    <div class="drawer-section-label">関係者・A-19/A-20 所有者∪担当者</div>
+    <div class="d-flex flex-wrap gap-1">
+      <span class="badge text-bg-light border">田中</span><span class="badge text-bg-light border">鈴木</span>
+      ${a.canStakeholder?'<button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:11px;">+ 追加</button>':''}
+    </div>
+    ${lock(a.canStakeholder,"所有者・担当者")}
+
+    <div class="d-flex gap-2 mt-4 pt-3 border-top">
+      <button class="btn btn-primary flex-grow-1" ${a.canFields?'':'disabled'} data-bs-toggle="tooltip" title="${a.canFields?'/tasks/'+t.id+'/edit に同期':'編集は所有者のみ'}"><i class="bi bi-pencil me-1"></i>編集</button>
+      <button class="btn btn-outline-danger" ${a.canDelete?'':'disabled'} data-bs-toggle="tooltip" title="${a.canDelete?'論理削除(確認ダイアログ)':'削除は所有者のみ'}"><i class="bi bi-trash"></i></button>
+    </div>`;
+  bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("detailDrawer")).show();
+  initTooltips();
+}
+
+/* ----- shared utilities ----- */
+let tipList=[];
+function initTooltips(){
+  tipList.forEach(t=>t.dispose&&t.dispose());
+  tipList=[...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map(el=>new bootstrap.Tooltip(el));
+  [...document.querySelectorAll('[data-bs-toggle="popover"]')].forEach(el=>bootstrap.Popover.getOrCreateInstance(el));
+}
+function switchRole(r){
+  document.body.classList.toggle("role-admin", r==="admin");
+  document.body.classList.toggle("role-member", r!=="admin");
+}
+function populateUserSelects(ids){
+  ids.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML = `<option value="">すべて</option>` + USERS.map(u=>`<option value="${u.id}">${u.name}${u.id===CURRENT_USER.id?'(自分)':''}</option>`).join("");
+  });
+}
+
+</script>
+<script>
+/* ===================== 案A 固有: 日付ストリップ + 折り畳みフィルタ ===================== */
+let selectedDate = TODAY;
+
+function fmtMd(d){ return d.slice(5).replace('-','/'); }
+function addDays(iso, n){ const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function dow(iso){ return ["日","月","火","水","木","金","土"][new Date(iso+"T00:00:00").getDay()]; }
+function countForDate(iso){ return TASKS.filter(t=>t.due===iso && t.status!=="DONE").length; }
+
+function renderDateStrip(){
+  const host=document.getElementById("dateChips"); host.innerHTML="";
+  for(let i=-3;i<=3;i++){
+    const iso=addDays(selectedDate,i);
+    const wd=new Date(iso+"T00:00:00").getDay();
+    const cnt=countForDate(iso);
+    const chip=document.createElement("div");
+    chip.className="date-chip"+(iso===selectedDate?" is-active":"")+(iso===TODAY?" is-today":"")+((wd===0||wd===6)?" is-weekend":"");
+    chip.onclick=()=>selectDate(iso);
+    chip.innerHTML=`<div class="dc-dow">${iso===TODAY?"今日・":""}${dow(iso)}</div><div class="dc-day">${parseInt(iso.slice(8),10)}</div><div class="dc-cnt">${cnt?cnt+"件":"—"}</div>`;
+    host.appendChild(chip);
+  }
+  document.getElementById("datePicker").value=selectedDate;
+}
+function selectDate(iso){ selectedDate=iso; renderDateStrip(); renderAll(); }
+function shiftDate(n){ selectDate(addDays(selectedDate,n)); }
+function goToday(){ selectDate(TODAY); }
+
+function toggleFilter(){ document.getElementById("filterBar").classList.toggle("open"); }
+
+/* セクション描画: 期限切れ(常時) + 選択日 */
+function renderAll(){
+  const overdue = applySort(filterTasks(TASKS.filter(isOverdue)));
+  const sel     = applySort(filterTasks(TASKS.filter(t=>t.due===selectedDate && t.status!=="DONE")));
+  const selTitle = selectedDate===TODAY ? "本日" : `選択日 ${fmtMd(selectedDate)}(${dow(selectedDate)})`;
+  document.getElementById("sections").innerHTML =
+    sectionCard("overdue","sec-overdue","bi-exclamation-triangle-fill","期限超過",
+      "期限 < 今日 AND 未完了 ・ 常時表示", overdue, "row-overdue") +
+    sectionCard("today","sec-today","bi-sun-fill",selTitle,
+      `期限 = ${fmtMd(selectedDate)} AND 未完了`, sel, selectedDate===TODAY?"row-today":"");
+  initTooltips();
+}
+
+function sectionCard(key,cls,icon,title,rule,list,rowCls){
+  const body = list.length
+    ? list.map(t=>rowHTML(t,rowCls)).join("")
+    : `<tr class="empty-row"><td colspan="7"><i class="bi bi-inbox me-1"></i>該当するタスクはありません</td></tr>`;
+  return `<section class="task-section ${cls}">
+    <div class="section-head">
+      <span class="sec-icon"><i class="bi ${icon}"></i></span>
+      <h2>${title}</h2><span class="sec-count">${list.length} 件</span>
+      <span class="sec-rule">${rule}</span>
+    </div>
+    <table class="tasks">
+      <thead><tr>
+        <th onclick="cycleSort('status')">状態</th>
+        <th>タイトル</th>
+        <th onclick="cycleSort('owner')">所有者</th>
+        <th>担当者</th>
+        <th onclick="cycleSort('dueDate')">期限 ${sortCaret('dueDate')}</th>
+        <th onclick="cycleSort('priority')">優先度 ${sortCaret('priority')}</th>
+        <th>公開範囲</th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <div class="pager">
+      <span>全 ${list.length} 件中 1–${list.length} 件を表示</span>
+      <div class="ms-auto d-flex align-items-center gap-1">
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>前へ</button>
+        <span class="px-2">1 / 1</span>
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>次へ</button>
+        <span class="ms-2">50 件 / ページ</span>
+      </div>
+    </div>
+  </section>`;
+}
+
+function openNew(){
+  document.getElementById("newDue").value=selectedDate;
+  bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("newTaskDrawer")).show();
+}
+
+/* init */
+populateUserSelects(["fOwner","fAssignee"]);
+renderFilterChips();
+renderDateStrip();
+renderAll();
+</script>
+</body>
+</html>
