@@ -33,6 +33,7 @@
 infrastructure-plan v5 §2 #5 では **Spring プロファイル不使用**(`@Profile` 禁止)を規定した。これは GraalVM Native Image への移行を前提とした設計判断であり(Native Image はビルド時に profile 分岐を解決できないため)、本 ADR でその根拠を集約する。
 
 本決定が必要になった背景:
+
 - **ECS Fargate cold start**: コンテナ再起動・スケールアウト時の JVM 初期化に数秒〜十数秒かかる
 - **メモリコスト**: JVM + ヒープ確保のため Fargate task size を大きくせざるを得ない
 - **Container image サイズ**: JVM ランタイムを含む Fat JAR イメージはサイズが大きい
@@ -149,13 +150,14 @@ infrastructure-plan v5 §2 #5 では **Spring プロファイル不使用**(`@Pr
 
 ### CI/CD への組み込み方針
 
-```
+```text
 Sprint 0/1: ./gradlew :webapi:build (Fat JAR) のみ → Native build は手動トリガー
 Sprint 1:   Native build を CI workflow に追加(nativeBuild job、PR トリガー)
 Sprint 2:   Dockerfile を Native build ベースに変更し、ECR push を Native image に切り替え
 ```
 
 GraalVM ツールチェインのキャッシュ:
+
 ```yaml
 - uses: graalvm/setup-graalvm@v1
   with:

@@ -26,7 +26,7 @@ tasks-webapi の `.github/workflows/` に配置された shim は以下の 5 本
 
 通常フローは以下の順序で進む:
 
-```
+```text
 [人] Issue に claude:ready ラベル付与
         ↓
 [claude-impl] 実装 Claude 起動

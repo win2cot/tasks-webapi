@@ -10,7 +10,7 @@
 - [1. コンテキスト](#1-コンテキスト)
 - [2. 検討した選択肢](#2-検討した選択肢)
   - [選択肢 A: 規約踏襲(`tenants` も他業務テーブルと同じ規約に揃え、予約システムユーザー機構を維持)](#選択肢-a-規約踏襲tenants-も他業務テーブルと同じ規約に揃え予約システムユーザー機構を維持)
-  - [選択肢 B: `tenants` を監査列例外とし、`audit_logs.actor_sub` のみで追跡](#選択肢-b-tenants-を監査列例外とし-audit_logsactor_sub-のみで追跡)
+  - [選択肢 B: `tenants` を監査列例外とし、`audit_logs.actor_sub` のみで追跡](#選択肢-b-tenants-を監査列例外としaudit_logsactor_sub-のみで追跡)
   - [選択肢 C: `tenants` に `created_by` だけ残す](#選択肢-c-tenants-に-created_by-だけ残す)
 - [3. 決定](#3-決定)
 - [4. 理由](#4-理由)

@@ -47,7 +47,7 @@ RDS のエンドポイントは AWS が自動生成する DNS 名（例: `tasks-
 
 各 env の VPC に **同名の Private Hosted Zone `tasks.internal`** を独立して作成し、VPC association で当該 VPC からのみ参照可能にする。各 PHZ 内に `db.tasks.internal` の CNAME を登録し、その参照先を当該 env の RDS エンドポイントにする。
 
-```
+```text
 [dev VPC]
 tasks-webapi container
   └─ env DATASOURCE_URL=jdbc:mysql://db.tasks.internal:3306/tasks
@@ -108,7 +108,7 @@ Terraform が管理する RDS エンドポイントを `terraform output` で取
 
 ## 3. 決定(Decision)
 
-**採用: 選択肢 (α) — env 毎独立 PHZ + 同名 record**
+**採用**: 選択肢 (α) — env 毎独立 PHZ + 同名 record
 
 各 env の VPC に **同名の Private Hosted Zone `tasks.internal`** を独立して作成し、`db.tasks.internal` の CNAME を当該 env の RDS エンドポイントに向ける。アプリケーション側の `DATASOURCE_URL` は `jdbc:mysql://db.tasks.internal:3306/tasks?useSSL=true&serverTimezone=UTC` で全 env 共通とする。
 
