@@ -190,3 +190,23 @@ Version 1.0 / 2026-06-02 / 親 Issue #152 / #149
 - 引き継ぎ先: #153(OpenAPI 突合)/ #154(デザインシステム素案、特に管理コンソール用 chrome + KPI ストリップ + destructive 確認ダイアログ)
 - 関連 ADR: ADR-0005(タスク認可 3 役割 = SaaS Admin の業務特権なし、本画面でも整合)
 - 関連 Issue: #167(テナント解約 Phase 2)/ S-12 プラットフォーム監視(Sprint 1 以降)/ S-15 テナント運営者向けダッシュボード(Out of Scope #149)
+
+## 6. ファイル構成と commit 方針
+
+| ファイル | 状態 | commit |
+|---|---|---|
+| `option-a-integrated-drawer.html` | Claude Design 出力、却下案(残置) | ✓ |
+| `option-b-admin-console.html` | Claude Design 出力、採用案 | ✓ |
+| `option-c-master-detail.html` | Claude Design 出力、却下案(残置) | ✓ |
+| `decision.md` | 本書、採用判断 + 引き継ぎ論点 | ✓ |
+
+## 7. Issue #152 完了に向けて
+
+本 PR が **Issue #152 サブ画面 4 つ目(最終)** となり、PR タイトル / commit message / PR body で `Closes #152` を打つ。
+
+Issue #152 完了の定義(Issue 本文より)対応状況:
+
+- [x] **4 画面すべて方向性決定済み**: PR #350(S-03)/ PR #351(S-04)/ PR #352(S-05)/ 本 PR(S-13/S-14)
+- [x] **各画面に `decision.md` あり**(理由 + 却下案 + 残論点)
+- [x] **認可ポリシー(権限マトリクス Issue の成果物)と矛盾しない**: 4 画面とも `decision.md` §4 で access-matrix.md と整合確認済
+- [x] **OpenAPI 突き合わせ Issue に必要なフィールド洗い出しを引き継いでいる**: 4 画面とも `decision.md` §3 で #153 引き継ぎ表を整備
