@@ -39,7 +39,7 @@ ADR-0002 は dev = tasks 単一 stack(`tasks/<env>/terraform.tfstate` の単一 
 - VPC / Subnet(public・private) / IGW / Route Table
 - NAT Gateway + EIP + S3 Gateway Endpoint
 - ALB + HTTPS Listener + SG-ALB + base wildcard 証明書(`*.dgz48.xyz`)
-- SES(ドメイン identity / DKIM / Config Set)。ただし**送信認証情報(SMTP 用 IAM user + `smtp-password`)は revoke 単位を分けるためプロジェクト別に発行**し、tasks 側 `/tasks/*` Parameter Store に置く(ADR-0006 派生、S0Infra-7)
+- SES(ドメイン identity / DKIM / Config Set)。ただし**送信認証情報(SMTP 用 IAM user + `smtp-password`)は revoke 単位を分けるためプロジェクト別に発行**し、tasks 側 `/tasks/*` Parameter Store に置く(ADR-0006(予定)派生、S0Infra-7)
 - Route53 Public Hosted Zone `dgz48.xyz`(既存のアカウント共有)
 
 専用(tasks stack):
@@ -205,10 +205,15 @@ infra/
 │       ├─ network/        # VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP
 │       ├─ alb/            # ALB / HTTPS Listener / SG-ALB / base wildcard cert
 │       └─ ses/            # domain identity / DKIM / Config Set
-└─ environments/
-    └─ dev/                # backend key = tasks/dev/terraform.tfstate
-        # modules/ security_group / route53 / parameter_store / (Sprint1+) ecs_*/rds/...
-        # platform の値は aws_ssm_parameter data source で参照
+├─ environments/
+│   └─ dev/                # backend key = tasks/dev/terraform.tfstate
+│       # platform の値は aws_ssm_parameter data source で参照
+├─ modules/
+│   ├─ security_group/     # SG-ECS / SG-RDS
+│   ├─ route53/            # PHZ tasks.internal / alias / 深い cert / listener rule / TG
+│   └─ parameter_store/    # /tasks/* SecureString
+└─ docs/
+    └─ adr/
 ```
 
 ### SSM publish 一覧(platform → `/platform/dev/*`)

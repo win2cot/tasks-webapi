@@ -176,14 +176,14 @@ infra/
 │       ├─ terraform.tfvars
 │       └─ .terraform.lock.hcl
 ├─ modules/
-│   ├─ network/               # VPC / subnet / IGW / RT(outbound は ADR-0003 後)
-│   ├─ security_group/        # SG-ALB / SG-ECS / SG-RDS
-│   ├─ alb/                   # single ALB + HTTPS Listener
+│   ├─ security_group/        # SG-ECS / SG-RDS(SG-ALB は platform/alb へ移動 — ADR-0004)
 │   ├─ route53/               # PHZ tasks.internal(ADR-0001)
 │   └─ parameter_store/       # SecureString
 └─ docs/
     └─ adr/                   # 本 ADR 等
 ```
+
+> **ADR-0004 改訂**: `network` / `alb` module は `infra/shared/modules/` へ移動済み。`infra/shared/` を含む最終ディレクトリ構造は `infra/docs/adr/0004-platform-project-infra-separation.md` §6 参照。
 
 stg / prd 追加時(Post-Sprint-0): `cp -r environments/dev environments/stg` → backend key を `tasks/stg/terraform.tfstate` に、tfvars を stg 値に差し替える。
 
