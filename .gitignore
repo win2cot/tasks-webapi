@@ -33,3 +33,17 @@ docker-compose.local.override.yml
 
 # Local environment variables (per-developer, not committed)
 .env.local
+
+# Terraform
+# .terraform.lock.hcl と terraform.tfvars は意図的にコミットする(ADR-0002 §E)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
