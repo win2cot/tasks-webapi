@@ -177,13 +177,13 @@ tasks-webapi/(repo root)
 │
 ├─ infra/                   # Terraform IaC
 │   ├─ environments/
-│   │   ├─ dev/                    # main.tf / variables.tf / tfvars
-│   │   ├─ stg/                    # Post-Sprint-0(雛形のみ)
-│   │   └─ prd/                    # Post-Sprint-0(雛形のみ)
-│   ├─ modules/                    # network / alb / ecs_cluster /
+│   │   └─ dev/                    # main.tf / variables.tf / tfvars
+│   │                              # stg / prd は空ディレクトリを作らず(ADR-0002 §3.B)
+│   │                              # Post-Sprint-0 で dev を複製して tfvars / backend key を差し替える
+│   ├─ modules/                    # network / security_group / alb / ecs_cluster /
 │   │                              # keycloak_service / webapi_service /
 │   │                              # rds / frontend / parameter_store /
-│   │                              # route53 / ecr
+│   │                              # route53 / ecr(ADR-0002 §3.D で security_group を追加、計 11 個)
 │   └─ docs/                       # IaC 固有 docs(adr/ 含む)
 │
 ├─ api/openapi.yaml
