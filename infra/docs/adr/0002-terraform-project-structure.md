@@ -5,6 +5,8 @@
 - **Deciders**: win2cot (Masayuki Ishikawa)
 - **Tags**: infra, terraform, structure, iac, module
 
+> **2026-06-03 改訂(ADR-0004)**: dev を複数プロジェクト兼用にする方針に伴い、本 ADR の §3.C(env あたり単一 state)・§3.D(`network` / `alb` module の所有)・§3.F(命名・タグの `Project=tasks` 単一前提)は `infra/docs/adr/0004-platform-project-infra-separation.md` で改訂された。env-per-directory / module-per-concern / version 固定 の決定は有効。
+
 ## 目次
 
 - [1. コンテキスト(Context)](#1-コンテキストcontext)
@@ -174,14 +176,14 @@ infra/
 │       ├─ terraform.tfvars
 │       └─ .terraform.lock.hcl
 ├─ modules/
-│   ├─ network/               # VPC / subnet / IGW / RT(outbound は ADR-0003 後)
-│   ├─ security_group/        # SG-ALB / SG-ECS / SG-RDS
-│   ├─ alb/                   # single ALB + HTTPS Listener
+│   ├─ security_group/        # SG-ECS / SG-RDS(SG-ALB は platform/alb へ移動 — ADR-0004)
 │   ├─ route53/               # PHZ tasks.internal(ADR-0001)
 │   └─ parameter_store/       # SecureString
 └─ docs/
     └─ adr/                   # 本 ADR 等
 ```
+
+> **ADR-0004 改訂**: `network` / `alb` module は `infra/shared/modules/` へ移動済み。`infra/shared/` を含む最終ディレクトリ構造は `infra/docs/adr/0004-platform-project-infra-separation.md` §6 参照。
 
 stg / prd 追加時(Post-Sprint-0): `cp -r environments/dev environments/stg` → backend key を `tasks/stg/terraform.tfstate` に、tfvars を stg 値に差し替える。
 
