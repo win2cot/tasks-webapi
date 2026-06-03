@@ -5,6 +5,8 @@
 - **Deciders**: win2cot (Masayuki Ishikawa)
 - **Tags**: infra, network, nat-gateway, vpc-endpoint, terraform
 
+> **2026-06-03 注記(ADR-0004)**: dev 兼用化に伴い、本 ADR の NAT Gateway + EIP + S3 Gateway Endpoint は共有 stack の `platform/network` module が所有する(`infra/docs/adr/0004-platform-project-infra-separation.md`)。outbound 経路選定の技術決定は不変。
+
 ## 目次
 
 - [1. コンテキスト(Context)](#1-コンテキストcontext)

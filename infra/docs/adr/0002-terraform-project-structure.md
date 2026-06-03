@@ -5,6 +5,8 @@
 - **Deciders**: win2cot (Masayuki Ishikawa)
 - **Tags**: infra, terraform, structure, iac, module
 
+> **2026-06-03 改訂(ADR-0004)**: dev を複数プロジェクト兼用にする方針に伴い、本 ADR の §3.C(env あたり単一 state)・§3.D(`network` / `alb` module の所有)・§3.F(命名・タグの `Project=tasks` 単一前提)は `infra/docs/adr/0004-platform-project-infra-separation.md` で改訂された。env-per-directory / module-per-concern / version 固定 の決定は有効。
+
 ## 目次
 
 - [1. コンテキスト(Context)](#1-コンテキストcontext)
