@@ -108,6 +108,8 @@ flowchart TB
     lmysql["MySQL 8.4 :3306"]
     lkc["Keycloak 24+（local=公式 image）"]
     lapp["tasks-webapi（host 起動）+ web/ 静的配信"]
+    lcompose --> lmysql
+    lcompose --> lkc
     lapp --> lmysql
     lapp --> lkc
   end
