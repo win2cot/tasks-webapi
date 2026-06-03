@@ -159,6 +159,8 @@ flowchart TB
   r53 --> alb
 ```
 
+> 所有(ADR-0004): **VPC / Subnet / NAT / S3 GW EP / ALB / SES は platform stack(共有)**、**ECS / RDS / Keycloak / Frontend / PHZ / SG-ECS・RDS は tasks stack(専用)**。tasks は platform 出力を SSM(`/platform/dev/*`)経由で参照する。
+
 ### 3.2 単一 ALB + Host-based Listener Rule
 
 | 優先順 | Host | Forward 先 |
@@ -188,16 +190,18 @@ tasks-webapi/(repo root)
 │   ├─ Dockerfile                  # Custom Image(公式 + SPI JAR)
 │   └─ realm-export/               # Realm JSON export
 │
-├─ infra/                   # Terraform IaC
+├─ infra/                   # Terraform IaC(ADR-0004 で platform / tasks の 2 stack に分割)
+│   ├─ shared/                     # platform stack(共有、key = platform/dev/terraform.tfstate)
+│   │   ├─ environments/dev/       # main.tf / backend.tf / versions.tf + SSM publish(/platform/dev/*)
+│   │   └─ modules/                # network / alb / ses
 │   ├─ environments/
-│   │   └─ dev/                    # main.tf / variables.tf / tfvars
+│   │   └─ dev/                    # tasks stack(key = tasks/dev/terraform.tfstate)
+│   │                              # platform 値は aws_ssm_parameter data source で参照
 │   │                              # stg / prd は空ディレクトリを作らず(ADR-0002 §3.B)
-│   │                              # Post-Sprint-0 で dev を複製して tfvars / backend key を差し替える
-│   ├─ modules/                    # network / security_group / alb / ecs_cluster /
-│   │                              # keycloak_service / webapi_service /
-│   │                              # rds / frontend / parameter_store /
-│   │                              # route53 / ecr(ADR-0002 §3.D で security_group を追加、計 11 個)
-│   └─ docs/                       # IaC 固有 docs(adr/ 含む)
+│   ├─ modules/                    # tasks: security_group(SG-ECS/RDS) / route53 / parameter_store /
+│   │                              # ecs_cluster / webapi_service / keycloak_service /
+│   │                              # rds / frontend / ecr(network / alb は shared/ へ移動)
+│   └─ docs/                       # IaC 固有 docs(adr/ 含む、ADR-0004)
 │
 ├─ api/openapi.yaml
 ├─ docs/                    # 横断ドキュメント
