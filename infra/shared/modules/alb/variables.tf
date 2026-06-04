@@ -23,3 +23,9 @@ variable "enable_deletion_protection" {
   description = "Enable ALB deletion protection. Set to true for stg/prd environments."
   default     = false
 }
+
+variable "hsts_header_value" {
+  type        = string
+  description = "Strict-Transport-Security header value. Do NOT include preload (shared apex domain). dev: short max-age; prd: max-age=31536000."
+  default     = "max-age=300; includeSubDomains"
+}

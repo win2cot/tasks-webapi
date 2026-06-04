@@ -137,6 +137,9 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = aws_acm_certificate_validation.base.certificate_arn
 
+  # preload は付けない — 共有 apex dgz48.xyz を preload 登録すると全 subdomain が HTTPS 強制になり取消困難
+  routing_http_response_strict_transport_security_header_value = var.hsts_header_value
+
   default_action {
     type = "fixed-response"
 
@@ -151,10 +154,6 @@ resource "aws_lb_listener" "https" {
     Name = "platform-${var.env}-listener-https"
   }
 }
-
-# HSTS: aws_lb_listener_attribute is not available in locked provider v5.100.0.
-# Track upgrade and HSTS injection in a follow-up issue.
-# Do NOT add preload — shared apex dgz48.xyz must not be preload-registered.
 
 # ---------------------------------------------------------------------------
 # HTTP Listener :80 — redirect to HTTPS 301
