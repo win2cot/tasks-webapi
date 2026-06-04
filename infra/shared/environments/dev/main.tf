@@ -29,6 +29,15 @@ module "network" {
   availability_zones = ["ap-northeast-1a", "ap-northeast-1c"]
 }
 
+module "alb" {
+  source = "../../modules/alb"
+
+  env               = "dev"
+  vpc_id            = module.network.vpc_id
+  public_subnet_ids = module.network.public_subnet_ids
+  base_domain       = "dgz48.xyz"
+}
+
 # ---------------------------------------------------------------------------
 # SSM: publish network outputs for tasks stack (ADR-0004)
 # ---------------------------------------------------------------------------
@@ -61,4 +70,38 @@ resource "aws_ssm_parameter" "private_route_table_ids" {
   name  = "/platform/dev/private-route-table-ids"
   type  = "String"
   value = module.network.private_route_table_id
+}
+
+# ---------------------------------------------------------------------------
+# SSM: publish ALB outputs for tasks stack (ADR-0004)
+# ---------------------------------------------------------------------------
+
+resource "aws_ssm_parameter" "alb_arn" {
+  name  = "/platform/dev/alb-arn"
+  type  = "String"
+  value = module.alb.alb_arn
+}
+
+resource "aws_ssm_parameter" "alb_https_listener_arn" {
+  name  = "/platform/dev/alb-https-listener-arn"
+  type  = "String"
+  value = module.alb.https_listener_arn
+}
+
+resource "aws_ssm_parameter" "alb_sg_id" {
+  name  = "/platform/dev/alb-sg-id"
+  type  = "String"
+  value = module.alb.sg_id
+}
+
+resource "aws_ssm_parameter" "alb_dns_name" {
+  name  = "/platform/dev/alb-dns-name"
+  type  = "String"
+  value = module.alb.dns_name
+}
+
+resource "aws_ssm_parameter" "alb_zone_id" {
+  name  = "/platform/dev/alb-zone-id"
+  type  = "String"
+  value = module.alb.zone_id
 }
