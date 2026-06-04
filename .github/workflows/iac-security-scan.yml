@@ -1,0 +1,73 @@
+name: IaC Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      tf: ${{ steps.filter.outputs.tf }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            tf:
+              - 'infra/**/*.tf'
+              - 'infra/**/*.hcl'
+              - 'infra/**/*.tfvars'
+              - '.trivyignore'
+              - '.github/workflows/iac-security-scan.yml'
+
+  scan:
+    needs: changes
+    if: needs.changes.outputs.tf == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Trivy config scan — SARIF (全重大度、code scanning 用)
+        id: trivy-sarif
+        uses: aquasecurity/trivy-action@v0.31.0
+        with:
+          scan-type: config
+          scan-ref: infra/
+          format: sarif
+          output: trivy-results.sarif
+          trivyignores: .trivyignore
+
+      - name: Upload SARIF to GitHub Security tab
+        if: steps.trivy-sarif.outcome == 'success'
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Trivy config scan — HIGH / CRITICAL で fail
+        if: always() && (steps.trivy-sarif.outcome == 'success' || steps.trivy-sarif.outcome == 'failure')
+        uses: aquasecurity/trivy-action@v0.31.0
+        with:
+          scan-type: config
+          scan-ref: infra/
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          trivyignores: .trivyignore
