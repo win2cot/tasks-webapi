@@ -1,0 +1,218 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-plan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      tf: ${{ steps.filter.outputs.tf }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            tf:
+              - 'infra/**/*.tf'
+              - 'infra/**/*.hcl'
+              - 'infra/**/*.tfvars'
+              - '.github/workflows/terraform-plan.yml'
+
+  platform-plan:
+    needs: changes
+    if: needs.changes.outputs.tf == 'true'
+    runs-on: ubuntu-latest
+    environment: platform-plan
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/platform-dev-plan
+          aws-region: ap-northeast-1
+
+      - name: terraform init (platform/dev)
+        id: init
+        working-directory: infra/shared/environments/dev
+        run: terraform init -no-color
+        continue-on-error: true
+
+      - name: terraform plan (platform/dev)
+        id: plan
+        if: steps.init.outcome == 'success'
+        working-directory: infra/shared/environments/dev
+        run: terraform plan -no-color -lock=false 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      - name: Build report
+        id: report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          row() {
+            local label="$1" outcome="$2"
+            case "$outcome" in
+              success) echo "| ${label} | :white_check_mark: 成功 |" ;;
+              failure) echo "| ${label} | :x: 失敗(ログ参照) |" ;;
+              skipped) echo "| ${label} | :fast_forward: スキップ |" ;;
+              *)       echo "| ${label} | :grey_question: ${outcome} |" ;;
+            esac
+          }
+
+          PLAN_SUMMARY=""
+          if [ -f infra/shared/environments/dev/plan.txt ]; then
+            PLAN_SUMMARY=$(grep -E '^(Plan:|No changes\.|Error:)' infra/shared/environments/dev/plan.txt | head -3 || true)
+          fi
+
+          {
+            echo 'BODY<<__PLAN_EOF__'
+            echo "### Terraform Plan — platform/dev — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            row "init" "$INIT_OUTCOME"
+            row "plan" "$PLAN_OUTCOME"
+            if [ -n "$PLAN_SUMMARY" ]; then
+              echo ""
+              echo "\`\`\`"
+              echo "$PLAN_SUMMARY"
+              echo "\`\`\`"
+            fi
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__PLAN_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky comment (platform)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.report.outcome == 'success'
+        with:
+          header: terraform-plan-platform
+          message: ${{ steps.report.outputs.BODY }}
+
+      - name: Fail on errors
+        if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
+        run: exit 1
+
+  tasks-plan:
+    needs: changes
+    if: needs.changes.outputs.tf == 'true'
+    runs-on: ubuntu-latest
+    environment: tasks-plan
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/tasks-dev-plan
+          aws-region: ap-northeast-1
+
+      - name: terraform init (tasks/dev)
+        id: init
+        working-directory: infra/environments/dev
+        run: terraform init -no-color
+        continue-on-error: true
+
+      - name: terraform plan (tasks/dev)
+        id: plan
+        if: steps.init.outcome == 'success'
+        working-directory: infra/environments/dev
+        run: terraform plan -no-color -lock=false 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      - name: Build report
+        id: report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          row() {
+            local label="$1" outcome="$2"
+            case "$outcome" in
+              success) echo "| ${label} | :white_check_mark: 成功 |" ;;
+              failure) echo "| ${label} | :x: 失敗(ログ参照) |" ;;
+              skipped) echo "| ${label} | :fast_forward: スキップ |" ;;
+              *)       echo "| ${label} | :grey_question: ${outcome} |" ;;
+            esac
+          }
+
+          PLAN_SUMMARY=""
+          if [ -f infra/environments/dev/plan.txt ]; then
+            PLAN_SUMMARY=$(grep -E '^(Plan:|No changes\.|Error:)' infra/environments/dev/plan.txt | head -3 || true)
+          fi
+
+          {
+            echo 'BODY<<__PLAN_EOF__'
+            echo "### Terraform Plan — tasks/dev — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            row "init" "$INIT_OUTCOME"
+            row "plan" "$PLAN_OUTCOME"
+            if [ -n "$PLAN_SUMMARY" ]; then
+              echo ""
+              echo "\`\`\`"
+              echo "$PLAN_SUMMARY"
+              echo "\`\`\`"
+            fi
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__PLAN_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky comment (tasks)
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.report.outcome == 'success'
+        with:
+          header: terraform-plan-tasks
+          message: ${{ steps.report.outputs.BODY }}
+
+      - name: Fail on errors
+        if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
+        run: exit 1
