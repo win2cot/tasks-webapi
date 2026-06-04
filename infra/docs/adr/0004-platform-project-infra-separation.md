@@ -41,12 +41,14 @@ ADR-0002 は dev = tasks 単一 stack(`tasks/<env>/terraform.tfstate` の単一 
 - ALB + HTTPS Listener + SG-ALB + base wildcard 証明書(`*.dgz48.xyz`)
 - SES(ドメイン identity / DKIM / Config Set)。ただし**送信認証情報(SMTP 用 IAM user + `smtp-password`)は revoke 単位を分けるためプロジェクト別に発行**し、tasks 側 `/tasks/*` Parameter Store に置く(ADR-0006(予定)派生、S0Infra-7)
 - Route53 Public Hosted Zone `dgz48.xyz`(既存のアカウント共有)
+- **Keycloak(共有 IdP runtime)**: ECS Service + Custom Image + Keycloak 専用 DB + auth ホストの listener rule(2026-06-04 追補)。realm を分ければ複数プロジェクトを 1 ランタイムで賄える。**`users` 表などの user データと realm 毎の SPI 設定は tasks 所有**で、SPI は profile を read-only federate(email のみ writable)。identity 所有モデルの詳細は ADR-0006(改訂)参照
 
 専用(tasks stack):
 
 - ECS Cluster / Service / Task Definition
 - RDS(+停止スケジュール、§3.G)
-- ECR / Keycloak(Custom Image + User Storage SPI) / Frontend(S3 + CloudFront)
+- ECR / Frontend(S3 + CloudFront)
+- `users` 表(user データの SoT)+ realm 毎の User Storage SPI 設定(Keycloak runtime は platform だが user データは tasks、ADR-0006 改訂)
 - ACM 深い証明書(`*.tasks.dgz48.xyz`)/ listener rule / target group / Route53 alias レコード
 - SG-ECS / SG-RDS / `/tasks/*` Parameter Store / PHZ `tasks.internal`
 
@@ -55,6 +57,7 @@ ADR-0002 は dev = tasks 単一 stack(`tasks/<env>/terraform.tfstate` の単一 
 - **ALB は共有**。リスナーの時間課金(固定費)を台数分削減できる。listener rule / target group / 深い証明書 / alias は専用で共有リスナーにぶら下げる。
 - **ECS Cluster は専用**。Cluster / Service / Task Definition のオブジェクト自体は無料で、Fargate は per-task 課金。共有しても bin-packing による集約効果がなく、コストメリットが皆無のため専用に保つ。
 - **RDS は専用**。課金の固定単位はインスタンスなので共有にコスト利はあるが、(1) IAM 認証がインスタンス属性、(2) `db.tasks.internal` PHZ 命名が tasks 固有、(3) dev≈prod 対称性(prod はテナントデータ分離で専用 RDS になる)の 3 点で結合が最も重い。さらに**共有インスタンスは相乗りする全プロジェクトが同時にアイドルのときしか停止できず**、停止スケジュール(S3Infra-4)による off 時間帯のコスト削減を取りこぼす。専用 + 停止のほうが安く、データ分離も保てる。
+- **Keycloak は runtime を共有 / user データを専用に分割**(2026-06-04 追補、当初 §1 の専用仕分けを改訂)。Keycloak は常時稼働の IdP で、ECS Cluster と違い「realm 分割で複数プロジェクトを 1 ランタイムに集約」できるため共有の固定費削減メリットが実在する(認証は常時 up 必須で per-task 停止節約が効きにくいので、専用に保つ動機が ECS より弱い)。一方で user の SoT は tasks 専用 DB の `users` 表に残し、共有 Keycloak は **per-realm の User Storage SPI で profile を read-only federate(email のみ writable)** する。platform→tasks の結合は「検証済み email の書き戻し + profile read」に限定され、ADR-0004 の tasks 非依存(platform IaC は tasks state を参照しない。SPI の DB read creds / SG は tasks が払い出し SSM 公開)とも両立する。Custom Image は全プロジェクトの SPI を同梱する共有ビルド(プロジェクト追加時に再ビルド = 受容済みのリリース結合)。identity 所有モデル・SPI スコープの詳細は **ADR-0006(改訂)** が正本。
 
 ### 参照ドキュメント
 
@@ -135,8 +138,8 @@ platform stack が出力を `/platform/dev/<name>` に publish する。tasks st
 
 ADR-0002 §3.D の 11 module カタログを platform / tasks に振り分ける。
 
-- **platform/modules**: `network`(VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP)/ `alb`(ALB / Listener / SG-ALB / base cert)/ `ses`
-- **tasks/modules**: `security_group`(SG-ECS / SG-RDS)/ `route53`(PHZ + alias + 深い cert + listener rule + TG)/ `parameter_store` + Sprint 1 以降の `ecs_cluster` / `webapi_service` / `keycloak_service` / `rds` / `frontend` / `ecr`
+- **platform/modules**: `network`(VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP)/ `alb`(ALB / Listener / SG-ALB / base cert)/ `ses` / `keycloak`(共有 IdP runtime: ECS Service + Custom Image + Keycloak 専用 DB + auth listener rule、2026-06-04 追補、ADR-0006 改訂)
+- **tasks/modules**: `security_group`(SG-ECS / SG-RDS)/ `route53`(PHZ + alias + 深い cert + listener rule + TG)/ `parameter_store` + Sprint 1 以降の `ecs_cluster` / `webapi_service` / `rds` / `frontend` / `ecr`(Keycloak runtime は platform へ移動。user データ `users` 表と per-realm SPI 設定のみ tasks 所有)
 
 `network` / `alb` の所有が platform へ移る点が ADR-0002 からの主たる変更。
 
