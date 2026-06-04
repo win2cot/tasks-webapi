@@ -1,5 +1,13 @@
 # ---------------------------------------------------------------------------
-# SG-ALB — inbound HTTP/HTTPS from any (IPv4 + IPv6), outbound all
+# VPC lookup — used to scope egress to VPC CIDR
+# ---------------------------------------------------------------------------
+
+data "aws_vpc" "main" {
+  id = var.vpc_id
+}
+
+# ---------------------------------------------------------------------------
+# SG-ALB — inbound HTTP/HTTPS from any (IPv4 + IPv6), outbound to VPC CIDR
 # ---------------------------------------------------------------------------
 
 resource "aws_security_group" "alb" {
@@ -40,10 +48,11 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
+    description = "All traffic to VPC CIDR"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [data.aws_vpc.main.cidr_block]
   }
 
   tags = {
@@ -64,7 +73,7 @@ resource "aws_lb" "main" {
   drop_invalid_header_fields = true
   enable_http2               = true
   idle_timeout               = 60
-  enable_deletion_protection = false
+  enable_deletion_protection = var.enable_deletion_protection
 
   tags = {
     Name = "platform-${var.env}-alb"
@@ -143,11 +152,12 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-# TODO(S0Infra-6): HSTS via ALB listener header modification.
-# Key: routing.http.response.strict_transport_security.header_value
-# Value: "max-age=300; includeSubDomains" (dev) / "max-age=31536000; includeSubDomains" (prod)
-# Do NOT add preload — shared apex dgz48.xyz must not be preload-registered.
-# Enable once aws_lb_listener_attribute is available in the locked provider version.
+# HSTS: Do NOT add preload — shared apex dgz48.xyz must not be preload-registered.
+resource "aws_lb_listener_attribute" "https_hsts" {
+  listener_arn = aws_lb_listener.https.arn
+  key          = "routing.http.response.strict_transport_security.header_value"
+  value        = "max-age=${var.hsts_max_age}; includeSubDomains"
+}
 
 # ---------------------------------------------------------------------------
 # HTTP Listener :80 — redirect to HTTPS 301
