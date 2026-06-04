@@ -1,0 +1,139 @@
+name: Terraform Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      tf: ${{ steps.filter.outputs.tf }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            tf:
+              - 'infra/**/*.tf'
+              - 'infra/**/*.hcl'
+              - 'infra/**/*.tfvars'
+              - '.github/workflows/terraform-lint.yml'
+
+  lint:
+    needs: changes
+    if: needs.changes.outputs.tf == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: fmt check
+        id: fmt
+        run: terraform fmt -check -recursive infra/
+        continue-on-error: true
+
+      - name: init + lockfile check (tasks/dev)
+        id: init_tasks
+        working-directory: infra/environments/dev
+        run: terraform init -backend=false -lockfile=readonly -no-color
+        continue-on-error: true
+
+      - name: validate (tasks/dev)
+        id: validate_tasks
+        if: steps.init_tasks.outcome == 'success'
+        working-directory: infra/environments/dev
+        run: terraform validate -no-color
+        continue-on-error: true
+
+      - name: init + lockfile check (shared/dev)
+        id: init_shared
+        working-directory: infra/shared/environments/dev
+        run: terraform init -backend=false -lockfile=readonly -no-color
+        continue-on-error: true
+
+      - name: validate (shared/dev)
+        id: validate_shared
+        if: steps.init_shared.outcome == 'success'
+        working-directory: infra/shared/environments/dev
+        run: terraform validate -no-color
+        continue-on-error: true
+
+      - name: Build report
+        id: report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          INIT_TASKS_OUTCOME: ${{ steps.init_tasks.outcome }}
+          VALIDATE_TASKS_OUTCOME: ${{ steps.validate_tasks.outcome }}
+          INIT_SHARED_OUTCOME: ${{ steps.init_shared.outcome }}
+          VALIDATE_SHARED_OUTCOME: ${{ steps.validate_shared.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          row() {
+            local label="$1" outcome="$2"
+            case "$outcome" in
+              success) echo "| ${label} | :white_check_mark: OK |" ;;
+              failure) echo "| ${label} | :x: エラーあり(詳細はログ参照) |" ;;
+              skipped) echo "| ${label} | :fast_forward: スキップ |" ;;
+              *)       echo "| ${label} | :grey_question: ${outcome} |" ;;
+            esac
+          }
+
+          {
+            echo 'BODY<<__TF_REPORT_EOF__'
+            echo "### Terraform Lint 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            row "fmt -check" "$FMT_OUTCOME"
+            row "init / lockfile (tasks/dev)" "$INIT_TASKS_OUTCOME"
+            row "validate (tasks/dev)" "$VALIDATE_TASKS_OUTCOME"
+            row "init / lockfile (shared/dev)" "$INIT_SHARED_OUTCOME"
+            row "validate (shared/dev)" "$VALIDATE_SHARED_OUTCOME"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__TF_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.report.outcome == 'success'
+        with:
+          header: terraform-lint
+          message: ${{ steps.report.outputs.BODY }}
+
+      - name: Fail on errors
+        if: |
+          steps.fmt.outcome == 'failure' ||
+          steps.init_tasks.outcome == 'failure' ||
+          steps.validate_tasks.outcome == 'failure' ||
+          steps.init_shared.outcome == 'failure' ||
+          steps.validate_shared.outcome == 'failure'
+        run: exit 1
