@@ -7,3 +7,7 @@
 data "aws_ssm_parameter" "vpc_id" {
   name = "/platform/${var.env}/vpc-id"
 }
+
+data "aws_ssm_parameter" "alb_sg_id" {
+  name = "/platform/${var.env}/alb-sg-id"
+}
