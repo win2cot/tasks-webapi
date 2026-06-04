@@ -9,3 +9,15 @@ terraform {
     }
   }
 }
+
+provider "aws" {
+  region = var.region
+
+  default_tags {
+    tags = {
+      Project   = "tasks"
+      Env       = var.env
+      ManagedBy = "terraform"
+    }
+  }
+}
