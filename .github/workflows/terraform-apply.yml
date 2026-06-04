@@ -1,9 +1,5 @@
 name: Terraform Apply
 
-# Sprint 0: apply jobs are commented out pending resource implementation (S0Infra-4+).
-# Uncomment the jobs below once platform/tasks resources are ready to apply.
-# Trigger: push to main (or workflow_dispatch for manual apply).
-
 on:
   push:
     branches: [main]
@@ -27,36 +23,33 @@ concurrency:
   group: terraform-apply-${{ github.ref }}
   cancel-in-progress: false
 
-# ---------------------------------------------------------------------------
-# Uncomment when platform resources (S0Infra-4: VPC, ALB, etc.) are ready.
-# ---------------------------------------------------------------------------
-# jobs:
-#   platform-apply:
-#     runs-on: ubuntu-latest
-#     environment: platform-apply
-#
-#     steps:
-#       - uses: actions/checkout@v6
-#
-#       - name: Setup Terraform
-#         uses: hashicorp/setup-terraform@v3
-#         with:
-#           terraform_version: '1.11.4'
-#           terraform_wrapper: false
-#
-#       - name: Configure AWS credentials
-#         uses: aws-actions/configure-aws-credentials@v4
-#         with:
-#           role-to-assume: arn:aws:iam::138285070797:role/platform-dev-apply
-#           aws-region: ap-northeast-1
-#
-#       - name: terraform init (platform/dev)
-#         working-directory: infra/shared/environments/dev
-#         run: terraform init -no-color
-#
-#       - name: terraform apply (platform/dev)
-#         working-directory: infra/shared/environments/dev
-#         run: terraform apply -auto-approve -no-color
+jobs:
+  platform-apply:
+    runs-on: ubuntu-latest
+    environment: platform-apply
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/platform-dev-apply
+          aws-region: ap-northeast-1
+
+      - name: terraform init (platform/dev)
+        working-directory: infra/shared/environments/dev
+        run: terraform init -no-color
+
+      - name: terraform apply (platform/dev)
+        working-directory: infra/shared/environments/dev
+        run: terraform apply -auto-approve -no-color
 
 # ---------------------------------------------------------------------------
 # Uncomment when tasks resources (S0Infra-5+: SG, ECS, RDS, etc.) are ready.
@@ -89,11 +82,3 @@ concurrency:
 #       - name: terraform apply (tasks/dev)
 #         working-directory: infra/environments/dev
 #         run: terraform apply -auto-approve -no-color
-
-# Placeholder job so the workflow file is syntactically valid while jobs are
-# commented out.  Remove this once the apply jobs above are uncommented.
-jobs:
-  noop:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Apply jobs are pending resource implementation (S0Infra-4+). See comments above."
