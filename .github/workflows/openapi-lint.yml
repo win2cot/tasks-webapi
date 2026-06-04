@@ -25,6 +25,9 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
         with:
