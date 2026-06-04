@@ -133,8 +133,8 @@ flowchart TB
       end
       subgraph priv["Private Subnet"]
         webapi["ECS Fargate: tasks-webapi（RDS=IAM 認証）"]
-        kc["ECS Fargate: Keycloak Custom（RDS=パスワード認証 K-A）"]
-        rds["RDS MySQL 8.4（db.t4g.micro・Single AZ）<br/>users: master / tasks_webapi / keycloak"]
+        kc["ECS Fargate: Keycloak Custom（platform 共有 IdP・専用 DB）<br/>SPI で tasks users を read-only federate"]
+        rds["RDS MySQL 8.4（db.t4g.micro・Single AZ）<br/>DB users: master / tasks_webapi / keycloak-spi-read"]
       end
     end
 
@@ -159,14 +159,14 @@ flowchart TB
   r53 --> alb
 ```
 
-> 所有(ADR-0004): **VPC / Subnet / NAT / S3 GW EP / ALB / SES は platform stack(共有)**、**ECS / RDS / Keycloak / Frontend / PHZ / SG-ECS・RDS は tasks stack(専用)**。tasks は platform 出力を SSM(`/platform/dev/*`)経由で参照する。
+> 所有(ADR-0004 改訂): **VPC / Subnet / NAT / S3 GW EP / ALB / SES / Keycloak runtime(共有 IdP + 専用 DB)は platform stack(共有)**、**ECS(tasks-webapi)/ RDS / Frontend / PHZ / SG-ECS・RDS / `users` データ は tasks stack(専用)**。Keycloak runtime は platform だが **user データ(`users` 表)と per-realm SPI は tasks 所有**(SPI は read-only federate + email のみ writable、ADR-0006 改訂)。tasks は platform 出力を SSM(`/platform/dev/*`)経由で参照する。
 
 ### 3.2 単一 ALB + Host-based Listener Rule
 
 | 優先順 | Host | Forward 先 |
 |---|---|---|
 | 1 | `api-dev.tasks.dgz48.xyz` | tasks-webapi target group |
-| 2 | `auth-dev.tasks.dgz48.xyz` | Keycloak Custom target group |
+| 2 | `auth-dev.dgz48.xyz`(中立・共有 IdP) | platform Keycloak Custom target group |
 | (ALB 経由しない) | `tasks-dev.dgz48.xyz` | CloudFront → S3 |
 
 ### 3.3 リポジトリ構成(1 リポ monorepo)
@@ -241,7 +241,7 @@ dev の ECS Task Definition(抜粋、Terraform):
 environment = [
   { name = "DATASOURCE_URL",      value = "jdbc:mysql://db.tasks.internal:3306/tasks?useSSL=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" },
   { name = "DATASOURCE_USERNAME", value = "tasks_webapi" },
-  { name = "OIDC_ISSUER_URI",     value = "https://auth-dev.tasks.dgz48.xyz/realms/tasks" },
+  { name = "OIDC_ISSUER_URI",     value = "https://auth-dev.dgz48.xyz/realms/tasks" },
   # JVM・CI・DB すべて Asia/Tokyo に揃える(コーディング規約 §12.1、Issue #265)
   # OS 経由で JVM デフォルト TZ を JST に
   { name = "TZ",                  value = "Asia/Tokyo" },
@@ -261,13 +261,13 @@ DB エンジンは **RDS MySQL 8.4**(Phase 1 Setup 2 ADR で確定、Aurora は 
 | 利用者 | 認証方式 | 理由 |
 |---|---|---|
 | **tasks-webapi** | IAM 認証(`AWSAuthenticationPlugin`) | パスワード管理不要、IAM Role 短命トークン |
-| **Keycloak (Custom)** | パスワード認証(PS から取得) | Keycloak は IAM 認証プラグインを公式サポートしない |
+| **Keycloak SPI federation 用 read user** | パスワード認証(PS、read-only) | platform Keycloak が SPI で tasks `users` を read federate するための tasks RDS 上の read-only user。**Keycloak 自身の DB は platform 専用 Keycloak DB(#387、ADR-0004 改訂)** で tasks RDS ではない |
 | **master(DBA 業務)** | パスワード認証(PS から取得) | アプリ非使用、緊急 / 障害時 |
 
 Parameter Store(代表例、完全な一覧は **`docs/architecture/parameter-store.md`** に集約):
 
 - `/tasks/dev/db/master-password`(DBA 用、回転 = 手動)
-- `/tasks/dev/db/keycloak-password`(Keycloak 用、回転 = 手動 / 半年〜年単位)
+- `/tasks/dev/db/keycloak-spi-read-password`(Keycloak SPI federation 用 read-only user、回転 = 手動)。Keycloak 自身の DB credential は platform 側(`/platform/dev/...`、#387)
 
 RDS は Terraform で `iam_database_authentication_enabled = true` を設定し、tasks-webapi の DB user 作成時に `AWSAuthenticationPlugin` で IAM 認証可能化。
 
@@ -299,7 +299,7 @@ flowchart TB
 
 | 種別 | Zone 例 | 用途 |
 |---|---|---|
-| Public(`dgz48.xyz` Route53 hosted zone) | `tasks-dev.dgz48.xyz` / `api-dev.tasks.dgz48.xyz` / `auth-dev.tasks.dgz48.xyz` | 外部から ALB / CloudFront にアクセス、ACM SAN 証明書 1 枚で複数 host カバー |
+| Public(`dgz48.xyz` Route53 hosted zone) | `tasks-dev.dgz48.xyz` / `api-dev.tasks.dgz48.xyz`(tasks) + `auth-dev.dgz48.xyz`(中立・共有 IdP、platform) | 外部から ALB / CloudFront にアクセス。tasks 深い cert(`*.tasks.dgz48.xyz`)+ 共有 IdP host(platform base cert)で host カバー |
 | Private(各 env VPC PHZ `tasks.internal`) | `db.tasks.internal`(将来: `cache.tasks.internal` 等)| VPC 内部からのみアクセス、env 不問の名前で全環境共通 ENV を実現 |
 
 ### 3.6 Keycloak Custom Image(`keycloak/` subdir)
@@ -512,8 +512,8 @@ App ストリームの詳細(機能実装)は `docs/specs/開発計画書.md` v1
 | S1Infra-1 | infra(terraform): RDS MySQL 8.4(dev、db.t4g.micro、**IAM 認証有効化**)+ Private Hosted Zone へ CNAME(`db.tasks.internal` → dev RDS endpoint)登録 | 適用 | Phase 1 Sprint 1 |
 | S1Infra-2 | infra(terraform): ECS Cluster(Fargate) | 適用 | Phase 1 Sprint 1 |
 | S1Infra-3 | keycloak: 独立 Gradle project 雛形(SPI 用、`keycloak/`)+ Phase 1 Setup 2 ADR 反映 | 適用 | Phase 1 Sprint 1 |
-| S1Infra-4 | keycloak: Custom Docker Image(公式 Keycloak + 自作 SPI JAR) | 適用 | Phase 1 Sprint 1 |
-| S1Infra-5 | infra(terraform): Keycloak (Custom) ECS Task Definition + Service + Listener Rule | 適用 | Phase 1 Sprint 1 |
+| S1Infra-4 | keycloak: Custom Docker Image(公式 Keycloak + 自作 SPI JAR、**共有 platform ビルド**) | 適用 | Phase 1 Sprint 1 |
+| S1Infra-5 | infra(terraform): **(platform)** Keycloak (Custom) ECS Service + Listener Rule(共有 IdP runtime + 専用 DB #387) | 適用 | Phase 1 Sprint 1 |
 | S1Infra-6 | infra(terraform): Route53 + ACM(各 host、CloudFront 用は us-east-1) | 適用 | Phase 1 Sprint 1 |
 | S1Infra-7 | infra(terraform): ECR(`tasks-webapi` + `keycloak-custom`) | 適用 | Phase 1 Sprint 1 |
 | S1Infra-8 | infra(terraform): Keycloak Realm initial import 手順 | 半適用 | Phase 1 Sprint 1 |
