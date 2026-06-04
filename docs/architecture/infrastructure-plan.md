@@ -119,36 +119,35 @@ flowchart TB
   end
 
   subgraph dev["dev: AWS ap-northeast-1<br/>稼働 平日19:00-02:00 + 土日10:00-02:00（EB 切替）"]
-    r53["Route53 Public（dgz48.xyz）<br/>tasks-dev→CloudFront / api-dev・auth-dev→ALB"]
-    phz["Route53 PHZ tasks.internal（Private）"]
-    s3ep["S3 Gateway Endpoint（無料）"]
-    s3["S3（ECR レイヤ / Terraform state）"]
-    awspub["AWS パブリック EP<br/>ECR API / CloudWatch Logs / SSM / KMS / SES"]
-    extnet["外部（Phase2: IdP federation / Webhook / API）"]
+    ssm[("SSM Parameter Store<br/>/platform/dev/*")]
 
-    subgraph vpc["VPC（2 AZ）"]
-      subgraph pub["Public Subnet"]
-        alb["ALB（single・Host-based Rule）"]
-        nat["NAT Gateway（single-AZ）"]
-      end
-      subgraph priv["Private Subnet"]
-        webapi["ECS Fargate: tasks-webapi（RDS=IAM 認証）"]
-        kc["ECS Fargate: Keycloak Custom（platform 共有 IdP・専用 DB）<br/>SPI で tasks users を read-only federate"]
-        rds["RDS MySQL 8.4（db.t4g.micro・Single AZ）<br/>DB users: master / tasks_webapi / keycloak-spi-read"]
+    subgraph pstack["platform stack（infra/shared/environments/dev、Project=platform）"]
+      r53["Route53 Public（dgz48.xyz）<br/>tasks-dev→CloudFront / api-dev・auth-dev→ALB"]
+      ses["SES（ドメイン identity / DKIM / Config Set）"]
+      awspub["AWS パブリック EP<br/>ECR API / CloudWatch Logs / SSM / KMS"]
+      extnet["外部（Phase2: IdP federation / Webhook / API）"]
+
+      subgraph vpc["VPC（2 AZ）"]
+        subgraph pub["Public Subnet"]
+          alb["ALB（single・Host-based Rule）"]
+          nat["NAT Gateway（single-AZ）"]
+        end
+        subgraph priv["Private Subnet"]
+          kc["ECS Fargate: Keycloak Custom（platform 所有・共有 IdP + 専用 DB）<br/>SPI で tasks users を read-only federate"]
+          s3ep["S3 Gateway Endpoint（無料）"]
+        end
       end
     end
 
-    alb --> webapi
-    alb --> kc
-    webapi --> rds
-    kc --> rds
-    phz --> rds
-    webapi --> nat
-    kc --> nat
-    nat --> awspub
-    nat --> extnet
-    webapi --> s3ep
-    s3ep --> s3
+    subgraph tstack["tasks stack（infra/environments/dev、Project=tasks）"]
+      phz["Route53 PHZ tasks.internal（tasks 所有）<br/>共有 VPC に association（VPC ID = /platform/dev/vpc-id）"]
+      s3["S3（ECR レイヤ / Terraform state）"]
+      webapi["ECS Fargate: tasks-webapi（RDS=IAM 認証）<br/>※物理的に platform VPC の Private Subnet に配置"]
+      rds["RDS MySQL 8.4（db.t4g.micro・Single AZ）<br/>DB users: master / tasks_webapi / keycloak-spi-read"]
+    end
+
+    pstack --"publish"--> ssm
+    ssm --"read"--> tstack
   end
 
   subgraph stgprd["stg / prd"]
@@ -157,9 +156,20 @@ flowchart TB
 
   client --> r53
   r53 --> alb
+  alb --> webapi
+  alb --> kc
+  webapi --> rds
+  kc --> rds
+  phz --> rds
+  webapi --> nat
+  kc --> nat
+  nat --> awspub
+  nat --> extnet
+  webapi --> s3ep
+  s3ep --> s3
 ```
 
-> 所有(ADR-0004 改訂): **VPC / Subnet / NAT / S3 GW EP / ALB / SES / Keycloak runtime(共有 IdP + 専用 DB)は platform stack(共有)**、**ECS(tasks-webapi)/ RDS / Frontend / PHZ / SG-ECS・RDS / `users` データ は tasks stack(専用)**。Keycloak runtime は platform だが **user データ(`users` 表)と per-realm SPI は tasks 所有**(SPI は read-only federate + email のみ writable、ADR-0006 改訂)。tasks は platform 出力を SSM(`/platform/dev/*`)経由で参照する。
+> **stack 所有**(ADR-0004): **platform stack** = VPC / Subnet / NAT / S3 GW EP / ALB / SES / Keycloak runtime(共有 IdP + 専用 DB)。**tasks stack** = ECS(tasks-webapi) / RDS / Frontend / PHZ `tasks.internal` / SG-ECS・RDS / ECR / `/tasks/*` Parameter Store。Keycloak runtime は platform 管理だが **`users` 表(user データ SoT)と per-realm SPI は tasks 所有**(SPI は profile read-only federate + email のみ writable、ADR-0006 改訂)。tasks は platform 出力を SSM(`/platform/dev/*`)経由で参照する(§3.5)。
 
 ### 3.2 単一 ALB + Host-based Listener Rule
 
@@ -190,18 +200,20 @@ tasks-webapi/(repo root)
 │   ├─ Dockerfile                  # Custom Image(公式 + SPI JAR)
 │   └─ realm-export/               # Realm JSON export
 │
-├─ infra/                   # Terraform IaC(ADR-0004 で platform / tasks の 2 stack に分割)
-│   ├─ shared/                     # platform stack(共有、key = platform/dev/terraform.tfstate)
+├─ infra/                   # Terraform IaC(platform / tasks の 2 stack に分割、ADR-0004)
+│   ├─ shared/                     # platform stack(Project=platform、key = platform/dev/terraform.tfstate)
 │   │   ├─ environments/dev/       # main.tf / backend.tf / versions.tf + SSM publish(/platform/dev/*)
-│   │   └─ modules/                # network / alb / ses
+│   │   │                          # リソース命名: platform-dev-<resource>、タグ Project=platform
+│   │   └─ modules/                # network / alb / ses / keycloak(共有 IdP runtime、ADR-0004 §3.E)
 │   ├─ environments/
-│   │   └─ dev/                    # tasks stack(key = tasks/dev/terraform.tfstate)
-│   │                              # platform 値は aws_ssm_parameter data source で参照
+│   │   └─ dev/                    # tasks stack(Project=tasks、key = tasks/dev/terraform.tfstate)
+│   │                              # platform 値は aws_ssm_parameter data source(/platform/dev/*)で参照
+│   │                              # リソース命名: tasks-dev-<resource>、タグ Project=tasks
 │   │                              # stg / prd は空ディレクトリを作らず(ADR-0002 §3.B)
 │   ├─ modules/                    # tasks: security_group(SG-ECS/RDS) / route53 / parameter_store /
-│   │                              # ecs_cluster / webapi_service / keycloak_service /
-│   │                              # rds / frontend / ecr(network / alb は shared/ へ移動)
-│   └─ docs/                       # IaC 固有 docs(adr/ 含む、ADR-0004)
+│   │                              # ecs_cluster / webapi_service / rds / frontend / ecr
+│   │                              # (network / alb / keycloak は shared/ へ移動)
+│   └─ docs/                       # IaC 固有 docs(adr/ 含む、ADR-0002〜ADR-0004)
 │
 ├─ api/openapi.yaml
 ├─ docs/                    # 横断ドキュメント
@@ -227,7 +239,7 @@ spring:
   datasource:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
-    # password は IAM 認証で動的取得(§3.5 参照)
+    # password は IAM 認証で動的取得(§3.6 参照)
   security:
     oauth2:
       resourceserver:
@@ -254,7 +266,34 @@ environment = [
 
 local 開発時は Docker Compose で同名 env vars を export、または `.env.local` から読む。Native Image 化(Phase 1 Setup 2 ADR-0008)時も Spring プロファイル不使用前提を継承。
 
-### 3.5 RDS 認証(K-A 案、MySQL 8.4)
+### 3.5 ネットワーク(platform 所有 VPC + tasks SSM 参照)
+
+VPC / NAT / S3 GW EP は **platform stack** が所有・管理し、tasks stack は SSM Parameter Store を介して参照する。
+
+#### ネットワーク所有区分
+
+| リソース | 所有 stack | SSM key(`/platform/dev/...`) |
+|---|---|---|
+| VPC（2 AZ） | platform | `vpc-id` / `vpc-cidr` |
+| Public Subnet / Private Subnet | platform | `public-subnet-ids` / `private-subnet-ids` |
+| NAT Gateway(single-AZ) + EIP | platform | — |
+| S3 Gateway Endpoint(無料) | platform | — |
+| ALB + SG-ALB + base cert(`*.dgz48.xyz`) | platform | `alb-arn` / `alb-https-listener-arn` / `alb-sg-id` / `alb-dns-name` / `alb-zone-id` |
+| Route53 PHZ `tasks.internal` | **tasks** | VPC ID は `/platform/dev/vpc-id` を SSM で参照 |
+| SG-ECS / SG-RDS | **tasks** | ALB SG は `/platform/dev/alb-sg-id` を SSM で参照 |
+| ECS Fargate: tasks-webapi | **tasks** | Subnet ID は `/platform/dev/private-subnet-ids` を参照 |
+| RDS MySQL 8.4 | **tasks** | Subnet ID は `/platform/dev/private-subnet-ids` を参照 |
+
+#### NAT Gateway(ADR-0003)
+
+dev は **単一 NAT Gateway(single-AZ) + S3 Gateway Endpoint(無料)** を採用。  
+dev の低トラフィックでは VPC Interface Endpoint 群(≈$51/月)より NAT(≈$45/月)が安く、Phase 2 の外部 outbound(federation / webhook)にも初めから対応できる。S3 GW EP(無料)が ECR レイヤ pull / 一般 S3 を NAT から迂回させデータ処理費を圧縮する。詳細は `infra/docs/adr/0003-private-subnet-outbound.md`。
+
+#### Route53 PHZ と VPC association(ADR-0001)
+
+PHZ `tasks.internal` は tasks stack が所有するが、**platform 所有 VPC への association が必要**。tasks の Terraform は `/platform/dev/vpc-id`(SSM)を `aws_ssm_parameter` data source で読み、`aws_route53_zone_association` で共有 VPC に関連付ける。詳細は `infra/docs/adr/0001-private-dns-for-rds.md`。
+
+### 3.6 RDS 認証(K-A 案、MySQL 8.4)
 
 DB エンジンは **RDS MySQL 8.4**(Phase 1 Setup 2 ADR で確定、Aurora は Post-Sprint-0 で再評価)。
 
@@ -271,7 +310,7 @@ Parameter Store(代表例、完全な一覧は **`docs/architecture/parameter-st
 
 RDS は Terraform で `iam_database_authentication_enabled = true` を設定し、tasks-webapi の DB user 作成時に `AWSAuthenticationPlugin` で IAM 認証可能化。
 
-### 3.5.1 Private DNS で RDS エンドポイント固定化(Phase 1 Setup 2 ADR で採用、env 毎独立 PHZ)
+### 3.6.1 Private DNS で RDS エンドポイント固定化(Phase 1 Setup 2 ADR で採用、env 毎独立 PHZ)
 
 各 env(dev / stg / prd)の VPC に **同名の Private Hosted Zone `tasks.internal`** を独立して作成し、VPC association で当該 VPC からのみ参照可能にする。record 名は env 不問で統一(`db.tasks.internal` 等)。
 
@@ -302,7 +341,7 @@ flowchart TB
 | Public(`dgz48.xyz` Route53 hosted zone) | `tasks-dev.dgz48.xyz` / `api-dev.tasks.dgz48.xyz`(tasks) + `auth-dev.dgz48.xyz`(中立・共有 IdP、platform) | 外部から ALB / CloudFront にアクセス。tasks 深い cert(`*.tasks.dgz48.xyz`)+ 共有 IdP host(platform base cert)で host カバー |
 | Private(各 env VPC PHZ `tasks.internal`) | `db.tasks.internal`(将来: `cache.tasks.internal` 等)| VPC 内部からのみアクセス、env 不問の名前で全環境共通 ENV を実現 |
 
-### 3.6 Keycloak Custom Image(`keycloak/` subdir)
+### 3.7 Keycloak Custom Image(`keycloak/` subdir)
 
 独立 Gradle project として `keycloak/src/main/java/` 配下に User Storage SPI 等を実装、`META-INF/services/` で SPI 登録、`keycloak/build.gradle` で JAR を生成。
 
@@ -433,7 +472,7 @@ Phase 1 Sprint 0 のアプリ実装 / Phase 1 Sprint 0-1 Infra の AWS 構築に
 | Keycloak User Storage SPI 設計 | `docs/adr/0006-keycloak-user-storage-spi.md`(横断) | 対象 DB / 接続経路(直接 JDBC or 既存 API)/ 更新方向(初期 read のみ)/ 同期方針 / API 互換性 |
 | RDS MySQL vs Aurora | `docs/adr/0007-rds-mysql-vs-aurora.md`(横断) | dev は RDS MySQL 8.4 で確定(コスト ~$15/月 vs Aurora ~$43/月、testcontainers 完全互換、ベンダーロックイン回避)。prd 構築時(Post-Sprint-0)に再評価 |
 | GraalVM Native Image 採用 | `docs/adr/0008-graalvm-native-image.md`(横断) | Fat JAR とのトレードオフ(起動時間 / メモリ / ビルド複雑化 / Reflection 制約 / `@RegisterReflectionForBinding` 等)。Spring プロファイル不使用の理由を本 ADR で集約 |
-| Private DNS for RDS | `infra/docs/adr/0001-private-dns-for-rds.md`(IaC 固有) | Route53 Private Hosted Zone で `db.tasks.internal`(env 不問、§3.5.1)の CNAME を被せ、Aurora 移行 / エンジン切替時のアプリ ENV 不変を実現 |
+| Private DNS for RDS | `infra/docs/adr/0001-private-dns-for-rds.md`(IaC 固有) | Route53 Private Hosted Zone で `db.tasks.internal`(env 不問、§3.6.1)の CNAME を被せ、Aurora 移行 / エンジン切替時のアプリ ENV 不変を実現 |
 
 (ADR 番号は既存 0001-0005 のあとに 0006/0007/0008 として続く。実起票時に再確認)
 
@@ -487,7 +526,7 @@ App ストリームの詳細(機能実装)は `docs/specs/開発計画書.md` v1
 | S0Infra-5 | infra(terraform): Security Groups(SG-ALB / SG-ECS / SG-RDS) | 適用 | Phase 1 Sprint 0 |
 | S0Infra-6 | infra(terraform): ALB(single)+ HTTPS Listener 雛形 | 適用 | Phase 1 Sprint 0 |
 | S0Infra-7 | infra(terraform): Parameter Store SecureString パラメータ整備 + `docs/architecture/parameter-store.md` 横断 doc 同時 commit(全 PS パラメータの階層 / 型 / アクセス許可者 / 回転ポリシー 一覧、`smtp-password` は **Keycloak の SMTP メール送信用**、ADR-0006 派生)| 適用 | Phase 1 Sprint 0 |
-| S0Infra-8 | infra(terraform): Route53 Private Hosted Zone(`tasks.internal`、env 毎独立、§3.5.1)+ dev VPC association(Setup2-3 ADR 反映、RDS への CNAME placeholder) | 適用 | Phase 1 Sprint 0 |
+| S0Infra-8 | infra(terraform): Route53 Private Hosted Zone(`tasks.internal`、env 毎独立、§3.6.1)+ dev VPC association(Setup2-3 ADR 反映、RDS への CNAME placeholder) | 適用 | Phase 1 Sprint 0 |
 | **S0Infra-9** | **infra(design): Private Subnet outbound 経路選定 ADR(NAT GW vs VPC Endpoint vs 他、`infra/docs/adr/0003-...`)— S0Infra-4 のブロッカー** | **議論先行** | Phase 1 Sprint 0 |
 
 #### Phase 1 Sprint 0 受入条件(統合)
