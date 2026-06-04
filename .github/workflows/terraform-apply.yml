@@ -1,13 +1,6 @@
 name: Terraform Apply
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'infra/**/*.tf'
-      - 'infra/**/*.hcl'
-      - 'infra/**/*.tfvars'
-      - '.github/workflows/terraform-apply.yml'
   workflow_dispatch:
 
 env:
