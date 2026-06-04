@@ -224,7 +224,7 @@ aws ssm get-parameter \
 | `app/jwt-issuer` | Terraform 管理（String） | Keycloak ホスト・Realm 変更時に `terraform apply` |
 | `app/tenant-default-id` | Terraform 管理（String） | テナント構成変更時に `terraform apply` |
 
-> AWS Secrets Manager の自動ローテーションは **不使用**（確定前提 #9: コスト面でコスト面で Parameter Store SecureString を採用）。
+> AWS Secrets Manager の自動ローテーションは **不使用**（確定前提 #9: コスト面で Parameter Store SecureString を採用）。
 
 ---
 
