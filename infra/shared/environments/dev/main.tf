@@ -105,3 +105,9 @@ resource "aws_ssm_parameter" "alb_zone_id" {
   type  = "String"
   value = module.alb.zone_id
 }
+
+resource "aws_ssm_parameter" "alb_base_cert_arn" {
+  name  = "/platform/dev/alb-base-cert-arn"
+  type  = "String"
+  value = module.alb.base_cert_arn
+}

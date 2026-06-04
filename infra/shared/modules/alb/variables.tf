@@ -23,9 +23,3 @@ variable "enable_deletion_protection" {
   description = "Enable ALB deletion protection. Set to true for stg/prd environments."
   default     = false
 }
-
-variable "hsts_max_age" {
-  type        = number
-  description = "HSTS max-age in seconds. Use 300 for dev, 31536000 for stg/prd."
-  default     = 300
-}

@@ -152,12 +152,9 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-# HSTS: Do NOT add preload — shared apex dgz48.xyz must not be preload-registered.
-resource "aws_lb_listener_attribute" "https_hsts" {
-  listener_arn = aws_lb_listener.https.arn
-  key          = "routing.http.response.strict_transport_security.header_value"
-  value        = "max-age=${var.hsts_max_age}; includeSubDomains"
-}
+# HSTS: aws_lb_listener_attribute is not available in locked provider v5.100.0.
+# Track upgrade and HSTS injection in a follow-up issue.
+# Do NOT add preload — shared apex dgz48.xyz must not be preload-registered.
 
 # ---------------------------------------------------------------------------
 # HTTP Listener :80 — redirect to HTTPS 301
