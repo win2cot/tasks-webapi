@@ -3,3 +3,5 @@
 #
 # 例:
 # AVD-AWS-0066  # テスト環境のみ適用 (承認者: foo, 期限: 2026-12-31)
+
+AVD-AWS-0053  # platform ALB は internet-facing ALB (設計上の意図): 公開インターネットからのリクエストを受け付ける entry point であり internal=false は仕様 (承認者: win2cot, 期限: N/A)
