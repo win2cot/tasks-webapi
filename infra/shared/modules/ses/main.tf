@@ -68,7 +68,8 @@ resource "aws_route53_record" "mail_from_spf" {
 }
 
 # ---------------------------------------------------------------------------
-# DMARC — monitoring mode (p=none); tighten to quarantine/reject after review
+# DMARC — p=none プレースホルダー (rua 未設定のためレポート収集なし)
+# DKIM/SPF 整合確認後に rua= を追加し quarantine/reject へ段階的移行
 # ---------------------------------------------------------------------------
 
 resource "aws_route53_record" "dmarc" {
