@@ -38,6 +38,14 @@ module "alb" {
   base_domain       = "dgz48.xyz"
 }
 
+module "ses" {
+  source = "../../modules/ses"
+
+  env         = "dev"
+  base_domain = "dgz48.xyz"
+  region      = "ap-northeast-1"
+}
+
 # ---------------------------------------------------------------------------
 # SSM: publish network outputs for tasks stack (ADR-0004)
 # ---------------------------------------------------------------------------
@@ -110,4 +118,14 @@ resource "aws_ssm_parameter" "alb_base_cert_arn" {
   name  = "/platform/dev/alb-base-cert-arn"
   type  = "String"
   value = module.alb.base_cert_arn
+}
+
+# ---------------------------------------------------------------------------
+# SSM: publish SES outputs for tasks stack (ADR-0004)
+# ---------------------------------------------------------------------------
+
+resource "aws_ssm_parameter" "ses_config_set" {
+  name  = "/platform/dev/ses-config-set"
+  type  = "String"
+  value = module.ses.config_set_name
 }
