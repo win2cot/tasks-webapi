@@ -122,7 +122,7 @@ data "aws_iam_policy_document" "platform_plan" {
   # SSM read — platform outputs published to /platform/<env>/*
   statement {
     sid     = "SsmRead"
-    actions = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+    actions = ["ssm:GetParameter", "ssm:GetParametersByPath", "ssm:ListTagsForResource"]
     resources = [
       "arn:aws:ssm:${var.region}:${var.account_id}:parameter/platform/${var.env}/*",
     ]
@@ -285,6 +285,7 @@ data "aws_iam_policy_document" "platform_apply" {
       "ssm:GetParameter",
       "ssm:GetParametersByPath",
       "ssm:DeleteParameter",
+      "ssm:ListTagsForResource",
       "ssm:AddTagsToResource",
       "ssm:RemoveTagsFromResource",
     ]
@@ -392,7 +393,7 @@ data "aws_iam_policy_document" "tasks_plan" {
   # SSM read — platform outputs + tasks params
   statement {
     sid     = "SsmRead"
-    actions = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+    actions = ["ssm:GetParameter", "ssm:GetParametersByPath", "ssm:ListTagsForResource"]
     resources = [
       "arn:aws:ssm:${var.region}:${var.account_id}:parameter/platform/${var.env}/*",
       "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/*",
@@ -548,7 +549,7 @@ data "aws_iam_policy_document" "tasks_apply" {
   # SSM — read platform outputs, write tasks params
   statement {
     sid     = "SsmReadPlatform"
-    actions = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+    actions = ["ssm:GetParameter", "ssm:GetParametersByPath", "ssm:ListTagsForResource"]
     resources = [
       "arn:aws:ssm:${var.region}:${var.account_id}:parameter/platform/${var.env}/*",
     ]
@@ -560,6 +561,7 @@ data "aws_iam_policy_document" "tasks_apply" {
       "ssm:GetParameter",
       "ssm:GetParametersByPath",
       "ssm:DeleteParameter",
+      "ssm:ListTagsForResource",
       "ssm:AddTagsToResource",
       "ssm:RemoveTagsFromResource",
     ]
