@@ -58,6 +58,28 @@ class LogoutControllerTest {
   }
 
   @Test
+  @WithMockJwt
+  void blankIdTokenHint_returnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/logout")
+                .param("idTokenHint", "")
+                .param("postLogoutRedirectUri", POST_LOGOUT_REDIRECT_URI))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @WithMockJwt
+  void blankPostLogoutRedirectUri_returnsBadRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/logout")
+                .param("idTokenHint", ID_TOKEN_HINT)
+                .param("postLogoutRedirectUri", ""))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   @WithMockMember
   void memberCanLogout() throws Exception {
     when(logoutUseCase.buildEndSessionUrl(anyString(), anyString())).thenReturn(END_SESSION_URL);
