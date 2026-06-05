@@ -58,6 +58,24 @@ const Auth = (() => {
   }
 
   /**
+   * access token を強制リフレッシュする。401 受信後のリトライ前に呼び出す。
+   * セッション失効時は再ログインページへリダイレクトする。
+   * @returns {Promise<string>} 新しい JWT access token
+   */
+  async function refreshToken() {
+    if (!_keycloak) {
+      throw new Error('Auth が初期化されていません。init() を先に呼んでください。');
+    }
+    try {
+      await _keycloak.updateToken(-1);
+    } catch {
+      _keycloak.login();
+      throw new Error('Refresh token が失効しました。再ログインが必要です。');
+    }
+    return _keycloak.token;
+  }
+
+  /**
    * デコード済みの ID token payload を返す。
    * @returns {Object|null}
    */
@@ -86,5 +104,5 @@ const Auth = (() => {
     }, 30000);
   }
 
-  return { init, getToken, getUser, logout };
+  return { init, getToken, refreshToken, getUser, logout };
 })();
