@@ -67,9 +67,7 @@ class SelectTenantControllerWebMvcTest {
   @Test
   @WithMockMember
   void selectTenant_returns400_whenTenantIdIsNotNumeric() throws Exception {
-    mockMvc
-        .perform(post("/api/auth/tenants/abc/select"))
-        .andExpect(status().isBadRequest());
+    mockMvc.perform(post("/api/auth/tenants/abc/select")).andExpect(status().isBadRequest());
   }
 
   @Test
