@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Optional;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -31,6 +33,8 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
   SecurityConfig.class,
   TenantContextFilter.class,
   TasksJwtAuthenticationConverter.class,
+  TasksAuthenticationEntryPoint.class,
+  TasksAccessDeniedHandler.class,
   TenantContextFilterTest.ProbeController.class
 })
 class TenantContextFilterTest {
@@ -76,27 +80,49 @@ class TenantContextFilterTest {
 
   @Test
   @WithMockMember
-  void invalidTenantIdHeader_returnsBadRequest() throws Exception {
+  void invalidTenantIdHeader_returnsBadRequestWithErrorResponse() throws Exception {
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "not-a-number"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
   }
 
   @Test
   @WithMockUser
-  void nonTasksAuthentication_returnsUnauthorized() throws Exception {
+  void nonTasksAuthentication_returnsUnauthorizedWithErrorResponse() throws Exception {
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
-        .andExpect(status().isUnauthorized());
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.code").value("E_UNAUTHORIZED"));
   }
 
   @Test
   @WithMockMember
-  void nonMember_returnsForbidden() throws Exception {
+  void nonMember_returnsForbiddenWithErrorResponse() throws Exception {
     given(tenantMembershipPort.findActiveRole(1L, 1L)).willReturn(Optional.empty());
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
+  }
+
+  @Test
+  @WithMockJwt(roles = {})
+  void insufficientRole_returnsForbiddenWithErrorResponse() throws Exception {
+    given(tenantMembershipPort.findActiveRole(1L, 1L)).willReturn(Optional.of(TenantRole.MEMBER));
+    mockMvc
+        .perform(
+            get("/probe/tenant-admin-only").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
   }
 
   @Test
