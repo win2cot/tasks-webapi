@@ -20,7 +20,8 @@ public class LogoutUseCase {
    *
    * @param idTokenHint クライアントが保持する ID トークン(または access token)
    * @param postLogoutRedirectUri ログアウト完了後にリダイレクトする URI
-   * @return {@code {issuerUri}/protocol/openid-connect/logout?id_token_hint=...&post_logout_redirect_uri=...}
+   * @return {@code
+   *     {issuerUri}/protocol/openid-connect/logout?id_token_hint=...&post_logout_redirect_uri=...}
    */
   public String buildEndSessionUrl(String idTokenHint, String postLogoutRedirectUri) {
     return UriComponentsBuilder.fromUriString(issuerUri)

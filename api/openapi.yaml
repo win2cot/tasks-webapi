@@ -196,6 +196,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LogoutResponse"
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
