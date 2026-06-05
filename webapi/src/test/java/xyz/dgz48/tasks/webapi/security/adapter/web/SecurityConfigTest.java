@@ -26,6 +26,9 @@ import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepositor
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.SwitchTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -47,6 +50,9 @@ class SecurityConfigTest {
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
   @MockitoBean SwitchTenantUseCase switchTenantUseCase;
+  @MockitoBean AddMemberUseCase addMemberUseCase;
+  @MockitoBean RemoveMemberUseCase removeMemberUseCase;
+  @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
 
   @Autowired MockMvc mockMvc;
 
