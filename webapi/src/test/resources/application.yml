@@ -4,3 +4,10 @@
 DATASOURCE_URL: jdbc:mysql://localhost:3306/tasks_test
 DATASOURCE_USERNAME: test
 OIDC_ISSUER_URI: http://localhost:8080/realms/tasks
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/tasks
