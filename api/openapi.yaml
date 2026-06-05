@@ -171,6 +171,7 @@ paths:
         - { name: tenantId, in: path, required: true, description: "切り替え先のテナントID", schema: { type: integer, format: int64 } }
       responses:
         "204": { description: No Content }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
