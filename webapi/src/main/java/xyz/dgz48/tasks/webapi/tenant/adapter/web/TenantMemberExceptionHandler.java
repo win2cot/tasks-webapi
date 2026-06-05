@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -49,6 +50,13 @@ public class TenantMemberExceptionHandler {
         ErrorCode.E_CONFLICT,
         Objects.requireNonNullElse(ex.getMessage(), "既にメンバーとして登録されています"),
         request);
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleDataIntegrity(
+      DataIntegrityViolationException ex, HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, ErrorCode.E_CONFLICT, "既にメンバーとして登録されています", request);
   }
 
   private static ErrorResponse error(
