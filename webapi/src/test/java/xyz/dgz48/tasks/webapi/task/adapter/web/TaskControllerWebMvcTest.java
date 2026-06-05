@@ -20,6 +20,8 @@ import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepositor
 import xyz.dgz48.tasks.webapi.security.adapter.web.SecurityConfig;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConverter;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
+import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
+import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
@@ -166,5 +168,70 @@ class TaskControllerWebMvcTest {
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
+  }
+
+  // --- 認可マトリクス: 未認証 (401) ---
+
+  @Test
+  void get_returns401_whenUnauthenticated() throws Exception {
+    mockMvc.perform(get("/api/tasks/1")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void changeStatus_returns401_whenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tasks/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  // --- 認可マトリクス: SaaS Admin (テナントロールなし → 403) ---
+
+  @Test
+  @WithMockSaasAdmin
+  void get_returns403_whenSaasAdminWithoutTenantRole() throws Exception {
+    mockMvc.perform(get("/api/tasks/1")).andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockSaasAdmin
+  void changeStatus_returns403_whenSaasAdminWithoutTenantRole() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tasks/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  // --- 認可マトリクス: Tenant Admin (200) ---
+
+  @Test
+  @WithMockTenantAdmin
+  void get_returns200_whenTenantAdmin() throws Exception {
+    Task task = buildTask(TaskStatus.NOT_STARTED);
+    when(getTaskUseCase.execute(1L, USER_ID)).thenReturn(task);
+
+    mockMvc
+        .perform(get("/api/tasks/1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(1));
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void changeStatus_returns200_whenTenantAdmin() throws Exception {
+    Task done = buildDoneTask();
+    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
+
+    mockMvc
+        .perform(
+            patch("/api/tasks/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("DONE"));
   }
 }
