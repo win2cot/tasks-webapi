@@ -1,6 +1,5 @@
 package xyz.dgz48.tasks.webapi.security.adapter.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +20,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.json.JsonMapper;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
@@ -31,8 +31,8 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
  * X-Tenant-Id ヘッダを読み取り、user_tenants を検証して TenantContext を設定する。
  *
  * <p>ヘッダ未指定の場合は TenantContext を設定せずに通過させる。認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は
- * ROLE_TENANT_ADMIN または ROLE_MEMBER を SecurityContext に付与する。エラー応答は ADR-0011 の {@link
- * ErrorResponse} 形式で返す。
+ * ROLE_TENANT_ADMIN または ROLE_MEMBER を SecurityContext に付与する。エラー応答は ADR-0011 の {@link ErrorResponse}
+ * 形式で返す。
  */
 @Component
 @RequiredArgsConstructor
@@ -43,7 +43,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
   private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   private final TenantMembershipPort tenantMembershipPort;
-  private final ObjectMapper objectMapper;
+  private final JsonMapper objectMapper;
 
   @Override
   protected void doFilterInternal(
@@ -72,11 +72,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (!(auth instanceof TasksAuthenticationToken token)) {
       writeErrorResponse(
-          response,
-          HttpStatus.UNAUTHORIZED,
-          ErrorCode.E_UNAUTHORIZED,
-          "認証が必要です",
-          request);
+          response, HttpStatus.UNAUTHORIZED, ErrorCode.E_UNAUTHORIZED, "認証が必要です", request);
       return;
     }
 
@@ -84,11 +80,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
         tenantMembershipPort.findActiveRole(token.getPrincipal().getId(), tenantId);
     if (roleOpt.isEmpty()) {
       writeErrorResponse(
-          response,
-          HttpStatus.FORBIDDEN,
-          ErrorCode.E_FORBIDDEN,
-          "指定テナントのメンバーではありません",
-          request);
+          response, HttpStatus.FORBIDDEN, ErrorCode.E_FORBIDDEN, "指定テナントのメンバーではありません", request);
       return;
     }
 

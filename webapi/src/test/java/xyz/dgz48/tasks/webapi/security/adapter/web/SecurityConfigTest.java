@@ -53,7 +53,7 @@ class SecurityConfigTest {
     mockMvc
         .perform(get("/api/tasks"))
         .andExpect(status().isUnauthorized())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.code").value("E_UNAUTHORIZED"))
         .andExpect(jsonPath("$.error").value("Unauthorized"));
@@ -66,11 +66,9 @@ class SecurityConfigTest {
             new JwtValidationException(
                 "JWT token expired", List.of(new OAuth2Error("invalid_token"))));
     mockMvc
-        .perform(
-            get("/api/tasks")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer expired.mock.token"))
+        .perform(get("/api/tasks").header(HttpHeaders.AUTHORIZATION, "Bearer expired.mock.token"))
         .andExpect(status().isUnauthorized())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.code").value("E_UNAUTHORIZED"))
         .andExpect(jsonPath("$.error").value("Unauthorized"));

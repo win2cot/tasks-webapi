@@ -88,7 +88,7 @@ class TenantContextFilterTest {
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "not-a-number"))
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.code").value("E_VALIDATION"));
   }
@@ -99,7 +99,7 @@ class TenantContextFilterTest {
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
         .andExpect(status().isUnauthorized())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.code").value("E_UNAUTHORIZED"));
   }
@@ -111,7 +111,7 @@ class TenantContextFilterTest {
     mockMvc
         .perform(get("/probe").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
         .andExpect(status().isForbidden())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.status").value(403))
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
   }
@@ -124,7 +124,7 @@ class TenantContextFilterTest {
         .perform(
             get("/probe/tenant-admin-only").header(TenantContextFilter.HEADER_X_TENANT_ID, "1"))
         .andExpect(status().isForbidden())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.status").value(403))
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
   }
