@@ -84,7 +84,7 @@ info:
     - `409 Conflict` — リソースの競合状態(詳細は基本設計書 §5.4.1。エンドポイント個別のシナリオはレスポンス description 参照)
     - `422 Unprocessable Content` — 前提リソース未存在(招待時に Keycloak 未登録 等。詳細は基本設計書 §5.4.2)
     - `500 Internal Server Error` — サーバー内部エラー
-  version: "1.7.0"
+  version: "1.7.1"
   contact:
     name: 開発チーム
     email: dev@example.com
@@ -601,11 +601,20 @@ paths:
       description: |
         認可: 所有者のみ(Tenant Admin の特別権限なし、ADR-0005)。違反時は 403。
         物理削除は MVP では提供しない(完全削除はテナント解約 #167 / Phase 2 で扱う)。
+
+        楽観ロック(ADR-0012): `If-Match` ヘッダに `GET /api/tasks/{id}` レスポンスの ETag 値を必須指定。
+        不一致時は 412 Precondition Failed(`E_PRECONDITION_FAILED`)を返す。
       operationId: deleteTask
       parameters:
         - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
+        - name: If-Match
+          in: header
+          required: true
+          description: "楽観ロック用 ETag 値。`GET /api/tasks/{id}` レスポンスの ETag ヘッダ値を指定(ADR-0012)"
+          schema: { type: string }
       responses:
         "204": { description: No Content }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
@@ -613,6 +622,7 @@ paths:
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
             なお**論理削除権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
 
   /api/tasks/{id}/status:
     patch:
@@ -1011,6 +1021,13 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+          example:
+            timestamp: "2026-06-01T10:30:00+09:00"
+            status: 412
+            error: "Precondition Failed"
+            code: "E_PRECONDITION_FAILED"
+            message: "楽観ロック競合: リソースバージョンが不一致です。再取得して If-Match を更新してから再試行してください。"
+            path: "/api/tasks/123"
 
   schemas:
     # --- 共通 ---
@@ -1217,9 +1234,10 @@ components:
 
     Task:
       type: object
-      required: [id, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
+      required: [id, version, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
       properties:
         id:          { type: integer, format: int64 }
+        version:     { type: integer, format: int64, description: "楽観ロック用バージョン番号(ADR-0012)。PATCH / DELETE 時に `If-Match: W/\"<version>\"` として使用" }
         title:       { type: string }
         description:
           type: [string, 'null']
@@ -1246,9 +1264,10 @@ components:
         `GET /api/tasks/{id}` / `PATCH /api/tasks/{id}` / `PATCH /api/tasks/{id}/status` のレスポンス。
         `editable`/`deletable` は ADR-0005 の 3 役割評価(所有者・担当者・関係者)に基づいて UseCase 層で算出する。
       type: object
-      required: [id, tenantId, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
+      required: [id, version, tenantId, title, status, priority, visibility, owner, dueDate, createdAt, updatedAt, editable, deletable]
       properties:
         id:          { type: integer, format: int64 }
+        version:     { type: integer, format: int64, description: "楽観ロック用バージョン番号(ADR-0012)。PATCH / DELETE 時に `If-Match: W/\"<version>\"` として使用" }
         tenantId:    { type: integer, format: int64 }
         title:       { type: string }
         description: { type: [string, 'null'] }
