@@ -14,8 +14,8 @@ public class SwitchTenantUseCase {
 
   @Transactional(readOnly = true)
   public void execute(Long userId, Long tenantId) {
-    tenantMembershipPort
-        .findActiveRole(userId, tenantId)
-        .orElseThrow(() -> new TenantNotMemberException(tenantId));
+    if (tenantMembershipPort.findActiveRole(userId, tenantId).isEmpty()) {
+      throw new TenantNotMemberException(tenantId);
+    }
   }
 }
