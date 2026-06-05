@@ -12,9 +12,9 @@ public interface UserTenantManagementPort {
   /** メンバーを追加し、登録済み UserTenant を返す。 */
   UserTenant addMember(Long userId, Long tenantId, TenantRole role);
 
-  /** ACTIVE メンバーを削除する。ACTIVE メンバーが存在しない場合は空。 */
+  /** ACTIVE メンバーを削除する。成功時 {@code true}、ACTIVE メンバーが存在しない場合は {@code false}。 */
   boolean removeActiveMember(Long userId, Long tenantId);
 
-  /** ACTIVE メンバーのロールを変更し、更新後の UserTenant を返す。ACTIVE メンバー不在の場合は空。 */
+  /** ACTIVE メンバーのロールを変更する。成功時 {@code true}、ACTIVE メンバー不在の場合は {@code false}。 */
   boolean changeActiveMemberRole(Long userId, Long tenantId, TenantRole newRole);
 }

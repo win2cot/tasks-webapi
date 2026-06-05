@@ -246,6 +246,20 @@ class TenantMemberIT {
   }
 
   @Test
+  void removeMember_returns204_whenTenantAdmin_withMatchingTenantContext() throws Exception {
+    insertMember(targetUserId, tenantId, "MEMBER", "ACTIVE");
+
+    mockMvc
+        .perform(
+            delete("/api/tenants/{tenantId}/users/{userId}", tenantId, targetUserId)
+                .header("X-Tenant-Id", tenantId)
+                .with(authentication(tenantAdminToken)))
+        .andExpect(status().isNoContent());
+
+    assertMemberNotExists(targetUserId, tenantId);
+  }
+
+  @Test
   void removeMember_returns403_whenCrossTenantByTenantAdmin() throws Exception {
     insertMember(targetUserId, otherTenantId, "MEMBER", "ACTIVE");
 
@@ -299,6 +313,22 @@ class TenantMemberIT {
                 .with(authentication(saasAdminToken)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("E_NOT_FOUND"));
+  }
+
+  @Test
+  void changeMemberRole_returns204_whenTenantAdmin_withMatchingTenantContext() throws Exception {
+    insertMember(targetUserId, tenantId, "MEMBER", "ACTIVE");
+
+    mockMvc
+        .perform(
+            patch("/api/tenants/{tenantId}/users/{userId}", tenantId, targetUserId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"TENANT_ADMIN\"}")
+                .header("X-Tenant-Id", tenantId)
+                .with(authentication(tenantAdminToken)))
+        .andExpect(status().isNoContent());
+
+    assertMemberExists(targetUserId, tenantId, "TENANT_ADMIN");
   }
 
   @Test
