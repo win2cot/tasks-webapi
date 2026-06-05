@@ -145,11 +145,20 @@ paths:
       description: |
         Keycloakのセッションを終了する。テナント未選択状態でも呼び出し可能なため、
         グローバルセキュリティから `tenantHeader` をオーバーライドで除外する。
+        クライアントはレスポンスの `endSessionUrl` へリダイレクトして SSO セッションを終了する。
       operationId: logout
       security:
         - bearerAuth: []
+      parameters:
+        - { name: idTokenHint, in: query, required: true, description: "Keycloak end_session_endpoint に渡す ID トークン", schema: { type: string } }
+        - { name: postLogoutRedirectUri, in: query, required: true, description: "ログアウト完了後にリダイレクトする URI", schema: { type: string, format: uri } }
       responses:
-        "204": { description: No Content }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
@@ -976,6 +985,16 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    # --- 認証 ---
+    LogoutResponse:
+      type: object
+      required: [endSessionUrl]
+      properties:
+        endSessionUrl:
+          type: string
+          format: uri
+          description: "Keycloak の end_session_endpoint URL。クライアントはこの URL へリダイレクトして SSO セッションを終了する。"
+
     # --- 共通 ---
     Error:
       type: object

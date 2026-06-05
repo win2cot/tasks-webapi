@@ -1,6 +1,9 @@
 package xyz.dgz48.tasks.webapi.security.adapter.web;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -10,8 +13,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
-import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
@@ -19,11 +21,17 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 @Import({SecurityConfig.class, TasksJwtAuthenticationConverter.class})
 class LogoutControllerTest {
 
+  private static final String ID_TOKEN_HINT = "eyJhbGciOiJSUzI1NiJ9.test";
+  private static final String POST_LOGOUT_REDIRECT_URI = "https://app.example.com/";
+  private static final String END_SESSION_URL =
+      "http://keycloak:8080/realms/tasks/protocol/openid-connect/logout"
+          + "?id_token_hint=eyJhbGciOiJSUzI1NiJ9.test"
+          + "&post_logout_redirect_uri=https%3A%2F%2Fapp.example.com%2F";
+
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean UserRepository userRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
-  @MockitoBean GetTaskUseCase getTaskUseCase;
-  @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
+  @MockitoBean LogoutUseCase logoutUseCase;
 
   @Autowired MockMvc mockMvc;
 
@@ -34,31 +42,55 @@ class LogoutControllerTest {
 
   @Test
   @WithMockJwt
-  void authenticatedRequest_returnsNoContent() throws Exception {
-    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+  void authenticatedRequest_returnsOkWithEndSessionUrl() throws Exception {
+    when(logoutUseCase.buildEndSessionUrl(ID_TOKEN_HINT, POST_LOGOUT_REDIRECT_URI))
+        .thenReturn(END_SESSION_URL);
+
+    mockMvc
+        .perform(
+            post("/api/auth/logout")
+                .param("idTokenHint", ID_TOKEN_HINT)
+                .param("postLogoutRedirectUri", POST_LOGOUT_REDIRECT_URI))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.endSessionUrl").value(END_SESSION_URL));
   }
 
   @Test
   @WithMockMember
   void memberCanLogout() throws Exception {
-    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+    when(logoutUseCase.buildEndSessionUrl(anyString(), anyString())).thenReturn(END_SESSION_URL);
+
+    mockMvc
+        .perform(
+            post("/api/auth/logout")
+                .param("idTokenHint", ID_TOKEN_HINT)
+                .param("postLogoutRedirectUri", POST_LOGOUT_REDIRECT_URI))
+        .andExpect(status().isOk());
   }
 
   @Test
   @WithMockTenantAdmin
   void tenantAdminCanLogout() throws Exception {
-    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+    when(logoutUseCase.buildEndSessionUrl(anyString(), anyString())).thenReturn(END_SESSION_URL);
+
+    mockMvc
+        .perform(
+            post("/api/auth/logout")
+                .param("idTokenHint", ID_TOKEN_HINT)
+                .param("postLogoutRedirectUri", POST_LOGOUT_REDIRECT_URI))
+        .andExpect(status().isOk());
   }
 
   @Test
   @WithMockSaasAdmin
   void saasAdminCanLogout() throws Exception {
-    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
-  }
+    when(logoutUseCase.buildEndSessionUrl(anyString(), anyString())).thenReturn(END_SESSION_URL);
 
-  @Test
-  @WithMockMember
-  void logoutWithoutTenantIdHeader_returnsNoContent() throws Exception {
-    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+    mockMvc
+        .perform(
+            post("/api/auth/logout")
+                .param("idTokenHint", ID_TOKEN_HINT)
+                .param("postLogoutRedirectUri", POST_LOGOUT_REDIRECT_URI))
+        .andExpect(status().isOk());
   }
 }
