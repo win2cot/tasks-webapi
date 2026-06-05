@@ -267,6 +267,7 @@ npx serve -l 5500 .
 
 > **詳細手順**: Setup 1-7 E2E 動作確認手順と共有。本セクションはクイックリファレンス。  
 > **機能固有の手動テスト手順**は `docs/dev/` 配下の個別ファイルを参照:
+>
 > - テナント切替 UI: [manual-test-tenant-switcher.md](manual-test-tenant-switcher.md)
 
 ### 完全フローの確認
