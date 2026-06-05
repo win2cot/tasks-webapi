@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
+import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -23,6 +22,7 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 class TasksJwtAuthenticationConverterTest {
 
   @Mock UserRepository userRepository;
+  @Mock AppAdminUserRepository appAdminUserRepository;
   @Mock Jwt jwt;
   @Mock UserJpaEntity user;
 
@@ -42,6 +42,7 @@ class TasksJwtAuthenticationConverterTest {
   @Test
   void convertsJwtToAuthenticationToken() {
     stubValidUser();
+    when(appAdminUserRepository.existsByOidcSub("sub123")).thenReturn(false);
 
     AbstractAuthenticationToken token = converter.convert(jwt);
 
@@ -57,10 +58,9 @@ class TasksJwtAuthenticationConverterTest {
   }
 
   @Test
-  void grantsAppAdminWhenRealmRolePresent() {
+  void grantsAppAdminWhenSubExistsInAppAdminUsers() {
     stubValidUser();
-    when(jwt.getClaim("realm_access"))
-        .thenReturn(Map.of("roles", List.of("APP_ADMIN", "default-roles-realm")));
+    when(appAdminUserRepository.existsByOidcSub("sub123")).thenReturn(true);
 
     AbstractAuthenticationToken token = converter.convert(jwt);
 
@@ -68,18 +68,9 @@ class TasksJwtAuthenticationConverterTest {
   }
 
   @Test
-  void noAuthoritiesWhenAppAdminNotInRealmRoles() {
+  void noAuthoritiesWhenSubNotInAppAdminUsers() {
     stubValidUser();
-    when(jwt.getClaim("realm_access")).thenReturn(Map.of("roles", List.of("default-roles-realm")));
-
-    AbstractAuthenticationToken token = converter.convert(jwt);
-
-    assertThat(token.getAuthorities()).isEmpty();
-  }
-
-  @Test
-  void noAuthoritiesWhenRealmAccessClaimMissing() {
-    stubValidUser();
+    when(appAdminUserRepository.existsByOidcSub("sub123")).thenReturn(false);
 
     AbstractAuthenticationToken token = converter.convert(jwt);
 
