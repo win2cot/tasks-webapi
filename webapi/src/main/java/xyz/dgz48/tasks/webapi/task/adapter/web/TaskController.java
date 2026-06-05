@@ -65,7 +65,7 @@ public class TaskController {
     try {
       return Long.parseLong(s);
     } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Invalid If-Match value: " + ifMatch);
+      throw new InvalidIfMatchFormatException("Invalid If-Match value: " + ifMatch);
     }
   }
 }

@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,6 +24,7 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConvert
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
@@ -216,7 +216,7 @@ class TaskControllerWebMvcTest {
   @WithMockMember
   void changeStatus_returns412_whenOptimisticLockingFailure() throws Exception {
     when(changeTaskStatusUseCase.execute(5L, USER_ID, TaskStatus.DONE, VERSION))
-        .thenThrow(new ObjectOptimisticLockingFailureException(Task.class, 5L));
+        .thenThrow(new PreconditionFailedException("バージョンが競合しています: task=5"));
 
     mockMvc
         .perform(

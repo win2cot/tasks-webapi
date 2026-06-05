@@ -4,6 +4,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.usecase.TaskRepository;
 
@@ -25,11 +26,12 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
             .findById(task.getId())
             .orElseThrow(
                 () -> new IllegalStateException("Task not found for save: " + task.getId()));
-    if (!entity.getVersion().equals(task.getVersion())) {
-      throw new ObjectOptimisticLockingFailureException(Task.class, task.getId());
-    }
     entity.updateStatus(task.getStatus(), task.getCompletedAt());
-    return toDomain(jpaRepository.saveAndFlush(entity));
+    try {
+      return toDomain(jpaRepository.saveAndFlush(entity));
+    } catch (ObjectOptimisticLockingFailureException e) {
+      throw new PreconditionFailedException("バージョンが競合しています: task=" + task.getId());
+    }
   }
 
   private Task toDomain(TaskJpaEntity entity) {

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskAuthorizationDomainService;
@@ -102,14 +103,14 @@ class ChangeTaskStatusUseCaseTest {
   }
 
   @Test
-  void execute_throwsOptimisticLockingFailure_whenVersionMismatch() {
+  void execute_throwsPreconditionFailedException_whenVersionMismatch() {
     Task task = buildTask(TaskStatus.IN_PROGRESS);
     when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task));
     when(taskAuthorizationDomainService.canBeViewedBy(task, OWNER_ID, List.of())).thenReturn(true);
     when(taskAuthorizationDomainService.canChangeStatusBy(task, OWNER_ID)).thenReturn(true);
 
     assertThatThrownBy(() -> useCase.execute(TASK_ID, OWNER_ID, TaskStatus.DONE, VERSION + 1))
-        .isInstanceOf(org.springframework.orm.ObjectOptimisticLockingFailureException.class);
+        .isInstanceOf(PreconditionFailedException.class);
   }
 
   @Test
