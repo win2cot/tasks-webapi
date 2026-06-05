@@ -1,8 +1,6 @@
 package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import java.util.List;
-import java.util.Map;
-import org.jspecify.annotations.Nullable;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -10,6 +8,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.stereotype.Component;
+import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -19,9 +18,12 @@ public class TasksJwtAuthenticationConverter
     implements Converter<Jwt, AbstractAuthenticationToken> {
 
   private final UserRepository userRepository;
+  private final AppAdminUserRepository appAdminUserRepository;
 
-  public TasksJwtAuthenticationConverter(UserRepository userRepository) {
+  public TasksJwtAuthenticationConverter(
+      UserRepository userRepository, AppAdminUserRepository appAdminUserRepository) {
     this.userRepository = userRepository;
+    this.appAdminUserRepository = appAdminUserRepository;
   }
 
   @Override
@@ -43,18 +45,13 @@ public class TasksJwtAuthenticationConverter
             user.getFullName(),
             user.getFullNameKana(),
             user.getDepartmentName());
-    return new TasksAuthenticationToken(principal, realmAuthorities(jwt));
+    return new TasksAuthenticationToken(principal, appAdminAuthorities(sub));
   }
 
-  private static List<GrantedAuthority> realmAuthorities(Jwt jwt) {
-    @Nullable Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-    if (realmAccess == null) {
-      return List.of();
+  private List<GrantedAuthority> appAdminAuthorities(String sub) {
+    if (appAdminUserRepository.existsByOidcSub(sub)) {
+      return List.of(new SimpleGrantedAuthority("ROLE_APP_ADMIN"));
     }
-    Object rolesObj = realmAccess.get("roles");
-    if (!(rolesObj instanceof List<?> roles) || !roles.contains("APP_ADMIN")) {
-      return List.of();
-    }
-    return List.of(new SimpleGrantedAuthority("ROLE_APP_ADMIN"));
+    return List.of();
   }
 }
