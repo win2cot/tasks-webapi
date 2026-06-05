@@ -18,8 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
@@ -28,7 +26,6 @@ import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.shared.exception.SaasAdminRequiredException;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class TenantFilterBypassServiceTest {
 
   @Mock EntityManager entityManager;
@@ -40,7 +37,6 @@ class TenantFilterBypassServiceTest {
   @BeforeEach
   void setUp() {
     service = new TenantFilterBypassService(entityManager);
-    when(entityManager.unwrap(Session.class)).thenReturn(session);
   }
 
   @AfterEach
@@ -52,6 +48,7 @@ class TenantFilterBypassServiceTest {
   @Test
   void runAsSaaSAdmin_whenSaasAdmin_executesAction() {
     setUpSaasAdmin();
+    when(entityManager.unwrap(Session.class)).thenReturn(session);
 
     String result = service.runAsSaaSAdmin(() -> "result");
 
@@ -84,6 +81,7 @@ class TenantFilterBypassServiceTest {
   void runAsSaaSAdmin_whenTenantContextSet_restoresFilterAfterExecution() {
     setUpSaasAdmin();
     TenantContext.set(42L);
+    when(entityManager.unwrap(Session.class)).thenReturn(session);
     when(session.enableFilter(anyString())).thenReturn(hibernateFilter);
 
     service.runAsSaaSAdmin(() -> "ok");
@@ -96,6 +94,7 @@ class TenantFilterBypassServiceTest {
   @Test
   void runAsSaaSAdmin_whenTenantContextNotSet_doesNotRestoreFilter() {
     setUpSaasAdmin();
+    when(entityManager.unwrap(Session.class)).thenReturn(session);
 
     service.runAsSaaSAdmin(() -> "ok");
 
@@ -107,6 +106,7 @@ class TenantFilterBypassServiceTest {
   void runAsSaaSAdmin_restoresFilterEvenWhenActionThrows() {
     setUpSaasAdmin();
     TenantContext.set(42L);
+    when(entityManager.unwrap(Session.class)).thenReturn(session);
     when(session.enableFilter(anyString())).thenReturn(hibernateFilter);
 
     assertThatThrownBy(
@@ -126,6 +126,7 @@ class TenantFilterBypassServiceTest {
   @Test
   void runAsSaaSAdmin_whenTenantContextNotSetAndActionThrows_doesNotRestoreFilter() {
     setUpSaasAdmin();
+    when(entityManager.unwrap(Session.class)).thenReturn(session);
 
     assertThatThrownBy(
             () ->

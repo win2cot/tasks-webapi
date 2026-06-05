@@ -7,6 +7,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.shared.exception.SaasAdminRequiredException;
 
@@ -41,6 +43,7 @@ public class TenantFilterBypassService {
    * @return アクションの戻り値
    * @throws SaasAdminRequiredException 呼び出し元が SaaS Admin({@code ROLE_APP_ADMIN})でない場合
    */
+  @Transactional(propagation = Propagation.MANDATORY)
   public <T> T runAsSaaSAdmin(Supplier<T> action) {
     checkSaasAdminRole();
     @Nullable Long previousTenantId = TenantContext.get();
