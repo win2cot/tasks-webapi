@@ -20,13 +20,24 @@ const Api = (() => {
 
   /**
    * 共通 fetch ラッパー。token を自動付与し、エラー時は Error をスローする。
+   * 401 を受信した場合は token リフレッシュ後に 1 回だけリトライする。
    * @param {string} path — API パス (/api/... 形式)
    * @param {RequestInit} [options]
    * @returns {Promise<any>} レスポンス JSON
    */
   async function request(path, options = {}) {
-    const token = await Auth.getToken();
+    const response = await _fetch(path, await Auth.getToken(), options);
 
+    if (response.status === 401) {
+      const newToken = await Auth.refreshToken();
+      const retryResponse = await _fetch(path, newToken, options);
+      return _parseResponse(retryResponse);
+    }
+
+    return _parseResponse(response);
+  }
+
+  async function _fetch(path, token, options) {
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
@@ -37,11 +48,10 @@ const Api = (() => {
       headers['X-Tenant-Id'] = String(_tenantId);
     }
 
-    const response = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers,
-    });
+    return fetch(`${BASE_URL}${path}`, { ...options, headers });
+  }
 
+  async function _parseResponse(response) {
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       throw new Error(`${response.status} ${response.statusText}: ${body}`);
