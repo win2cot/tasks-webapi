@@ -15,6 +15,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.adapter.web.SecurityConfig;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAccessDeniedHandler;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationEntryPoint;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConverter;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantNotMemberException;
@@ -26,6 +28,8 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 @Import({
   SecurityConfig.class,
   TasksJwtAuthenticationConverter.class,
+  TasksAuthenticationEntryPoint.class,
+  TasksAccessDeniedHandler.class,
   SelectTenantExceptionHandler.class
 })
 class SelectTenantControllerWebMvcTest {
