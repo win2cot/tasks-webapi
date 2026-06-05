@@ -19,7 +19,7 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(LogoutController.class)
-@Import({SecurityConfig.class, TasksJwtAuthenticationConverter.class})
+@Import({SecurityConfig.class, TasksJwtAuthenticationConverter.class, LogoutExceptionHandler.class})
 class LogoutControllerTest {
 
   private static final String ID_TOKEN_HINT = "eyJhbGciOiJSUzI1NiJ9.test";
