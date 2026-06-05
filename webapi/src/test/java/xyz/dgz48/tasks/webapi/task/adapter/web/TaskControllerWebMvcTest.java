@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.adapter.web.SecurityConfig;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConverter;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
@@ -37,6 +38,7 @@ class TaskControllerWebMvcTest {
 
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean UserRepository userRepository;
+  @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
