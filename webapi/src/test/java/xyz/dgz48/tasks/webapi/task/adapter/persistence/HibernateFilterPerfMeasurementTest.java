@@ -50,8 +50,7 @@ class HibernateFilterPerfMeasurementTest {
   @BeforeEach
   void setUp() {
     var auditor =
-        new UserJpaEntity(
-            "sub-perf-auditor", "perf-auditor@example.com", "計測監査", "ケイソクカンサ", null);
+        new UserJpaEntity("sub-perf-auditor", "perf-auditor@example.com", "計測監査", "ケイソクカンサ", null);
     entityManager.persist(auditor);
     entityManager.flush();
 
@@ -72,8 +71,7 @@ class HibernateFilterPerfMeasurementTest {
     entityManager.persist(tenantB);
 
     var user =
-        new UserJpaEntity(
-            "sub-perf-user", "perf-user@example.com", "計測ユーザー", "ケイソクユーザー", null);
+        new UserJpaEntity("sub-perf-user", "perf-user@example.com", "計測ユーザー", "ケイソクユーザー", null);
     entityManager.persist(user);
     entityManager.flush();
 
