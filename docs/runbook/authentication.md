@@ -10,7 +10,7 @@
 
 ## 正常フロー
 
-```
+```text
 [frontend]                   [tasks-webapi]       [Keycloak]
    |                               |                   |
    |-- POST /realms/tasks/token -->|------------------>|
@@ -103,7 +103,7 @@ curl http://<keycloak-host>:18080/realms/tasks/protocol/openid-connect/certs
 **原因**: `TasksJwtAuthenticationConverter` がトークンの `sub` クレームに対応するユーザーを DB に見つけられない。
 
 **確認手順**:
-```
+```text
 # ログ例
 ERROR ... InvalidBearerTokenException: User not found for provided sub claim
 ```
