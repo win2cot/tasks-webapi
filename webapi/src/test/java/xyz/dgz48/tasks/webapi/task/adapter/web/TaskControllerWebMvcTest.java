@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -168,6 +169,22 @@ class TaskControllerWebMvcTest {
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
+  }
+
+  @Test
+  @WithMockMember
+  void changeStatus_returns412_whenOptimisticLockingFailure() throws Exception {
+    when(changeTaskStatusUseCase.execute(5L, USER_ID, TaskStatus.DONE))
+        .thenThrow(new ObjectOptimisticLockingFailureException(Task.class, 5L));
+
+    mockMvc
+        .perform(
+            patch("/api/tasks/5/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+        .andExpect(status().isPreconditionFailed())
+        .andExpect(jsonPath("$.code").value("E_PRECONDITION_FAILED"))
+        .andExpect(jsonPath("$.status").value(412));
   }
 
   // --- 認可マトリクス: 未認証 (401) ---
