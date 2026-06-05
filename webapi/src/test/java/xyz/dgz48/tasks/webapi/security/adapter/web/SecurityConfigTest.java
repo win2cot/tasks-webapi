@@ -91,8 +91,7 @@ class SecurityConfigTest {
 
   @Test
   void malformedTokenReturnsUnauthorized() throws Exception {
-    when(jwtDecoder.decode(anyString()))
-        .thenThrow(new BadJwtException("Malformed JWT"));
+    when(jwtDecoder.decode(anyString())).thenThrow(new BadJwtException("Malformed JWT"));
 
     mockMvc
         .perform(get("/api/tasks").header("Authorization", "Bearer malformed.token"))
