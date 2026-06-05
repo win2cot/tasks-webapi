@@ -38,6 +38,7 @@
 **原因**: access token の 5 分 TTL が切れた。
 
 **対応(frontend 自動)**:
+
 1. `api.js` の `request()` が 401 を検知する。
 2. `Auth.refreshToken()` を呼び出し、`keycloak.updateToken(-1)` で強制リフレッシュを試みる。
 3. 新しい access token を取得し、元のリクエストを 1 回リトライする。
@@ -57,6 +58,7 @@
 > 「セッションが期限切れになりました。再度ログインしてください。」
 
 **対応**:
+
 - ユーザーはログインページで再認証する。
 - 問題が頻発する場合は ADR-0015 の token lifespan 設定を見直す。
 
@@ -67,6 +69,7 @@
 **症状**: `400 Bad Request` (`error: invalid_grant`) — シナリオ 2 と同じ応答。
 
 **原因**:
+
 - 別デバイスでログアウト済み
 - Keycloak 管理コンソールでセッションを強制失効させた
 
@@ -81,6 +84,7 @@
 **原因**: Keycloak が停止または JWK エンドポイント(`/realms/tasks/protocol/openid-connect/certs`)が到達不能になっている。Spring Security は JWK を定期キャッシュしているため、**キャッシュが有効な間は一時的に認証が継続する**。キャッシュ TTL(デフォルト 5 分)を超えると検証失敗が始まる。
 
 **確認手順**:
+
 ```bash
 # Keycloak ヘルスチェック
 curl http://<keycloak-host>:18080/health/ready
@@ -90,6 +94,7 @@ curl http://<keycloak-host>:18080/realms/tasks/protocol/openid-connect/certs
 ```
 
 **対応**:
+
 1. ECS タスクログ / CloudWatch でエラーを確認する。
 2. Keycloak サービスを再起動または復旧させる。
 3. tasks-webapi の JWK キャッシュは自動的に更新される(再起動不要)。
@@ -103,12 +108,14 @@ curl http://<keycloak-host>:18080/realms/tasks/protocol/openid-connect/certs
 **原因**: `TasksJwtAuthenticationConverter` がトークンの `sub` クレームに対応するユーザーを DB に見つけられない。
 
 **確認手順**:
+
 ```text
 # ログ例
 ERROR ... InvalidBearerTokenException: User not found for provided sub claim
 ```
 
 **対応**:
+
 1. Keycloak の `sub` と `users.oidc_sub` が一致しているか確認する。
 2. ユーザーが DB に存在しない場合はプロビジョニングフローの不具合を調査する(Issue #304 / ADR-0006 参照)。
 
