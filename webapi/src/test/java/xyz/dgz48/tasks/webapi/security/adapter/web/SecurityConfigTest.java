@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.SwitchTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
@@ -32,6 +33,7 @@ class SecurityConfigTest {
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
+  @MockitoBean SwitchTenantUseCase switchTenantUseCase;
 
   @Autowired MockMvc mockMvc;
 
