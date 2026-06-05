@@ -109,9 +109,11 @@ docker compose -f docker-compose.local.yml exec mysql \
 **期待動作**:
 
 - アクティブなテナントのメニュー項目に `active` クラスが付与されている
+
   ```html
   <button class="dropdown-item d-flex ... active" ...>テナント1</button>
   ```
+
 - 非アクティブなテナントには `active` クラスがない
 
 ---
