@@ -16,8 +16,8 @@ import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
 /**
  * 全 JPA エンティティが Hibernate Filter 付与基準を満たすことを CI で静的検証するアーキテクチャテスト。
  *
- * <p>設計規約 §3.3.1 / ADR-0010 §6.1 で定めた除外テーブル一覧に基づき、各 JPA エンティティが
- * 「{@link TenantFilteredEntity} を継承する」か「除外リスト内にある」かのいずれかであることを検証する。
+ * <p>設計規約 §3.3.1 / ADR-0010 §6.1 で定めた除外テーブル一覧に基づき、各 JPA エンティティが 「{@link TenantFilteredEntity}
+ * を継承する」か「除外リスト内にある」かのいずれかであることを検証する。
  *
  * <p>新規 JPA エンティティを追加した際に、この基準を外れた場合にテストが fail することで付与漏れを防ぐ。
  */

@@ -22,8 +22,7 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 /**
  * Hibernate Filter 除外テーブルのクエリが tenant_id WHERE 句を付与されないことを確認する IT。
  *
- * <p>設計規約 §3.3.1 / ADR-0010 §6.1 の受け入れ条件:
- * tenantFilter が有効な状態で除外テーブルを参照しても、テナントをまたいだ結果が返ること。
+ * <p>設計規約 §3.3.1 / ADR-0010 §6.1 の受け入れ条件: tenantFilter が有効な状態で除外テーブルを参照しても、テナントをまたいだ結果が返ること。
  */
 @SpringBootTest
 @Import({
