@@ -5,6 +5,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -41,6 +43,32 @@ public class TaskExceptionHandler {
         HttpStatus.FORBIDDEN.getReasonPhrase(),
         ErrorCode.E_FORBIDDEN,
         Objects.requireNonNullElse(ex.getMessage(), "操作権限がありません"),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  @ResponseStatus(HttpStatus.PRECONDITION_FAILED)
+  public ErrorResponse handlePreconditionFailed(
+      ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        HttpStatus.PRECONDITION_FAILED.value(),
+        HttpStatus.PRECONDITION_FAILED.getReasonPhrase(),
+        ErrorCode.E_PRECONDITION_FAILED,
+        "リソースが競合により更新できません。最新バージョンを取得し直してください",
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(MissingRequestHeaderException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleMissingHeader(
+      MissingRequestHeaderException ex, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        HttpStatus.BAD_REQUEST.value(),
+        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+        ErrorCode.E_VALIDATION,
+        "必須ヘッダが指定されていません: " + ex.getHeaderName(),
         request.getRequestURI());
   }
 }
