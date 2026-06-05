@@ -21,7 +21,8 @@ public record TaskResponse(
     LocalDate dueDate,
     @Nullable OffsetDateTime completedAt,
     OffsetDateTime createdAt,
-    OffsetDateTime updatedAt) {
+    OffsetDateTime updatedAt,
+    Long version) {
 
   private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
@@ -38,6 +39,7 @@ public record TaskResponse(
         task.getDueDate(),
         task.getCompletedAt() != null ? task.getCompletedAt().atZone(JST).toOffsetDateTime() : null,
         task.getCreatedAt().atZone(JST).toOffsetDateTime(),
-        task.getUpdatedAt().atZone(JST).toOffsetDateTime());
+        task.getUpdatedAt().atZone(JST).toOffsetDateTime(),
+        task.getVersion());
   }
 }

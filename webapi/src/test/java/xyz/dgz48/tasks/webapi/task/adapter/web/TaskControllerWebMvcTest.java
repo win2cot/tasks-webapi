@@ -58,6 +58,9 @@ class TaskControllerWebMvcTest {
 
   private static final Long USER_ID = 1L; // matches @WithMockMember default id
 
+  private static final long VERSION = 0L;
+  private static final String IF_MATCH = "W/\"" + VERSION + "\"";
+
   private Task buildTask(TaskStatus status) {
     return new Task(
         1L,
@@ -73,7 +76,8 @@ class TaskControllerWebMvcTest {
         null,
         null,
         LocalDateTime.of(2026, 5, 31, 9, 0),
-        LocalDateTime.of(2026, 5, 31, 9, 0));
+        LocalDateTime.of(2026, 5, 31, 9, 0),
+        VERSION);
   }
 
   private Task buildDoneTask() {
@@ -91,7 +95,8 @@ class TaskControllerWebMvcTest {
         LocalDateTime.of(2026, 6, 1, 10, 0),
         null,
         LocalDateTime.of(2026, 5, 31, 9, 0),
-        LocalDateTime.of(2026, 6, 1, 10, 0));
+        LocalDateTime.of(2026, 6, 1, 10, 0),
+        1L);
   }
 
   @Test
@@ -137,11 +142,12 @@ class TaskControllerWebMvcTest {
   @WithMockMember
   void changeStatus_returns200WithCompletedAt_whenDone() throws Exception {
     Task done = buildDoneTask();
-    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
+    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE, VERSION)).thenReturn(done);
 
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isOk())
@@ -151,13 +157,39 @@ class TaskControllerWebMvcTest {
 
   @Test
   @WithMockMember
+  void changeStatus_returns400_whenIfMatchHeaderMissing() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tasks/1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+  }
+
+  @Test
+  @WithMockMember
+  void changeStatus_returns400_whenIfMatchInvalidFormat() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tasks/1/status")
+                .header("If-Match", "not-a-version")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+  }
+
+  @Test
+  @WithMockMember
   void changeStatus_returns404_whenTaskNotViewable() throws Exception {
-    when(changeTaskStatusUseCase.execute(2L, USER_ID, TaskStatus.DONE))
+    when(changeTaskStatusUseCase.execute(2L, USER_ID, TaskStatus.DONE, VERSION))
         .thenThrow(new TaskNotViewableException(2L));
 
     mockMvc
         .perform(
             patch("/api/tasks/2/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isNotFound())
@@ -167,12 +199,13 @@ class TaskControllerWebMvcTest {
   @Test
   @WithMockMember
   void changeStatus_returns403_whenOwnershipException() throws Exception {
-    when(changeTaskStatusUseCase.execute(3L, USER_ID, TaskStatus.DONE))
+    when(changeTaskStatusUseCase.execute(3L, USER_ID, TaskStatus.DONE, VERSION))
         .thenThrow(new TaskOwnershipException(3L));
 
     mockMvc
         .perform(
             patch("/api/tasks/3/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isForbidden())
@@ -182,12 +215,13 @@ class TaskControllerWebMvcTest {
   @Test
   @WithMockMember
   void changeStatus_returns412_whenOptimisticLockingFailure() throws Exception {
-    when(changeTaskStatusUseCase.execute(5L, USER_ID, TaskStatus.DONE))
+    when(changeTaskStatusUseCase.execute(5L, USER_ID, TaskStatus.DONE, VERSION))
         .thenThrow(new ObjectOptimisticLockingFailureException(Task.class, 5L));
 
     mockMvc
         .perform(
             patch("/api/tasks/5/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isPreconditionFailed())
@@ -207,6 +241,7 @@ class TaskControllerWebMvcTest {
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isUnauthorized());
@@ -226,6 +261,7 @@ class TaskControllerWebMvcTest {
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isForbidden());
@@ -249,11 +285,12 @@ class TaskControllerWebMvcTest {
   @WithMockTenantAdmin
   void changeStatus_returns200_whenTenantAdmin() throws Exception {
     Task done = buildDoneTask();
-    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
+    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE, VERSION)).thenReturn(done);
 
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
+                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isOk())

@@ -71,4 +71,17 @@ public class TaskExceptionHandler {
         "必須ヘッダが指定されていません: " + ex.getHeaderName(),
         request.getRequestURI());
   }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleIllegalArgument(
+      IllegalArgumentException ex, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        HttpStatus.BAD_REQUEST.value(),
+        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+        ErrorCode.E_VALIDATION,
+        Objects.requireNonNullElse(ex.getMessage(), "リクエストが不正です"),
+        request.getRequestURI());
+  }
 }

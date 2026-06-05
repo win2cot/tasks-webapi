@@ -2,6 +2,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.persistence;
 
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.usecase.TaskRepository;
@@ -24,8 +25,11 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
             .findById(task.getId())
             .orElseThrow(
                 () -> new IllegalStateException("Task not found for save: " + task.getId()));
+    if (!entity.getVersion().equals(task.getVersion())) {
+      throw new ObjectOptimisticLockingFailureException(Task.class, task.getId());
+    }
     entity.updateStatus(task.getStatus(), task.getCompletedAt());
-    return toDomain(jpaRepository.save(entity));
+    return toDomain(jpaRepository.saveAndFlush(entity));
   }
 
   private Task toDomain(TaskJpaEntity entity) {
@@ -43,6 +47,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
         entity.getCompletedAt(),
         entity.getDeletedAt(),
         entity.getCreatedAt(),
-        entity.getUpdatedAt());
+        entity.getUpdatedAt(),
+        entity.getVersion());
   }
 }
