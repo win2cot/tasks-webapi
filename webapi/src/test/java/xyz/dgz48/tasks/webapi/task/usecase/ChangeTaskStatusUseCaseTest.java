@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskAuthorizationDomainService;
@@ -44,6 +45,8 @@ class ChangeTaskStatusUseCaseTest {
   @Mock Clock clock;
   @InjectMocks ChangeTaskStatusUseCase useCase;
 
+  private static final Long VERSION = 0L;
+
   private Task buildTask(TaskStatus status) {
     return new Task(
         TASK_ID,
@@ -59,7 +62,8 @@ class ChangeTaskStatusUseCaseTest {
         null,
         null,
         LocalDateTime.of(2026, 5, 31, 0, 0),
-        LocalDateTime.of(2026, 5, 31, 0, 0));
+        LocalDateTime.of(2026, 5, 31, 0, 0),
+        VERSION);
   }
 
   private void setupClock() {
@@ -71,7 +75,7 @@ class ChangeTaskStatusUseCaseTest {
   void execute_throwsTaskNotFoundException_whenTaskNotFound() {
     when(taskRepository.findById(TASK_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> useCase.execute(TASK_ID, OWNER_ID, TaskStatus.DONE))
+    assertThatThrownBy(() -> useCase.execute(TASK_ID, OWNER_ID, TaskStatus.DONE, VERSION))
         .isInstanceOf(TaskNotFoundException.class);
   }
 
@@ -82,7 +86,7 @@ class ChangeTaskStatusUseCaseTest {
     when(taskAuthorizationDomainService.canBeViewedBy(task, OTHER_USER_ID, List.of()))
         .thenReturn(false);
 
-    assertThatThrownBy(() -> useCase.execute(TASK_ID, OTHER_USER_ID, TaskStatus.DONE))
+    assertThatThrownBy(() -> useCase.execute(TASK_ID, OTHER_USER_ID, TaskStatus.DONE, VERSION))
         .isInstanceOf(TaskNotViewableException.class);
   }
 
@@ -94,8 +98,19 @@ class ChangeTaskStatusUseCaseTest {
         .thenReturn(true);
     when(taskAuthorizationDomainService.canChangeStatusBy(task, OTHER_USER_ID)).thenReturn(false);
 
-    assertThatThrownBy(() -> useCase.execute(TASK_ID, OTHER_USER_ID, TaskStatus.DONE))
+    assertThatThrownBy(() -> useCase.execute(TASK_ID, OTHER_USER_ID, TaskStatus.DONE, VERSION))
         .isInstanceOf(TaskOwnershipException.class);
+  }
+
+  @Test
+  void execute_throwsPreconditionFailedException_whenVersionMismatch() {
+    Task task = buildTask(TaskStatus.IN_PROGRESS);
+    when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task));
+    when(taskAuthorizationDomainService.canBeViewedBy(task, OWNER_ID, List.of())).thenReturn(true);
+    when(taskAuthorizationDomainService.canChangeStatusBy(task, OWNER_ID)).thenReturn(true);
+
+    assertThatThrownBy(() -> useCase.execute(TASK_ID, OWNER_ID, TaskStatus.DONE, VERSION + 1))
+        .isInstanceOf(PreconditionFailedException.class);
   }
 
   @Test
@@ -107,7 +122,7 @@ class ChangeTaskStatusUseCaseTest {
     setupClock();
     when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Task result = useCase.execute(TASK_ID, OWNER_ID, TaskStatus.DONE);
+    Task result = useCase.execute(TASK_ID, OWNER_ID, TaskStatus.DONE, VERSION);
 
     assertThat(result.getStatus()).isEqualTo(TaskStatus.DONE);
     assertThat(result.getCompletedAt()).isEqualTo(FIXED_LDT);
@@ -130,7 +145,8 @@ class ChangeTaskStatusUseCaseTest {
             FIXED_LDT,
             null,
             LocalDateTime.of(2026, 5, 31, 0, 0),
-            LocalDateTime.of(2026, 5, 31, 0, 0));
+            LocalDateTime.of(2026, 5, 31, 0, 0),
+            VERSION);
     when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task));
     when(taskAuthorizationDomainService.canBeViewedBy(task, ASSIGNEE_ID, List.of()))
         .thenReturn(true);
@@ -138,7 +154,7 @@ class ChangeTaskStatusUseCaseTest {
     setupClock();
     when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Task result = useCase.execute(TASK_ID, ASSIGNEE_ID, TaskStatus.IN_PROGRESS);
+    Task result = useCase.execute(TASK_ID, ASSIGNEE_ID, TaskStatus.IN_PROGRESS, VERSION);
 
     assertThat(result.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
     assertThat(result.getCompletedAt()).isNull();

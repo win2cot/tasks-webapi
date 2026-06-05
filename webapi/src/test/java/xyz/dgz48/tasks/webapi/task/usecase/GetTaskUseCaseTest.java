@@ -49,7 +49,8 @@ class GetTaskUseCaseTest {
         null,
         null,
         LocalDateTime.of(2026, 5, 31, 0, 0),
-        LocalDateTime.of(2026, 5, 31, 0, 0));
+        LocalDateTime.of(2026, 5, 31, 0, 0),
+        0L);
   }
 
   @Test

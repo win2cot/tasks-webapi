@@ -28,6 +28,7 @@ public class Task {
   @Nullable private final LocalDateTime deletedAt;
   private final LocalDateTime createdAt;
   private final LocalDateTime updatedAt;
+  private final Long version;
 
   public Task(
       Long id,
@@ -43,7 +44,8 @@ public class Task {
       @Nullable LocalDateTime completedAt,
       @Nullable LocalDateTime deletedAt,
       LocalDateTime createdAt,
-      LocalDateTime updatedAt) {
+      LocalDateTime updatedAt,
+      Long version) {
     this.id = id;
     this.tenantId = tenantId;
     this.title = title;
@@ -58,6 +60,7 @@ public class Task {
     this.deletedAt = deletedAt;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.version = version;
   }
 
   public void changeVisibility(Visibility newVisibility) {

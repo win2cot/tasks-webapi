@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskAuthorizationDomainService;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
@@ -22,7 +23,7 @@ public class ChangeTaskStatusUseCase {
   private final Clock clock;
 
   @Transactional
-  public Task execute(Long taskId, Long userId, TaskStatus newStatus) {
+  public Task execute(Long taskId, Long userId, TaskStatus newStatus, Long ifMatchVersion) {
     Task task =
         taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException(taskId));
     if (!taskAuthorizationDomainService.canBeViewedBy(task, userId, List.of())) {
@@ -30,6 +31,9 @@ public class ChangeTaskStatusUseCase {
     }
     if (!taskAuthorizationDomainService.canChangeStatusBy(task, userId)) {
       throw new TaskOwnershipException(taskId);
+    }
+    if (!task.getVersion().equals(ifMatchVersion)) {
+      throw new PreconditionFailedException("バージョンが競合しています: task=" + taskId);
     }
     task.changeStatus(newStatus, LocalDateTime.now(clock));
     return taskRepository.save(task);

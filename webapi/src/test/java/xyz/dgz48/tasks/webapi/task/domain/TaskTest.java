@@ -25,7 +25,8 @@ class TaskTest {
         null,
         null,
         LocalDateTime.of(2026, 1, 1, 0, 0),
-        LocalDateTime.of(2026, 1, 1, 0, 0));
+        LocalDateTime.of(2026, 1, 1, 0, 0),
+        0L);
   }
 
   @Test
@@ -74,7 +75,8 @@ class TaskTest {
             NOW,
             null,
             LocalDateTime.of(2026, 1, 1, 0, 0),
-            LocalDateTime.of(2026, 1, 1, 0, 0));
+            LocalDateTime.of(2026, 1, 1, 0, 0),
+            0L);
 
     task.changeStatus(TaskStatus.IN_PROGRESS, NOW.plusHours(1));
 
@@ -99,7 +101,8 @@ class TaskTest {
             NOW,
             null,
             LocalDateTime.of(2026, 1, 1, 0, 0),
-            LocalDateTime.of(2026, 1, 1, 0, 0));
+            LocalDateTime.of(2026, 1, 1, 0, 0),
+            0L);
 
     task.changeStatus(TaskStatus.DONE, NOW.plusHours(2));
 
