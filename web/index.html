@@ -16,7 +16,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container">
         <a class="navbar-brand" href="#">Tasks</a>
-        <div class="ms-auto">
+        <div class="ms-auto d-flex align-items-center">
+          <div id="tenant-switcher-container" class="d-none"></div>
           <span id="nav-username" class="navbar-text text-white me-3 d-none"></span>
           <button id="btn-logout" class="btn btn-outline-light btn-sm d-none" onclick="handleLogout()">
             ログアウト
@@ -52,6 +53,7 @@
       crossorigin="anonymous"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/tenant-switcher.js"></script>
     <script>
       async function main() {
         const authenticated = await Auth.init();
@@ -70,6 +72,16 @@
         try {
           const me = await Api.getMe();
           document.getElementById('user-info').textContent = JSON.stringify(me, null, 2);
+
+          if (me.activeTenantId !== null) {
+            Api.setTenantId(me.activeTenantId);
+          }
+
+          TenantSwitcher.render(
+            document.getElementById('tenant-switcher-container'),
+            me.tenants,
+            me.activeTenantId,
+          );
         } catch (err) {
           document.getElementById('user-info').textContent = 'API 呼び出しエラー: ' + err.message;
         }

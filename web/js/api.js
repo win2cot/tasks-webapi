@@ -72,5 +72,15 @@ const Api = (() => {
     return request('/api/auth/me');
   }
 
-  return { setTenantId, request, getMe };
+  /**
+   * POST /api/auth/tenants/{tenantId}/select — アクティブテナントを切替える。
+   * X-Tenant-Id ヘッダ不要(API 側でグローバルセキュリティをオーバーライド済み)。
+   * @param {number} tenantId
+   * @returns {Promise<void>}
+   */
+  function selectTenant(tenantId) {
+    return request(`/api/auth/tenants/${tenantId}/select`, { method: 'POST' });
+  }
+
+  return { setTenantId, request, getMe, selectTenant };
 })();
