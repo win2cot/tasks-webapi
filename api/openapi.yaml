@@ -34,6 +34,42 @@ info:
     - 公開範囲変更: 所有者のみ
     - 関係者の追加・削除: 所有者 ∪ 担当者(指名自体は visibility 非依存に可能。参照権限が機能するのは `visibility = STAKEHOLDERS` のときのみ)
 
+    ## トークンリフレッシュフロー
+
+    本 API は access token の検証のみを行い、リフレッシュ自体は Keycloak が提供するトークンエンドポイントで完結する(仲介なし)。
+
+    ### Token Lifespan (ADR-0015)
+
+    | トークン | 有効期限 |
+    |---|---|
+    | Access Token | 5 分 (`accessTokenLifespan: 300`) |
+    | Refresh Token (SSO Session Idle) | 8 時間 (`ssoSessionIdleTimeout: 28800`) |
+    | Refresh Token (SSO Session Max) | 10 時間 (`ssoSessionMaxLifespan: 36000`) |
+
+    ### Refresh 手順
+
+    frontend は keycloak-js の `updateToken(N)` API を使用して access token を透過的に更新する。
+    直接 Keycloak トークンエンドポイントを呼び出す場合のフローは以下の通り。
+
+    ```
+    POST {KEYCLOAK_URL}/realms/tasks/protocol/openid-connect/token
+    Content-Type: application/x-www-form-urlencoded
+
+    grant_type=refresh_token
+    &client_id=tasks-webapi
+    &refresh_token={refresh_token}
+    ```
+
+    成功時: `200 OK` — 新しい `access_token` / `refresh_token` を含む JSON を返す。
+
+    ### Refresh 失敗シナリオ
+
+    - **Refresh Token 期限切れ**: `400 Bad Request` (`error: invalid_grant`) — 再ログインが必要。
+    - **Refresh Token 失効(ログアウト等)**: `400 Bad Request` (`error: invalid_grant`) — 再ログインが必要。
+    - **Keycloak 障害**: `5xx` — `docs/runbook/authentication.md` 参照。
+
+    > **Note**: 本 API が `401 Unauthorized` を返した場合、frontend はリフレッシュを試み、リフレッシュも失敗した場合はログインページへリダイレクトする。
+
     ## セルフサインアップ(モデル B)
 
     テナント作成 `POST /api/tenants` は **認証済み(Keycloak ログイン済み)のユーザーが自分自身でテナントを作成**する。SaaS Admin 専用 API ではない。作成と同時に呼び出しユーザーが初代 Tenant Admin として `user_tenants` に登録される。レート制限・ドメイン制限・承認制等の濫用対策は Phase 2。
