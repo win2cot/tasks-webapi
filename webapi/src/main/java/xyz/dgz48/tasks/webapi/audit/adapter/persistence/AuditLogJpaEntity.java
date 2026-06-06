@@ -6,9 +6,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -70,28 +67,13 @@ class AuditLogJpaEntity {
       @Nullable Long userId,
       String action,
       @Nullable String detail,
-      LocalDateTime createdAt) {
+      LocalDateTime createdAt,
+      String hashChain) {
     this.tenantId = tenantId;
     this.userId = userId;
     this.action = action;
     this.detail = detail;
     this.createdAt = createdAt;
-    this.hashChain = computeHash(action, tenantId, userId, createdAt);
-  }
-
-  private static String computeHash(
-      String action, @Nullable Long tenantId, @Nullable Long userId, LocalDateTime createdAt) {
-    String input = action + "|" + tenantId + "|" + userId + "|" + createdAt;
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-      StringBuilder hex = new StringBuilder(64);
-      for (byte b : hashBytes) {
-        hex.append(String.format("%02x", b));
-      }
-      return hex.toString();
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 not available", e);
-    }
+    this.hashChain = hashChain;
   }
 }

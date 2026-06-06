@@ -116,6 +116,28 @@ class CrossTenantViolationDetectionIT {
     assertThat(rows).isEmpty();
   }
 
+  @Test
+  void hashChain_firstRecordUsesGenesisHash_secondRecordHasNonGenesisHash() {
+    // 1件目の違反を記録
+    taskRepository.findById(Long.MAX_VALUE);
+    // 2件目の違反を記録
+    taskRepository.findById(Long.MAX_VALUE);
+
+    List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            "SELECT hash_chain FROM audit_logs"
+                + " WHERE action = 'CROSS_TENANT_VIOLATION_ATTEMPT' ORDER BY id");
+    assertThat(rows).hasSize(2);
+
+    // 1件目はジェネシスハッシュ(前レコードなし)
+    assertThat(rows.get(0).get("hash_chain")).isEqualTo("0".repeat(64));
+
+    // 2件目は前レコードを参照したチェーンハッシュ(ジェネシスハッシュではなく 64 桁の hex)
+    String second = (String) rows.get(1).get("hash_chain");
+    assertThat(second).isNotEqualTo("0".repeat(64));
+    assertThat(second).matches("[0-9a-f]{64}");
+  }
+
   private void setUpSaasAdmin() {
     var principal =
         new TasksPrincipal(1L, "admin-sub-vd", "admin-vd@example.com", "VD管理者", "ブイディーカンリシャ", null);
