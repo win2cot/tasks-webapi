@@ -119,6 +119,13 @@ data "aws_iam_policy_document" "platform_plan" {
     resources = ["*"]
   }
 
+  # RDS read (Keycloak DB subnet group / instance inspection during plan)
+  statement {
+    sid       = "RdsRead"
+    actions   = ["rds:Describe*", "rds:List*"]
+    resources = ["*"]
+  }
+
   # SSM read — platform outputs published to /platform/<env>/*
   statement {
     sid     = "SsmRead"
@@ -275,6 +282,18 @@ data "aws_iam_policy_document" "platform_apply" {
     sid       = "Route53Write"
     actions   = ["route53:*"]
     resources = ["*"]
+  }
+
+  # RDS CRUD (Keycloak DB: subnet group / parameter group / DB instance)
+  statement {
+    sid       = "RdsWrite"
+    actions   = ["rds:*"]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "RdsSlr"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/rds.amazonaws.com/*"]
   }
 
   # SSM write — publish platform outputs to /platform/<env>/*
