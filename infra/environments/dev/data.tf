@@ -15,3 +15,15 @@ data "aws_ssm_parameter" "alb_sg_id" {
 data "aws_ssm_parameter" "private_subnet_ids" {
   name = "/platform/${var.env}/private-subnet-ids"
 }
+
+data "aws_ssm_parameter" "alb_https_listener_arn" {
+  name = "/platform/${var.env}/alb-https-listener-arn"
+}
+
+data "aws_ssm_parameter" "alb_dns_name" {
+  name = "/platform/${var.env}/alb-dns-name"
+}
+
+data "aws_ssm_parameter" "alb_zone_id" {
+  name = "/platform/${var.env}/alb-zone-id"
+}
