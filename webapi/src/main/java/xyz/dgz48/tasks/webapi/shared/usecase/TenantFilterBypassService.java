@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
+import xyz.dgz48.tasks.webapi.shared.domain.TenantFilterBypassContext;
 import xyz.dgz48.tasks.webapi.shared.exception.SaasAdminRequiredException;
 
 /**
@@ -48,10 +49,12 @@ public class TenantFilterBypassService {
     checkSaasAdminRole();
     @Nullable Long previousTenantId = TenantContext.get();
     Session session = entityManager.unwrap(Session.class);
+    TenantFilterBypassContext.activate();
     session.disableFilter(TENANT_FILTER);
     try {
       return action.get();
     } finally {
+      TenantFilterBypassContext.deactivate();
       if (previousTenantId != null) {
         session.enableFilter(TENANT_FILTER).setParameter(TENANT_ID_PARAM, previousTenantId);
       }
