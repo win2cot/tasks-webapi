@@ -35,7 +35,8 @@ class HibernateFilterEntityAuditTest {
           "TenantJpaEntity", // tenants: マスタテーブル、tenant_id 列なし
           "UserJpaEntity", // users: プラットフォーム横断ユーザー、tenant_id 列なし
           "UserTenantJpaEntity", // user_tenants: TenantContext 確立前にクロステナント参照が必要
-          "AppAdminUserJpaEntity" // app_admin_users: SaaS Admin ユーザー管理、tenant_id 列なし
+          "AppAdminUserJpaEntity", // app_admin_users: SaaS Admin ユーザー管理、tenant_id 列なし
+          "AuditLogJpaEntity" // audit_logs: tenant_id が nullable、テナント範囲を超えた参照が必要
           );
 
   @Autowired EntityManagerFactory emf;
