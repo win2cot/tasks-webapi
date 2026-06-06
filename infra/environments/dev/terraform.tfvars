@@ -10,6 +10,7 @@ region = "ap-northeast-1"
 
 # SecureString placeholders — replace in SSM console after initial apply
 db_password                  = "CHANGE_ME"
+keycloak_spi_read_password   = "CHANGE_ME"
 keycloak_admin_password      = "CHANGE_ME"
 keycloak_oauth_client_secret = "CHANGE_ME"
 keycloak_smtp_password       = "CHANGE_ME"

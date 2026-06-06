@@ -9,6 +9,12 @@ variable "db_password" {
   description = "RDS master password (DBA use only; tasks-webapi uses IAM auth)"
 }
 
+variable "keycloak_spi_read_password" {
+  type        = string
+  sensitive   = true
+  description = "Password for the Keycloak SPI federation read-only DB user (keycloak-spi-read)"
+}
+
 variable "keycloak_admin_password" {
   type        = string
   sensitive   = true

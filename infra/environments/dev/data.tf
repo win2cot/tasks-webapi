@@ -4,12 +4,18 @@
 # these without re-declaring the data resource.
 # ---------------------------------------------------------------------------
 
+data "aws_caller_identity" "current" {}
+
 data "aws_ssm_parameter" "vpc_id" {
   name = "/platform/${var.env}/vpc-id"
 }
 
 data "aws_ssm_parameter" "alb_sg_id" {
   name = "/platform/${var.env}/alb-sg-id"
+}
+
+data "aws_ssm_parameter" "private_subnet_ids" {
+  name = "/platform/${var.env}/private-subnet-ids"
 }
 
 data "aws_ssm_parameter" "alb_https_listener_arn" {
