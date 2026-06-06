@@ -19,6 +19,20 @@ resource "aws_ssm_parameter" "db_password" {
   }
 }
 
+resource "aws_ssm_parameter" "db_keycloak_spi_read_password" {
+  name  = "/tasks/${var.env}/db/keycloak-spi-read-password"
+  type  = "SecureString"
+  value = var.keycloak_spi_read_password
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-db-keycloak-spi-read-password"
+  }
+}
+
 resource "aws_ssm_parameter" "keycloak_admin_password" {
   name  = "/tasks/${var.env}/keycloak/admin-password"
   type  = "SecureString"

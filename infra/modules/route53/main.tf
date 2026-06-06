@@ -1,8 +1,7 @@
 # ---------------------------------------------------------------------------
 # Private Hosted Zone — tasks.internal (ADR-0001 α案: env 毎独立 PHZ)
 # Owned by tasks stack, associated with the shared platform VPC (ADR-0004).
-# CNAME db.tasks.internal is a placeholder; replaced by actual RDS endpoint
-# in S1Infra-1 (#318).
+# CNAME db.tasks.internal → RDS endpoint (var.rds_endpoint) wired in S1Infra-1.
 # ---------------------------------------------------------------------------
 
 resource "aws_route53_zone" "tasks_internal" {
@@ -23,5 +22,5 @@ resource "aws_route53_record" "db" {
   name    = "db.tasks.internal"
   type    = "CNAME"
   ttl     = 300
-  records = ["placeholder.invalid"]
+  records = [var.rds_endpoint]
 }

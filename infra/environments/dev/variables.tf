@@ -24,6 +24,13 @@ variable "db_password" {
   description = "RDS master password placeholder (DBA use only; app uses IAM auth)"
 }
 
+variable "keycloak_spi_read_password" {
+  type        = string
+  sensitive   = true
+  default     = "CHANGE_ME"
+  description = "Keycloak SPI federation read-only DB user password placeholder"
+}
+
 variable "keycloak_admin_password" {
   type        = string
   sensitive   = true
