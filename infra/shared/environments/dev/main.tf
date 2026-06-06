@@ -235,8 +235,6 @@ module "keycloak" {
   hostname             = "auth-dev.dgz48.xyz"
   account_id           = data.aws_caller_identity.current.account_id
   region               = "ap-northeast-1"
-
-  depends_on = [module.iam_oidc]
 }
 
 # SG-KeycloakDB: ingress を VPC CIDR(暫定)から SG-Keycloak に tighten (#322)

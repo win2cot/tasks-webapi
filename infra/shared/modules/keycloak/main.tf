@@ -92,13 +92,6 @@ resource "aws_iam_role_policy" "exec_ssm" {
           "arn:aws:ssm:${var.region}:${var.account_id}:parameter/platform/${var.env}/keycloak-db-password",
           "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/keycloak/admin-password",
         ]
-      },
-      {
-        Sid      = "KmsDecrypt"
-        Effect   = "Allow"
-        Action   = "kms:Decrypt"
-        # AWS-managed SSM key; alias non-ARN form is not resource-level-permission-compliant in all regions
-        Resource = "arn:aws:kms:${var.region}:${var.account_id}:key/alias/aws/ssm"
       }
     ]
   })
