@@ -32,10 +32,10 @@ locals {
         rulePriority = 2
         description  = "Keep only the ${var.tagged_image_count} most recent tagged images"
         selection = {
-          tagStatus       = "tagged"
-          tagPatternList  = ["*"]
-          countType       = "imageCountMoreThan"
-          countNumber     = var.tagged_image_count
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = var.tagged_image_count
         }
         action = {
           type = "expire"
