@@ -38,7 +38,7 @@ resource "aws_iam_role_policy" "webapi_rds_connect" {
         Sid      = "RdsIamConnect"
         Effect   = "Allow"
         Action   = "rds-db:connect"
-        Resource = "arn:aws:rds-db:${var.region}:*:dbuser:${module.rds.db_instance_resource_id}/tasks_webapi"
+        Resource = "arn:aws:rds-db:${var.region}:${data.aws_caller_identity.current.account_id}:dbuser:${module.rds.db_instance_resource_id}/tasks_webapi"
       }
     ]
   })
@@ -61,15 +61,15 @@ resource "aws_iam_role_policy" "webapi_ssm" {
           "ssm:GetParametersByPath"
         ]
         Resource = [
-          "arn:aws:ssm:${var.region}:*:parameter/tasks/${var.env}/app/*",
-          "arn:aws:ssm:${var.region}:*:parameter/tasks/${var.env}/keycloak/oauth-client-secret"
+          "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/app/*",
+          "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/keycloak/oauth-client-secret"
         ]
       },
       {
         Sid      = "KmsDecrypt"
         Effect   = "Allow"
         Action   = "kms:Decrypt"
-        Resource = "arn:aws:kms:${var.region}:*:key/alias/aws/ssm"
+        Resource = "arn:aws:kms:${var.region}:${data.aws_caller_identity.current.account_id}:key/alias/aws/ssm"
       }
     ]
   })

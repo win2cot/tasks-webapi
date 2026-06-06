@@ -49,6 +49,10 @@ resource "aws_db_instance" "main" {
   skip_final_snapshot = true
   deletion_protection = false
 
+  lifecycle {
+    ignore_changes = [password]
+  }
+
   tags = {
     Name = "tasks-${var.env}-mysql"
   }
