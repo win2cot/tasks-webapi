@@ -84,35 +84,35 @@ data "aws_iam_policy_document" "platform_plan" {
     resources = ["*"]
   }
 
-  # EC2 read (future: VPC / Subnet / IGW / RT / NAT / EIP / VPC Endpoints)
+  # EC2 read (network: VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP + alb / keycloak_db SG)
   statement {
     sid       = "Ec2Read"
     actions   = ["ec2:Describe*"]
     resources = ["*"]
   }
 
-  # ELBv2 read (future: ALB / Listener)
+  # ELBv2 read (alb: ALB / Listener)
   statement {
     sid       = "ElbRead"
     actions   = ["elasticloadbalancing:Describe*"]
     resources = ["*"]
   }
 
-  # ACM read (future: base wildcard cert)
+  # ACM read (alb: base wildcard cert)
   statement {
     sid       = "AcmRead"
     actions   = ["acm:Describe*", "acm:List*", "acm:GetCertificate"]
     resources = ["*"]
   }
 
-  # SES read (future: domain identity / DKIM / Config Set)
+  # SES read (ses: domain identity / DKIM / Config Set)
   statement {
     sid       = "SesRead"
     actions   = ["ses:Get*", "ses:List*", "ses:Describe*"]
     resources = ["*"]
   }
 
-  # Route53 read (future: shared public zone)
+  # Route53 read (shared public zone records / cert validation)
   statement {
     sid       = "Route53Read"
     actions   = ["route53:Get*", "route53:List*"]
@@ -242,52 +242,162 @@ data "aws_iam_policy_document" "platform_apply" {
     resources = ["*"]
   }
 
-  # EC2 CRUD (future: VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP)
+  # Service read — apply 中の refresh / plan に必要(plan role と同範囲)
   statement {
-    sid       = "Ec2Write"
-    actions   = ["ec2:*"]
+    sid = "ServiceRead"
+    actions = [
+      "ec2:Describe*",
+      "elasticloadbalancing:Describe*",
+      "acm:Describe*",
+      "acm:List*",
+      "acm:GetCertificate",
+      "ses:Get*",
+      "ses:List*",
+      "ses:Describe*",
+      "route53:Get*",
+      "route53:List*",
+      "rds:Describe*",
+      "rds:List*",
+    ]
     resources = ["*"]
   }
 
-  # ELBv2 CRUD (future: ALB / Listener / SG-ALB)
+  # EC2 write (network: VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP + alb / keycloak_db SG)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateVpc 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "ElbWrite"
-    actions   = ["elasticloadbalancing:*"]
+    sid = "Ec2Write"
+    actions = [
+      "ec2:CreateVpc",
+      "ec2:DeleteVpc",
+      "ec2:ModifyVpcAttribute",
+      "ec2:CreateSubnet",
+      "ec2:DeleteSubnet",
+      "ec2:ModifySubnetAttribute",
+      "ec2:CreateInternetGateway",
+      "ec2:DeleteInternetGateway",
+      "ec2:AttachInternetGateway",
+      "ec2:DetachInternetGateway",
+      "ec2:CreateRouteTable",
+      "ec2:DeleteRouteTable",
+      "ec2:CreateRoute",
+      "ec2:ReplaceRoute",
+      "ec2:DeleteRoute",
+      "ec2:AssociateRouteTable",
+      "ec2:DisassociateRouteTable",
+      "ec2:AllocateAddress",
+      "ec2:ReleaseAddress",
+      "ec2:DisassociateAddress",
+      "ec2:CreateNatGateway",
+      "ec2:DeleteNatGateway",
+      "ec2:CreateVpcEndpoint",
+      "ec2:ModifyVpcEndpoint",
+      "ec2:DeleteVpcEndpoints",
+      "ec2:CreateSecurityGroup",
+      "ec2:DeleteSecurityGroup",
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:AuthorizeSecurityGroupEgress",
+      "ec2:RevokeSecurityGroupIngress",
+      "ec2:RevokeSecurityGroupEgress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+      "ec2:CreateTags",
+      "ec2:DeleteTags",
+    ]
     resources = ["*"]
   }
 
-  # Service-linked role for ELB (future)
+  # ELBv2 write (alb: ALB / Listener)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateLoadBalancer 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
+  statement {
+    sid = "ElbWrite"
+    actions = [
+      "elasticloadbalancing:CreateLoadBalancer",
+      "elasticloadbalancing:DeleteLoadBalancer",
+      "elasticloadbalancing:ModifyLoadBalancerAttributes",
+      "elasticloadbalancing:SetSecurityGroups",
+      "elasticloadbalancing:SetSubnets",
+      "elasticloadbalancing:CreateListener",
+      "elasticloadbalancing:DeleteListener",
+      "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:AddTags",
+      "elasticloadbalancing:RemoveTags",
+    ]
+    resources = ["*"]
+  }
+
+  # Service-linked role for ELB
   statement {
     sid       = "ElbSlr"
     actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/elasticloadbalancing.amazonaws.com/*"]
   }
 
-  # ACM CRUD (future: base wildcard cert)
+  # ACM write (alb: base wildcard cert)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(RequestCertificate 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "AcmWrite"
-    actions   = ["acm:*"]
+    sid = "AcmWrite"
+    actions = [
+      "acm:RequestCertificate",
+      "acm:DeleteCertificate",
+      "acm:AddTagsToCertificate",
+      "acm:RemoveTagsFromCertificate",
+    ]
     resources = ["*"]
   }
 
-  # SES CRUD (future: domain identity / DKIM / Config Set)
+  # SESv2 write (ses: domain identity / DKIM / Config Set。SESv2 API の IAM prefix も "ses:")
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateConfigurationSet 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "SesWrite"
-    actions   = ["ses:*"]
+    sid = "SesWrite"
+    actions = [
+      "ses:CreateEmailIdentity",
+      "ses:DeleteEmailIdentity",
+      "ses:PutEmailIdentityMailFromAttributes",
+      "ses:PutEmailIdentityDkimAttributes",
+      "ses:PutEmailIdentityFeedbackAttributes",
+      "ses:CreateConfigurationSet",
+      "ses:DeleteConfigurationSet",
+      "ses:PutConfigurationSetDeliveryOptions",
+      "ses:PutConfigurationSetReputationOptions",
+      "ses:PutConfigurationSetSendingOptions",
+      "ses:PutConfigurationSetTrackingOptions",
+      "ses:TagResource",
+      "ses:UntagResource",
+    ]
     resources = ["*"]
   }
 
-  # Route53 CRUD (future: shared public zone records)
+  # Route53 write (shared public zone records / cert validation)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: apply 時点で対象ゾーン ID が未確定のため Resource: *
   statement {
-    sid       = "Route53Write"
-    actions   = ["route53:*"]
+    sid = "Route53Write"
+    actions = [
+      "route53:ChangeResourceRecordSets",
+      "route53:ChangeTagsForResource",
+    ]
     resources = ["*"]
   }
 
-  # RDS CRUD (Keycloak DB: subnet group / parameter group / DB instance)
+  # RDS write (keycloak_db: DB instance / subnet group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateDBSubnetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "RdsWrite"
-    actions   = ["rds:*"]
+    sid = "RdsWrite"
+    actions = [
+      "rds:CreateDBInstance",
+      "rds:DeleteDBInstance",
+      "rds:ModifyDBInstance",
+      "rds:CreateDBSubnetGroup",
+      "rds:DeleteDBSubnetGroup",
+      "rds:ModifyDBSubnetGroup",
+      "rds:AddTagsToResource",
+      "rds:RemoveTagsFromResource",
+    ]
     resources = ["*"]
   }
   statement {
@@ -354,56 +464,56 @@ data "aws_iam_policy_document" "tasks_plan" {
     }
   }
 
-  # EC2 read (future: SG inspection)
+  # EC2 read (security_group: SG-ECS / SG-RDS)
   statement {
     sid       = "Ec2Read"
     actions   = ["ec2:Describe*"]
     resources = ["*"]
   }
 
-  # ECS read (future)
+  # ECS read (ecs_cluster: Cluster / capacity providers)
   statement {
     sid       = "EcsRead"
     actions   = ["ecs:Describe*", "ecs:List*"]
     resources = ["*"]
   }
 
-  # RDS read (future)
+  # RDS read (rds: DB instance / subnet group)
   statement {
     sid       = "RdsRead"
     actions   = ["rds:Describe*", "rds:List*"]
     resources = ["*"]
   }
 
-  # ECR read (future)
+  # ECR read (ecr: repository / lifecycle policy)
   statement {
     sid       = "EcrRead"
     actions   = ["ecr:Describe*", "ecr:List*", "ecr:Get*", "ecr:BatchGetImage"]
     resources = ["*"]
   }
 
-  # ELBv2 read (future: listener rule / TG)
+  # ELBv2 read (route53 module: TG / Listener Rule)
   statement {
     sid       = "ElbRead"
     actions   = ["elasticloadbalancing:Describe*"]
     resources = ["*"]
   }
 
-  # ACM read (future: deep cert)
+  # ACM read (route53 module: regional / CloudFront 証明書)
   statement {
     sid       = "AcmRead"
     actions   = ["acm:Describe*", "acm:List*", "acm:GetCertificate"]
     resources = ["*"]
   }
 
-  # Route53 read (future: PHZ)
+  # Route53 read (route53 module: PHZ tasks.internal + 各 record)
   statement {
     sid       = "Route53Read"
     actions   = ["route53:Get*", "route53:List*"]
     resources = ["*"]
   }
 
-  # IAM read (future: SMTP user / task role inspection)
+  # IAM read (webapi task role inspection)
   statement {
     sid       = "IamRead"
     actions   = ["iam:Get*", "iam:List*"]
@@ -467,56 +577,161 @@ data "aws_iam_policy_document" "tasks_apply" {
     }
   }
 
-  # EC2 CRUD (future: SG-ECS / SG-RDS)
+  # Service read — apply 中の refresh / plan に必要(plan role と同範囲)
   statement {
-    sid       = "Ec2Write"
-    actions   = ["ec2:*"]
+    sid = "ServiceRead"
+    actions = [
+      "ec2:Describe*",
+      "ecs:Describe*",
+      "ecs:List*",
+      "rds:Describe*",
+      "rds:List*",
+      "ecr:Describe*",
+      "ecr:List*",
+      "ecr:Get*",
+      "ecr:BatchGetImage",
+      "elasticloadbalancing:Describe*",
+      "acm:Describe*",
+      "acm:List*",
+      "acm:GetCertificate",
+      "route53:Get*",
+      "route53:List*",
+    ]
     resources = ["*"]
   }
 
-  # ECS CRUD (future: Cluster / Service / Task Definition)
+  # EC2 write (security_group: SG-ECS / SG-RDS)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateSecurityGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "EcsWrite"
-    actions   = ["ecs:*"]
+    sid = "Ec2Write"
+    actions = [
+      "ec2:CreateSecurityGroup",
+      "ec2:DeleteSecurityGroup",
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:AuthorizeSecurityGroupEgress",
+      "ec2:RevokeSecurityGroupIngress",
+      "ec2:RevokeSecurityGroupEgress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+      "ec2:CreateTags",
+      "ec2:DeleteTags",
+    ]
     resources = ["*"]
   }
 
-  # RDS CRUD (future: DB instance)
+  # ECS write (ecs_cluster: Cluster / capacity providers。Service / Task Definition は S2Infra-2 で追加)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(PutClusterCapacityProviders 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "RdsWrite"
-    actions   = ["rds:*"]
+    sid = "EcsWrite"
+    actions = [
+      "ecs:CreateCluster",
+      "ecs:DeleteCluster",
+      "ecs:UpdateCluster",
+      "ecs:UpdateClusterSettings",
+      "ecs:PutClusterCapacityProviders",
+      "ecs:TagResource",
+      "ecs:UntagResource",
+    ]
     resources = ["*"]
   }
 
-  # ECR CRUD (future)
+  # RDS write (rds: DB instance / subnet group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateDBSubnetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "EcrWrite"
-    actions   = ["ecr:*"]
+    sid = "RdsWrite"
+    actions = [
+      "rds:CreateDBInstance",
+      "rds:DeleteDBInstance",
+      "rds:ModifyDBInstance",
+      "rds:CreateDBSubnetGroup",
+      "rds:DeleteDBSubnetGroup",
+      "rds:ModifyDBSubnetGroup",
+      "rds:AddTagsToResource",
+      "rds:RemoveTagsFromResource",
+    ]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "RdsSlr"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/rds.amazonaws.com/*"]
+  }
+
+  # ECR write (ecr: repository / lifecycle policy)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateRepository 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
+  statement {
+    sid = "EcrWrite"
+    actions = [
+      "ecr:CreateRepository",
+      "ecr:DeleteRepository",
+      "ecr:PutLifecyclePolicy",
+      "ecr:DeleteLifecyclePolicy",
+      "ecr:PutImageScanningConfiguration",
+      "ecr:PutImageTagMutability",
+      "ecr:TagResource",
+      "ecr:UntagResource",
+    ]
     resources = ["*"]
   }
 
-  # ELBv2 write (future: listener rule / TG / cert attach to shared ALB)
+  # ELBv2 write (route53 module: TG / Listener Rule / cert attach to shared ALB)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateTargetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "ElbWrite"
-    actions   = ["elasticloadbalancing:*"]
+    sid = "ElbWrite"
+    actions = [
+      "elasticloadbalancing:CreateTargetGroup",
+      "elasticloadbalancing:DeleteTargetGroup",
+      "elasticloadbalancing:ModifyTargetGroup",
+      "elasticloadbalancing:ModifyTargetGroupAttributes",
+      "elasticloadbalancing:CreateRule",
+      "elasticloadbalancing:DeleteRule",
+      "elasticloadbalancing:ModifyRule",
+      "elasticloadbalancing:SetRulePriorities",
+      "elasticloadbalancing:AddListenerCertificates",
+      "elasticloadbalancing:RemoveListenerCertificates",
+      "elasticloadbalancing:AddTags",
+      "elasticloadbalancing:RemoveTags",
+    ]
     resources = ["*"]
   }
 
-  # ACM CRUD (future: deep cert *.tasks.dgz48.xyz)
+  # ACM write (route53 module: regional / CloudFront 証明書)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(RequestCertificate 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
-    sid       = "AcmWrite"
-    actions   = ["acm:*"]
+    sid = "AcmWrite"
+    actions = [
+      "acm:RequestCertificate",
+      "acm:DeleteCertificate",
+      "acm:AddTagsToCertificate",
+      "acm:RemoveTagsFromCertificate",
+    ]
     resources = ["*"]
   }
 
-  # Route53 CRUD (future: PHZ tasks.internal + alias record)
+  # Route53 write (route53 module: PHZ tasks.internal + 各 record)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: apply 時点で対象ゾーン ID が未確定のため Resource: *
   statement {
-    sid       = "Route53Write"
-    actions   = ["route53:*"]
+    sid = "Route53Write"
+    actions = [
+      "route53:CreateHostedZone",
+      "route53:DeleteHostedZone",
+      "route53:UpdateHostedZoneComment",
+      "route53:AssociateVPCWithHostedZone",
+      "route53:DisassociateVPCFromHostedZone",
+      "route53:ChangeResourceRecordSets",
+      "route53:ChangeTagsForResource",
+    ]
     resources = ["*"]
   }
 
-  # IAM (future: tasks ECS task role / SMTP IAM user)
+  # IAM (webapi task role 実装済み / SMTP IAM user は未実装)
   statement {
     sid = "IamRoles"
     actions = [

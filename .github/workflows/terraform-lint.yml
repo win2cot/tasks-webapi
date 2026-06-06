@@ -37,6 +37,7 @@ jobs:
               - 'infra/**/*.hcl'
               - 'infra/**/*.tfvars'
               - '.github/workflows/terraform-lint.yml'
+              - '.github/scripts/check-iam-wildcards.py'
 
   lint:
     needs: changes
@@ -83,6 +84,11 @@ jobs:
         run: terraform validate -no-color
         continue-on-error: true
 
+      - name: IAM wildcard gate (Terraform 規約 R1)
+        id: iam_wildcard
+        run: python3 .github/scripts/check-iam-wildcards.py
+        continue-on-error: true
+
       - name: Build report
         id: report
         if: always() && github.event_name == 'pull_request'
@@ -92,6 +98,7 @@ jobs:
           VALIDATE_TASKS_OUTCOME: ${{ steps.validate_tasks.outcome }}
           INIT_SHARED_OUTCOME: ${{ steps.init_shared.outcome }}
           VALIDATE_SHARED_OUTCOME: ${{ steps.validate_shared.outcome }}
+          IAM_WILDCARD_OUTCOME: ${{ steps.iam_wildcard.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_NUM: ${{ github.run_number }}
           GH_SHA: ${{ github.sha }}
@@ -120,6 +127,7 @@ jobs:
             row "validate (tasks/dev)" "$VALIDATE_TASKS_OUTCOME"
             row "init / lockfile (shared/dev)" "$INIT_SHARED_OUTCOME"
             row "validate (shared/dev)" "$VALIDATE_SHARED_OUTCOME"
+            row "IAM wildcard gate (規約 R1)" "$IAM_WILDCARD_OUTCOME"
             echo ""
             echo "_最終更新: ${NOW}_"
             echo '__TF_REPORT_EOF__'
@@ -138,5 +146,6 @@ jobs:
           steps.init_tasks.outcome == 'failure' ||
           steps.validate_tasks.outcome == 'failure' ||
           steps.init_shared.outcome == 'failure' ||
-          steps.validate_shared.outcome == 'failure'
+          steps.validate_shared.outcome == 'failure' ||
+          steps.iam_wildcard.outcome == 'failure'
         run: exit 1
