@@ -410,6 +410,13 @@ data "aws_iam_policy_document" "tasks_plan" {
     resources = ["*"]
   }
 
+  # CloudWatch Logs read (ECS cluster log groups inspection during plan)
+  statement {
+    sid       = "LogsRead"
+    actions   = ["logs:DescribeLogGroups", "logs:ListTagsLogGroup", "logs:ListTagsForResource"]
+    resources = ["*"]
+  }
+
   # SSM read — platform outputs + tasks params
   statement {
     sid     = "SsmRead"
@@ -564,6 +571,32 @@ data "aws_iam_policy_document" "tasks_apply" {
     sid       = "EcsSlr"
     actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/ecs.amazonaws.com/*"]
+  }
+
+  # CloudWatch Logs CRUD scoped to ECS task log groups
+  statement {
+    sid = "LogsWrite"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:TagLogGroup",
+      "logs:UntagLogGroup",
+      "logs:TagResource",
+      "logs:UntagResource",
+      "logs:ListTagsLogGroup",
+      "logs:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/tasks-${var.env}/*",
+    ]
+  }
+  # logs:DescribeLogGroups does not support resource-level permissions; must use Resource:"*"
+  statement {
+    sid       = "LogsDescribe"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
   }
 
   # SSM — read platform outputs, write tasks params
