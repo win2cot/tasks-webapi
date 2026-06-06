@@ -31,6 +31,8 @@ class TasksJwtAuthenticationConverterTest {
   private void stubValidUser() {
     when(jwt.getSubject()).thenReturn("sub123");
     when(userRepository.findByOidcSub("sub123")).thenReturn(Optional.of(user));
+    when(user.isAnonymized()).thenReturn(false);
+    when(user.isInactive()).thenReturn(false);
     when(user.getId()).thenReturn(1L);
     when(user.getOidcSub()).thenReturn("sub123");
     when(user.getEmail()).thenReturn("user@example.com");
@@ -78,12 +80,11 @@ class TasksJwtAuthenticationConverterTest {
   }
 
   @Test
-  void throwsWhenUserNotFound() {
+  void throwsUserNotRegisteredWhenUserNotFound() {
     when(jwt.getSubject()).thenReturn("unknown-sub");
     when(userRepository.findByOidcSub("unknown-sub")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> converter.convert(jwt))
-        .isInstanceOf(InvalidBearerTokenException.class);
+    assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserNotRegisteredException.class);
   }
 
   @Test
@@ -92,5 +93,37 @@ class TasksJwtAuthenticationConverterTest {
 
     assertThatThrownBy(() -> converter.convert(jwt))
         .isInstanceOf(InvalidBearerTokenException.class);
+  }
+
+  @Test
+  void throwsUserAnonymizedWhenDeletedAtIsSet() {
+    when(jwt.getSubject()).thenReturn("sub-anon");
+    when(userRepository.findByOidcSub("sub-anon")).thenReturn(Optional.of(user));
+    when(user.isAnonymized()).thenReturn(true);
+
+    assertThatThrownBy(() -> converter.convert(jwt))
+        .isInstanceOf(UserAnonymizedException.class)
+        .hasMessage("ユーザーアカウントは削除済みです");
+  }
+
+  @Test
+  void throwsUserInactiveWhenStatusIsInactive() {
+    when(jwt.getSubject()).thenReturn("sub-inactive");
+    when(userRepository.findByOidcSub("sub-inactive")).thenReturn(Optional.of(user));
+    when(user.isAnonymized()).thenReturn(false);
+    when(user.isInactive()).thenReturn(true);
+
+    assertThatThrownBy(() -> converter.convert(jwt))
+        .isInstanceOf(UserInactiveException.class)
+        .hasMessage("ユーザーアカウントが無効化されています");
+  }
+
+  @Test
+  void anonymizedCheckTakesPriorityOverInactiveCheck() {
+    when(jwt.getSubject()).thenReturn("sub-both");
+    when(userRepository.findByOidcSub("sub-both")).thenReturn(Optional.of(user));
+    when(user.isAnonymized()).thenReturn(true);
+
+    assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserAnonymizedException.class);
   }
 }

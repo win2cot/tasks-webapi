@@ -19,6 +19,7 @@ public class User {
   private String fullName;
   private String fullNameKana;
   @Nullable private String departmentName;
+  private UserStatus status;
   private long version;
   @Nullable private LocalDateTime deletedAt;
 
@@ -29,6 +30,7 @@ public class User {
       String fullName,
       String fullNameKana,
       @Nullable String departmentName,
+      UserStatus status,
       long version,
       @Nullable LocalDateTime deletedAt) {
     this.id = id;
@@ -37,6 +39,7 @@ public class User {
     this.fullName = fullName;
     this.fullNameKana = fullNameKana;
     this.departmentName = departmentName;
+    this.status = status;
     this.version = version;
     this.deletedAt = deletedAt;
   }

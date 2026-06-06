@@ -33,10 +33,13 @@ public class TasksJwtAuthenticationConverter
       throw new InvalidBearerTokenException("JWT missing sub claim");
     }
     UserJpaEntity user =
-        userRepository
-            .findByOidcSub(sub)
-            .orElseThrow(
-                () -> new InvalidBearerTokenException("User not found for provided sub claim"));
+        userRepository.findByOidcSub(sub).orElseThrow(UserNotRegisteredException::new);
+    if (user.isAnonymized()) {
+      throw new UserAnonymizedException();
+    }
+    if (user.isInactive()) {
+      throw new UserInactiveException();
+    }
     TasksPrincipal principal =
         new TasksPrincipal(
             user.getId(),
