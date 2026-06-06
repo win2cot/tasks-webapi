@@ -36,15 +36,15 @@ resource "aws_db_subnet_group" "keycloak" {
 }
 
 # ---------------------------------------------------------------------------
-# RDS MySQL 8.0 — db.t4g.micro, single-AZ, private subnets
+# RDS MySQL 8.4 — db.t4g.micro, single-AZ, private subnets
 # Always-on: Keycloak requires persistent DB (no stop schedule unlike tasks RDS)
-# Engine: RDS MySQL for operational consistency; cheaper than Aurora Serverless v2 for always-on
+# Engine: RDS MySQL 8.4 per ADR-0007 (Testcontainers 互換 + 運用一貫性)
 # ---------------------------------------------------------------------------
 
 resource "aws_db_instance" "keycloak" {
   identifier        = "platform-${var.env}-keycloak-db"
   engine            = "mysql"
-  engine_version    = "8.0"
+  engine_version    = "8.4"
   instance_class    = "db.t4g.micro"
   allocated_storage = 20
   storage_type      = "gp3"
