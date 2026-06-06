@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# ECR repositories — tasks-webapi / keycloak-custom (S1Infra-7 / ADR-0004)
+# ECR repositories — tasks-webapi / keycloak-custom (S1Infra-7)
 # Both repos are owned by the tasks stack.
 # Image scan on push is enabled; results will be integrated with Security Hub
 # in Sprint 4 NIST hardening (see infrastructure-plan.md §6.5).
@@ -9,8 +9,8 @@
 
 locals {
   repos = {
-    tasks_webapi     = "tasks-webapi"
-    keycloak_custom  = "keycloak-custom"
+    tasks_webapi    = "tasks-webapi"
+    keycloak_custom = "keycloak-custom"
   }
 
   lifecycle_policy = jsonencode({
@@ -49,7 +49,7 @@ resource "aws_ecr_repository" "this" {
   for_each = local.repos
 
   name                 = each.value
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
