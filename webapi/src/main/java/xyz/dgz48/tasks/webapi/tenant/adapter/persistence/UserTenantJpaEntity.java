@@ -32,4 +32,15 @@ class UserTenantJpaEntity {
 
   @Column(name = "joined_at", nullable = false)
   private LocalDateTime joinedAt;
+
+  UserTenantJpaEntity(Long userId, Long tenantId, TenantRole role, LocalDateTime joinedAt) {
+    this.id = new UserTenantId(userId, tenantId);
+    this.role = role;
+    this.status = UserTenantStatus.ACTIVE;
+    this.joinedAt = joinedAt;
+  }
+
+  void updateRole(TenantRole newRole) {
+    this.role = newRole;
+  }
 }

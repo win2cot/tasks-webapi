@@ -27,6 +27,9 @@ import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
+import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.SwitchTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -75,6 +78,9 @@ class TenantContextFilterTest {
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
   @MockitoBean SwitchTenantUseCase switchTenantUseCase;
+  @MockitoBean AddMemberUseCase addMemberUseCase;
+  @MockitoBean RemoveMemberUseCase removeMemberUseCase;
+  @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
 
   @Autowired MockMvc mockMvc;
 

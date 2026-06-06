@@ -1,0 +1,72 @@
+package xyz.dgz48.tasks.webapi.tenant.adapter.web;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.Objects;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
+import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantCrossBoundaryException;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantAlreadyExistsException;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantNotFoundException;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
+
+@RestControllerAdvice(assignableTypes = TenantMemberController.class)
+public class TenantMemberExceptionHandler {
+
+  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+
+  @ExceptionHandler(UserTenantNotFoundException.class)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ErrorResponse handleNotFound(UserTenantNotFoundException ex, HttpServletRequest request) {
+    return error(
+        HttpStatus.NOT_FOUND,
+        ErrorCode.E_NOT_FOUND,
+        Objects.requireNonNullElse(ex.getMessage(), "メンバーが見つかりません"),
+        request);
+  }
+
+  @ExceptionHandler({TenantCrossBoundaryException.class, UserTenantSelfOperationException.class})
+  @ResponseStatus(HttpStatus.FORBIDDEN)
+  public ErrorResponse handleForbidden(RuntimeException ex, HttpServletRequest request) {
+    return error(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.E_FORBIDDEN,
+        Objects.requireNonNullElse(ex.getMessage(), "操作権限がありません"),
+        request);
+  }
+
+  @ExceptionHandler(UserTenantAlreadyExistsException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleConflict(
+      UserTenantAlreadyExistsException ex, HttpServletRequest request) {
+    return error(
+        HttpStatus.CONFLICT,
+        ErrorCode.E_CONFLICT,
+        Objects.requireNonNullElse(ex.getMessage(), "既にメンバーとして登録されています"),
+        request);
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleDataIntegrity(
+      DataIntegrityViolationException ex, HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, ErrorCode.E_CONFLICT, "既にメンバーとして登録されています", request);
+  }
+
+  private static ErrorResponse error(
+      HttpStatus status, ErrorCode code, String message, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        status.value(),
+        status.getReasonPhrase(),
+        code,
+        message,
+        request.getRequestURI());
+  }
+}
