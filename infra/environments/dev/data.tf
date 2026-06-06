@@ -11,3 +11,15 @@ data "aws_ssm_parameter" "vpc_id" {
 data "aws_ssm_parameter" "alb_sg_id" {
   name = "/platform/${var.env}/alb-sg-id"
 }
+
+data "aws_ssm_parameter" "alb_https_listener_arn" {
+  name = "/platform/${var.env}/alb-https-listener-arn"
+}
+
+data "aws_ssm_parameter" "alb_dns_name" {
+  name = "/platform/${var.env}/alb-dns-name"
+}
+
+data "aws_ssm_parameter" "alb_zone_id" {
+  name = "/platform/${var.env}/alb-zone-id"
+}
