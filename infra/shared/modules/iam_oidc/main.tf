@@ -417,6 +417,7 @@ data "aws_iam_policy_document" "platform_apply" {
   # CloudWatch Logs write (keycloak log group)
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: /ecs/platform-<env>/* ロググループ ARN に絞る
+  # logs:DescribeLogGroups は resource-level permission 非対応のため ServiceRead の resources:["*"] ブロックに含める
   statement {
     sid = "LogsWrite"
     actions = [
@@ -432,12 +433,6 @@ data "aws_iam_policy_document" "platform_apply" {
     resources = [
       "arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/platform-${var.env}/*",
     ]
-  }
-  # logs:DescribeLogGroups does not support resource-level permissions; must use Resource:"*"
-  statement {
-    sid       = "LogsDescribe"
-    actions   = ["logs:DescribeLogGroups"]
-    resources = ["*"]
   }
 
   # ACM write (alb: base wildcard cert)

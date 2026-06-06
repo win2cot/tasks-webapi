@@ -215,15 +215,15 @@ resource "aws_ecs_task_definition" "keycloak" {
     }]
 
     environment = [
-      { name = "KC_DB",              value = "mysql" },
-      { name = "KC_DB_URL",          value = "jdbc:mysql://${var.keycloak_db_endpoint}:3306/keycloak" },
-      { name = "KC_DB_USERNAME",     value = "keycloak_admin" },
-      { name = "KC_HOSTNAME",        value = var.hostname },
+      { name = "KC_DB", value = "mysql" },
+      { name = "KC_DB_URL", value = "jdbc:mysql://${var.keycloak_db_endpoint}:3306/keycloak" },
+      { name = "KC_DB_USERNAME", value = "keycloak_admin" },
+      { name = "KC_HOSTNAME", value = var.hostname },
       { name = "KC_HOSTNAME_STRICT", value = "false" },
-      { name = "KC_HTTP_ENABLED",    value = "true" },
-      { name = "KC_HEALTH_ENABLED",  value = "true" },
+      { name = "KC_HTTP_ENABLED", value = "true" },
+      { name = "KC_HEALTH_ENABLED", value = "true" },
       { name = "KC_METRICS_ENABLED", value = "true" },
-      { name = "KEYCLOAK_ADMIN",     value = "admin" },
+      { name = "KEYCLOAK_ADMIN", value = "admin" },
     ]
 
     secrets = [
