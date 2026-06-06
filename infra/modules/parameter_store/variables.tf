@@ -12,7 +12,13 @@ variable "db_password" {
 variable "keycloak_spi_read_password" {
   type        = string
   sensitive   = true
-  description = "Password for the Keycloak SPI federation read-only DB user (keycloak-spi-read)"
+  description = "Password for the Keycloak SPI federation read-only DB user"
+}
+
+variable "keycloak_spi_read_username" {
+  type        = string
+  description = "Username for the Keycloak SPI federation read-only DB user; published to /tasks/<env>/db/keycloak-spi-read-username"
+  default     = "keycloak_spi_read"
 }
 
 variable "keycloak_admin_password" {

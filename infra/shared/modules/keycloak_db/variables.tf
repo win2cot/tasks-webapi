@@ -8,11 +8,6 @@ variable "vpc_id" {
   description = "VPC ID to associate the security group with"
 }
 
-variable "vpc_cidr" {
-  type        = string
-  description = "VPC CIDR block; used to scope SG-KeycloakDB ingress to VPC only"
-}
-
 variable "private_subnet_ids" {
   type        = list(string)
   description = "Private subnet IDs for the DB subnet group"

@@ -31,6 +31,12 @@ variable "keycloak_spi_read_password" {
   description = "Keycloak SPI federation read-only DB user password placeholder"
 }
 
+variable "keycloak_spi_read_username" {
+  type        = string
+  default     = "keycloak_spi_read"
+  description = "Keycloak SPI federation read-only DB username published to /tasks/<env>/db/keycloak-spi-read-username"
+}
+
 variable "keycloak_admin_password" {
   type        = string
   sensitive   = true

@@ -33,6 +33,17 @@ resource "aws_ssm_parameter" "db_keycloak_spi_read_password" {
   }
 }
 
+# SPI federation: read-only MySQL user name published for platform Keycloak (#322)
+resource "aws_ssm_parameter" "db_keycloak_spi_read_username" {
+  name  = "/tasks/${var.env}/db/keycloak-spi-read-username"
+  type  = "String"
+  value = var.keycloak_spi_read_username
+
+  tags = {
+    Name = "tasks-${var.env}-db-keycloak-spi-read-username"
+  }
+}
+
 resource "aws_ssm_parameter" "keycloak_admin_password" {
   name  = "/tasks/${var.env}/keycloak/admin-password"
   type  = "SecureString"
