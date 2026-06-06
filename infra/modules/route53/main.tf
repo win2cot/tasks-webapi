@@ -153,6 +153,109 @@ resource "aws_route53_record" "auth" {
 }
 
 # ---------------------------------------------------------------------------
+# Target Groups — tasks-webapi (HTTP:8080) / keycloak (HTTPS:8443)
+# Used by ECS Service definitions (S1Infra-9 / ADR-0004 §E).
+# target_type = ip required for Fargate.
+# ---------------------------------------------------------------------------
+
+resource "aws_lb_target_group" "webapi" {
+  name        = "tasks-${var.env}-tg-webapi"
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  health_check {
+    enabled             = true
+    path                = "/actuator/health"
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
+  }
+
+  deregistration_delay = 30
+
+  tags = {
+    Name = "tasks-${var.env}-tg-webapi"
+  }
+}
+
+resource "aws_lb_target_group" "keycloak" {
+  name        = "tasks-${var.env}-tg-keycloak"
+  port        = 8443
+  protocol    = "HTTPS"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  health_check {
+    enabled             = true
+    path                = "/health/live"
+    protocol            = "HTTPS"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
+  }
+
+  deregistration_delay = 30
+
+  tags = {
+    Name = "tasks-${var.env}-tg-keycloak"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Listener Rules — host-based routing on shared HTTPS listener (ADR-0004 §E).
+# tasks priority range: 100-199 (listener-scoped unique per ADR-0004).
+# ---------------------------------------------------------------------------
+
+resource "aws_lb_listener_rule" "api" {
+  listener_arn = var.alb_https_listener_arn
+  priority     = 100
+
+  condition {
+    host_header {
+      values = ["api-${var.env}.tasks.${var.base_domain}"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.webapi.arn
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-rule-api"
+  }
+}
+
+resource "aws_lb_listener_rule" "auth" {
+  listener_arn = var.alb_https_listener_arn
+  priority     = 110
+
+  condition {
+    host_header {
+      values = ["auth-${var.env}.tasks.${var.base_domain}"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.keycloak.arn
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-rule-auth"
+  }
+}
+
+# ---------------------------------------------------------------------------
 # Alias record — tasks-<env>.<base_domain> → CloudFront (S2Infra-3)
 # Created only when cloudfront_domain_name is set (non-null).
 # ---------------------------------------------------------------------------
