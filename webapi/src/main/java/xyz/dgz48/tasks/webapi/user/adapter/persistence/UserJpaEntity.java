@@ -2,6 +2,8 @@ package xyz.dgz48.tasks.webapi.user.adapter.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -12,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import xyz.dgz48.tasks.webapi.user.domain.UserStatus;
 
 @Entity
 @Table(name = "users")
@@ -44,9 +47,21 @@ public class UserJpaEntity {
   @Column(nullable = false)
   private Long version;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE','INACTIVE')")
+  private UserStatus status;
+
   @Nullable
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
+
+  public boolean isAnonymized() {
+    return this.deletedAt != null;
+  }
+
+  public boolean isInactive() {
+    return this.status == UserStatus.INACTIVE;
+  }
 
   public UserJpaEntity(
       String oidcSub,
@@ -59,5 +74,6 @@ public class UserJpaEntity {
     this.fullName = fullName;
     this.fullNameKana = fullNameKana;
     this.departmentName = departmentName;
+    this.status = UserStatus.ACTIVE;
   }
 }

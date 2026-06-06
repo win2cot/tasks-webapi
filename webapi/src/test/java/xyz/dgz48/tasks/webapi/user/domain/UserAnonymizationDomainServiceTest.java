@@ -13,7 +13,15 @@ class UserAnonymizationDomainServiceTest {
 
   private User buildActiveUser(long id) {
     return new User(
-        id, "sub-" + id, "user" + id + "@example.com", "山田 太郎", "ヤマダ タロウ", "開発部", 0L, null);
+        id,
+        "sub-" + id,
+        "user" + id + "@example.com",
+        "山田 太郎",
+        "ヤマダ タロウ",
+        "開発部",
+        UserStatus.ACTIVE,
+        0L,
+        null);
   }
 
   @Test
