@@ -1,0 +1,208 @@
+name: Keycloak CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      keycloak: ${{ steps.filter.outputs.keycloak }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            keycloak:
+              - 'keycloak/**'
+              - '*.gradle*'
+              - 'settings.gradle*'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - '.github/workflows/keycloak-ci.yml'
+
+  check:
+    needs: changes
+    if: needs.changes.outputs.keycloak == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check package-info.java
+        id: pkg-info
+        run: |
+          MISSING=()
+          while IFS= read -r dir; do
+            if [ ! -f "$dir/package-info.java" ]; then
+              pkg="${dir#keycloak/src/main/java/}"
+              MISSING+=("${pkg//'/'/.}")
+              echo "::error file=${dir}/package-info.java::package-info.java が見つかりません: ${pkg//'/'/.}"
+            fi
+          done < <(
+            find keycloak/src/main/java/xyz/dgz48/tasks/keycloak \
+              -type f -name "*.java" ! -name "package-info.java" \
+              -exec dirname {} \; | sort -u
+          )
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run checks
+        run: ./gradlew :keycloak:check
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: keycloak/build/test-results/**/*.xml
+          comment_mode: off
+          fail_on: nothing
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: keycloak-test-reports
+          path: keycloak/build/reports/tests/test/
+
+      - name: Build CI report
+        id: ci-report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          PKG_OUTCOME: ${{ steps.pkg-info.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+
+          icon() { [ "$1" = "success" ] && echo ":white_check_mark:" || echo ":x:"; }
+
+          # ── package-info.java ─────────────────────────────────────────
+          PKG_ROW="| package-info.java $(icon "$PKG_OUTCOME") | Run [#${RUN_NUM}](${RUN_URL}) — $([ "$PKG_OUTCOME" = "success" ] && echo "全パッケージに存在" || echo "欠落あり(詳細はログ参照)") |"
+
+          # ── Test results ──────────────────────────────────────────────
+          TEST_DATA=$(python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET, glob, sys
+          files = glob.glob('keycloak/build/test-results/**/*.xml', recursive=True)
+          if not files:
+              print('MISSING')
+              sys.exit(0)
+          t = f = e = s = 0
+          for p in files:
+              try:
+                  r = ET.parse(p).getroot()
+                  t += int(r.get('tests', 0))
+                  f += int(r.get('failures', 0))
+                  e += int(r.get('errors', 0))
+                  s += int(r.get('skipped', 0))
+              except Exception:
+                  pass
+          print(f'{t} {f} {e} {s}')
+          PYEOF
+          )
+
+          if [ "$TEST_DATA" = "MISSING" ]; then
+            TEST_ROW="| テスト結果 | :warning: Run #${RUN_NUM} — ビルド/コンパイル失敗のためテスト未実行 |"
+          else
+            read -r TOTAL FAIL ERR SKIP <<< "$TEST_DATA"
+            PASSED=$((TOTAL - FAIL - ERR - SKIP))
+            if [ "$((FAIL + ERR))" -eq 0 ]; then
+              TEST_ICON=":white_check_mark:"
+            else
+              TEST_ICON=":x:"
+            fi
+            TEST_ROW="| テスト結果 ${TEST_ICON} | 合計 ${TOTAL}: 成功 **${PASSED}**, 失敗 $((FAIL + ERR)), スキップ ${SKIP} |"
+          fi
+
+          # ── Coverage (report only, no gate) ───────────────────────────
+          JACOCO_XML="keycloak/build/reports/jacoco/test/jacocoTestReport.xml"
+          if [ -f "$JACOCO_XML" ]; then
+            COVERAGE=$(python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET, sys
+          try:
+              root = ET.parse('keycloak/build/reports/jacoco/test/jacocoTestReport.xml').getroot()
+              for c in root.findall('counter'):
+                  if c.get('type') == 'INSTRUCTION':
+                      missed = int(c.get('missed', 0))
+                      covered = int(c.get('covered', 0))
+                      total = missed + covered
+                      print(f'{covered / total * 100:.1f}' if total else '0.0')
+                      sys.exit(0)
+              print('N/A')
+          except Exception:
+              print('N/A')
+          PYEOF
+            )
+            COV_ROW="| カバレッジ :bar_chart: | 命令カバレッジ **${COVERAGE}%** (参考値・ゲートなし) |"
+          else
+            COV_ROW="| カバレッジ :bar_chart: | レポートなし(JaCoCo 未設定) |"
+          fi
+
+          # ── Write output ──────────────────────────────────────────────
+          {
+            echo 'BODY<<__CI_REPORT_EOF__'
+            echo "### Keycloak CI 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            echo "${PKG_ROW}"
+            echo "${TEST_ROW}"
+            echo "${COV_ROW}"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__CI_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky CI report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.ci-report.outcome == 'success'
+        with:
+          header: keycloak-ci
+          message: ${{ steps.ci-report.outputs.BODY }}
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: keycloak-coverage-reports
+          path: keycloak/build/reports/jacoco/test/html/
+
+      - name: Fail on errors
+        if: steps.pkg-info.outcome == 'failure'
+        run: exit 1
