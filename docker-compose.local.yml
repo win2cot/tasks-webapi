@@ -19,7 +19,10 @@ services:
       start_period: 30s
 
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
+    build:
+      context: .
+      dockerfile: keycloak/Dockerfile
+    # Override production CMD for local development: use start-dev (H2 embedded) with realm import.
     command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin

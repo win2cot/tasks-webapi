@@ -1,0 +1,31 @@
+# Build artifacts and caches
+**/build/
+**/.gradle/
+
+# Git history (large; not needed in Docker build context)
+.git/
+
+# Source modules not needed for Keycloak SPI build
+webapi/
+web/
+infra/
+docs/
+api/
+
+# GitHub Actions
+.github/
+
+# IDE / editor
+.idea/
+**/*.iml
+.DS_Store
+
+# Node.js
+**/node_modules/
+
+# Local overrides (per-developer, not committed)
+docker-compose.local.override.yml
+.env.local
+
+# Temporary Claude automation files
+.claude-tmp/
