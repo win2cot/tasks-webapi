@@ -37,6 +37,6 @@ variable "cloudfront_domain_name" {
 
 variable "cloudfront_zone_id" {
   type        = string
-  default     = null
-  description = "CloudFront hosted zone ID (always Z2FDTNDATAQYW2 for CloudFront). Set null until CloudFront is provisioned."
+  default     = "Z2FDTNDATAQYW2"
+  description = "CloudFront hosted zone ID. Defaults to Z2FDTNDATAQYW2 (fixed AWS constant for all CloudFront distributions)."
 }
