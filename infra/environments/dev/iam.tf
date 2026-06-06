@@ -9,7 +9,7 @@ resource "aws_iam_role" "webapi_task" {
   name = "tasks-${var.env}-webapi-task-role"
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Effect = "Allow"
@@ -32,7 +32,7 @@ resource "aws_iam_role_policy" "webapi_rds_connect" {
   role = aws_iam_role.webapi_task.id
 
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Sid      = "RdsIamConnect"
@@ -50,12 +50,12 @@ resource "aws_iam_role_policy" "webapi_ssm" {
   role = aws_iam_role.webapi_task.id
 
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "SsmReadTasksParams"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "SsmReadTasksParams"
+        Effect = "Allow"
+        Action = [
           "ssm:GetParameter",
           "ssm:GetParameters",
           "ssm:GetParametersByPath"
