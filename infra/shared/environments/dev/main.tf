@@ -129,3 +129,53 @@ resource "aws_ssm_parameter" "ses_config_set" {
   type  = "String"
   value = module.ses.config_set_name
 }
+
+# ---------------------------------------------------------------------------
+# Keycloak 専用 DB (ADR-0004 / #387)
+# Always-on; Keycloak runtime requires persistent DB (not subject to stop schedule)
+# SecureString placeholder: set /platform/dev/keycloak-db-password in SSM console after apply
+# ---------------------------------------------------------------------------
+
+module "keycloak_db" {
+  source = "../../modules/keycloak_db"
+
+  env                = "dev"
+  vpc_id             = module.network.vpc_id
+  vpc_cidr           = module.network.vpc_cidr
+  private_subnet_ids = module.network.private_subnet_ids
+  db_password        = "CHANGE_ME"
+}
+
+# ---------------------------------------------------------------------------
+# SSM: publish Keycloak DB connection info for platform consumers (#322)
+# ---------------------------------------------------------------------------
+
+resource "aws_ssm_parameter" "keycloak_db_endpoint" {
+  name  = "/platform/dev/keycloak-db-endpoint"
+  type  = "String"
+  value = module.keycloak_db.db_endpoint
+}
+
+resource "aws_ssm_parameter" "keycloak_db_port" {
+  name  = "/platform/dev/keycloak-db-port"
+  type  = "String"
+  value = tostring(module.keycloak_db.db_port)
+}
+
+resource "aws_ssm_parameter" "keycloak_db_name" {
+  name  = "/platform/dev/keycloak-db-name"
+  type  = "String"
+  value = module.keycloak_db.db_name
+}
+
+resource "aws_ssm_parameter" "keycloak_db_username" {
+  name  = "/platform/dev/keycloak-db-username"
+  type  = "String"
+  value = module.keycloak_db.db_username
+}
+
+resource "aws_ssm_parameter" "keycloak_db_sg_id" {
+  name  = "/platform/dev/keycloak-db-sg-id"
+  type  = "String"
+  value = module.keycloak_db.sg_id
+}
