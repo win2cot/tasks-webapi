@@ -263,7 +263,8 @@ data "aws_iam_policy_document" "platform_apply" {
   }
 
   # EC2 write (network: VPC / Subnet / IGW / RT / NAT / EIP / S3 GW EP + alb / keycloak_db SG)
-  # 規約 R1: 書込み action は完全列挙。Resource は env 全体を管理する CI role の性質上 "*"
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateVpc 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "Ec2Write"
     actions = [
@@ -307,6 +308,8 @@ data "aws_iam_policy_document" "platform_apply" {
   }
 
   # ELBv2 write (alb: ALB / Listener)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateLoadBalancer 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "ElbWrite"
     actions = [
@@ -332,6 +335,8 @@ data "aws_iam_policy_document" "platform_apply" {
   }
 
   # ACM write (alb: base wildcard cert)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(RequestCertificate 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "AcmWrite"
     actions = [
@@ -344,6 +349,8 @@ data "aws_iam_policy_document" "platform_apply" {
   }
 
   # SESv2 write (ses: domain identity / DKIM / Config Set。SESv2 API の IAM prefix も "ses:")
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateConfigurationSet 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "SesWrite"
     actions = [
@@ -365,6 +372,8 @@ data "aws_iam_policy_document" "platform_apply" {
   }
 
   # Route53 write (shared public zone records / cert validation)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: apply 時点で対象ゾーン ID が未確定のため Resource: *
   statement {
     sid = "Route53Write"
     actions = [
@@ -375,6 +384,8 @@ data "aws_iam_policy_document" "platform_apply" {
   }
 
   # RDS write (keycloak_db: DB instance / subnet group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateDBSubnetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "RdsWrite"
     actions = [
@@ -590,7 +601,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # EC2 write (security_group: SG-ECS / SG-RDS)
-  # 規約 R1: 書込み action は完全列挙。Resource は env 全体を管理する CI role の性質上 "*"
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateSecurityGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "Ec2Write"
     actions = [
@@ -609,6 +621,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # ECS write (ecs_cluster: Cluster / capacity providers。Service / Task Definition は S2Infra-2 で追加)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(PutClusterCapacityProviders 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "EcsWrite"
     actions = [
@@ -624,6 +638,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # RDS write (rds: DB instance / subnet group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateDBSubnetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "RdsWrite"
     actions = [
@@ -645,6 +661,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # ECR write (ecr: repository / lifecycle policy)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateRepository 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "EcrWrite"
     actions = [
@@ -661,6 +679,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # ELBv2 write (route53 module: TG / Listener Rule / cert attach to shared ALB)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateTargetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "ElbWrite"
     actions = [
@@ -681,6 +701,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # ACM write (route53 module: regional / CloudFront 証明書)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(RequestCertificate 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "AcmWrite"
     actions = [
@@ -693,6 +715,8 @@ data "aws_iam_policy_document" "tasks_apply" {
   }
 
   # Route53 write (route53 module: PHZ tasks.internal + 各 record)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: apply 時点で対象ゾーン ID が未確定のため Resource: *
   statement {
     sid = "Route53Write"
     actions = [
