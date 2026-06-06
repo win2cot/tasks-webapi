@@ -126,6 +126,27 @@ data "aws_iam_policy_document" "platform_plan" {
     resources = ["*"]
   }
 
+  # ECS read (platform cluster / keycloak task definition / service inspection during plan)
+  statement {
+    sid       = "EcsRead"
+    actions   = ["ecs:Describe*", "ecs:List*"]
+    resources = ["*"]
+  }
+
+  # ECR read (keycloak-custom image metadata inspection during plan)
+  statement {
+    sid       = "EcrRead"
+    actions   = ["ecr:Describe*", "ecr:List*", "ecr:Get*", "ecr:BatchGetImage"]
+    resources = ["*"]
+  }
+
+  # CloudWatch Logs read (keycloak log group inspection during plan)
+  statement {
+    sid       = "LogsRead"
+    actions   = ["logs:DescribeLogGroups", "logs:ListTagsLogGroup", "logs:ListTagsForResource"]
+    resources = ["*"]
+  }
+
   # SSM read — platform outputs published to /platform/<env>/*
   statement {
     sid     = "SsmRead"
@@ -258,6 +279,15 @@ data "aws_iam_policy_document" "platform_apply" {
       "route53:List*",
       "rds:Describe*",
       "rds:List*",
+      "ecs:Describe*",
+      "ecs:List*",
+      "ecr:Describe*",
+      "ecr:List*",
+      "ecr:Get*",
+      "ecr:BatchGetImage",
+      "logs:DescribeLogGroups",
+      "logs:ListTagsLogGroup",
+      "logs:ListTagsForResource",
     ]
     resources = ["*"]
   }
@@ -307,7 +337,7 @@ data "aws_iam_policy_document" "platform_apply" {
     resources = ["*"]
   }
 
-  # ELBv2 write (alb: ALB / Listener)
+  # ELBv2 write (alb: ALB / Listener / keycloak: TG / Listener Rule)
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: 一部 action は resource-level permission 非対応(CreateLoadBalancer 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
@@ -321,6 +351,16 @@ data "aws_iam_policy_document" "platform_apply" {
       "elasticloadbalancing:CreateListener",
       "elasticloadbalancing:DeleteListener",
       "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:CreateTargetGroup",
+      "elasticloadbalancing:DeleteTargetGroup",
+      "elasticloadbalancing:ModifyTargetGroup",
+      "elasticloadbalancing:ModifyTargetGroupAttributes",
+      "elasticloadbalancing:CreateRule",
+      "elasticloadbalancing:DeleteRule",
+      "elasticloadbalancing:ModifyRule",
+      "elasticloadbalancing:SetRulePriorities",
+      "elasticloadbalancing:RegisterTargets",
+      "elasticloadbalancing:DeregisterTargets",
       "elasticloadbalancing:AddTags",
       "elasticloadbalancing:RemoveTags",
     ]
@@ -332,6 +372,72 @@ data "aws_iam_policy_document" "platform_apply" {
     sid       = "ElbSlr"
     actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/elasticloadbalancing.amazonaws.com/*"]
+  }
+
+  # ECS write (platform cluster / keycloak task definition / service)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateCluster 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
+  statement {
+    sid = "EcsWrite"
+    actions = [
+      "ecs:CreateCluster",
+      "ecs:DeleteCluster",
+      "ecs:UpdateCluster",
+      "ecs:UpdateClusterSettings",
+      "ecs:PutClusterCapacityProviders",
+      "ecs:RegisterTaskDefinition",
+      "ecs:DeregisterTaskDefinition",
+      "ecs:CreateService",
+      "ecs:UpdateService",
+      "ecs:DeleteService",
+      "ecs:TagResource",
+      "ecs:UntagResource",
+    ]
+    resources = ["*"]
+  }
+
+  # Service-linked role for ECS
+  statement {
+    sid       = "EcsSlr"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/ecs.amazonaws.com/*"]
+  }
+
+  # IAM PassRole — required for ecs:RegisterTaskDefinition (execution role + task role)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: platform-* ロール ARN に絞る
+  statement {
+    sid     = "IamPassRole"
+    actions = ["iam:PassRole"]
+    resources = [
+      "arn:aws:iam::${var.account_id}:role/platform-*",
+    ]
+  }
+
+  # CloudWatch Logs write (keycloak log group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: /ecs/platform-<env>/* ロググループ ARN に絞る
+  statement {
+    sid = "LogsWrite"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:TagLogGroup",
+      "logs:UntagLogGroup",
+      "logs:TagResource",
+      "logs:UntagResource",
+    ]
+    resources = [
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/platform-${var.env}/*",
+    ]
+  }
+  # logs:DescribeLogGroups does not support resource-level permissions; must use Resource:"*"
+  statement {
+    sid       = "LogsDescribe"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
   }
 
   # ACM write (alb: base wildcard cert)

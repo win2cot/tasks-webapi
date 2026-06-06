@@ -1,20 +1,13 @@
 # ---------------------------------------------------------------------------
-# SG-KeycloakDB — inbound from VPC CIDR on :3306, no egress
-# Ingress from VPC CIDR until #322 creates SG-Keycloak; private subnet only.
+# SG-KeycloakDB — no inline ingress rules; ingress is wired from
+# platform/dev/main.tf via aws_security_group_rule (SG-Keycloak → :3306)
+# to break the cross-module circular dependency (#322).
 # ---------------------------------------------------------------------------
 
 resource "aws_security_group" "keycloak_db" {
   name        = "platform-${var.env}-sg-keycloak-db"
-  description = "Keycloak DB: inbound from VPC on :3306, no outbound"
+  description = "Keycloak DB: inbound from SG-Keycloak on :3306 (see main.tf sg rule), no outbound"
   vpc_id      = var.vpc_id
-
-  ingress {
-    description = "MySQL from VPC (Keycloak ECS)"
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
 
   tags = {
     Name = "platform-${var.env}-sg-keycloak-db"

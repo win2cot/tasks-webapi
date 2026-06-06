@@ -4,6 +4,7 @@ module "parameter_store" {
   env                          = var.env
   db_password                  = var.db_password
   keycloak_spi_read_password   = var.keycloak_spi_read_password
+  keycloak_spi_read_username   = var.keycloak_spi_read_username
   keycloak_admin_password      = var.keycloak_admin_password
   keycloak_oauth_client_secret = var.keycloak_oauth_client_secret
   keycloak_smtp_password       = var.keycloak_smtp_password

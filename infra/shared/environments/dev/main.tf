@@ -10,6 +10,8 @@ provider "aws" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 module "iam_oidc" {
   source = "../../modules/iam_oidc"
 
@@ -141,7 +143,6 @@ module "keycloak_db" {
 
   env                = "dev"
   vpc_id             = module.network.vpc_id
-  vpc_cidr           = module.network.vpc_cidr
   private_subnet_ids = module.network.private_subnet_ids
   db_password        = "CHANGE_ME"
 
@@ -182,4 +183,70 @@ resource "aws_ssm_parameter" "keycloak_db_sg_id" {
   name  = "/platform/dev/keycloak-db-sg-id"
   type  = "String"
   value = module.keycloak_db.sg_id
+}
+
+# ---------------------------------------------------------------------------
+# Platform ECS Cluster — Keycloak ECS Service が乗るクラスタ (ADR-0004 / #322)
+# ---------------------------------------------------------------------------
+
+resource "aws_ecs_cluster" "platform" {
+  name = "platform-dev-cluster"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  tags = {
+    Name = "platform-dev-cluster"
+  }
+}
+
+resource "aws_ecs_cluster_capacity_providers" "platform" {
+  cluster_name = aws_ecs_cluster.platform.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+    base              = 1
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Keycloak ECS Service (共有 IdP runtime, ADR-0004 / #322)
+# ECR image は keycloak-custom (#321); URI は tasks stack 所有の ECR からビルド済み image を参照
+# ---------------------------------------------------------------------------
+
+module "keycloak" {
+  source = "../../modules/keycloak"
+
+  env                  = "dev"
+  vpc_id               = module.network.vpc_id
+  vpc_cidr             = module.network.vpc_cidr
+  alb_sg_id            = module.alb.sg_id
+  keycloak_db_sg_id    = module.keycloak_db.sg_id
+  keycloak_db_endpoint = module.keycloak_db.db_endpoint
+  https_listener_arn   = module.alb.https_listener_arn
+  private_subnet_ids   = module.network.private_subnet_ids
+  ecs_cluster_arn      = aws_ecs_cluster.platform.arn
+  image_uri            = "${data.aws_caller_identity.current.account_id}.dkr.ecr.ap-northeast-1.amazonaws.com/keycloak-custom:latest"
+  hostname             = "auth-dev.dgz48.xyz"
+  account_id           = data.aws_caller_identity.current.account_id
+  region               = "ap-northeast-1"
+
+  depends_on = [module.iam_oidc]
+}
+
+# SG-KeycloakDB: ingress を VPC CIDR(暫定)から SG-Keycloak に tighten (#322)
+# keycloak_db module の inline ingress rule を削除し、ここで SG reference に差し替える。
+resource "aws_security_group_rule" "keycloak_db_from_keycloak" {
+  type                     = "ingress"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  source_security_group_id = module.keycloak.sg_id
+  security_group_id        = module.keycloak_db.sg_id
+  description              = "Keycloak ECS (SG-Keycloak) to Keycloak DB"
 }
