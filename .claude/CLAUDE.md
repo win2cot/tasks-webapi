@@ -61,6 +61,7 @@ Before making non-trivial code or design changes, read the following Japanese-Ma
 
 - `docs/specs/設計規約.md` — architecture (Spring Modulith + per-feature clean layers), package layout, multi-tenant rules, auth response policy (404 for read denial, 403 for write denial, 401 unauth), Flyway naming, OpenAPI-first, error response schema.
 - `docs/specs/コーディング規約.md` — Java/Spring style, null-safety, allowed Lombok annotations, JPA entity pattern, DTO records, exception hierarchy, tests (Testcontainers MySQL 8.4, no H2), logging, naming.
+- `docs/specs/Terraform規約.md` — IaC rules for `infra/**/*.tf`: IAM least privilege (no wildcard actions except read-only `Get*`/`List*`/`Describe*` prefixes, ARN-scoped resources, IAM permissions added in the same PR as the resource they serve). Naming/tagging SSOT is infra ADR-0002 §3.F.
 
 Architecture-level decisions are recorded as ADRs under `docs/adr/` (template: `docs/adr/0000-template.md`; index starts at `docs/adr/0001-record-architecture-decisions.md`). When a change introduces a new library, a new framework-level pattern, or revises an existing convention, open an ADR in the same PR.
 
@@ -80,6 +81,7 @@ GitHub Actions (`cicd.yml`) runs `./gradlew :webapi:check` on every push and PR,
 - 基本設計書: `docs/specs/基本設計書.md`
 - 設計規約: `docs/specs/設計規約.md`
 - コーディング規約: `docs/specs/コーディング規約.md`
+- Terraform 規約: `docs/specs/Terraform規約.md`
 - 開発計画書: `docs/specs/開発計画書.md`
 - ADR: `docs/adr/` 配下(各 ADR 個別ファイル)
 
