@@ -8,7 +8,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -34,7 +38,10 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(TaskController.class)
@@ -51,12 +58,19 @@ class TaskControllerWebMvcTest {
   @MockitoBean UserRepository userRepository;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
+  @MockitoBean UserTenantsResolverService userTenantsResolverService;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
 
   @Autowired MockMvc mockMvc;
 
   private static final Long USER_ID = 1L; // matches @WithMockMember default id
+
+  @BeforeEach
+  void stubTenantResolver() {
+    BDDMockito.given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
+        .willReturn(Optional.of(new TenantMembership(1L, TenantRole.MEMBER)));
+  }
 
   private static final long VERSION = 0L;
   private static final String IF_MATCH = "W/\"" + VERSION + "\"";
@@ -252,12 +266,16 @@ class TaskControllerWebMvcTest {
   @Test
   @WithMockSaasAdmin
   void get_returns403_whenSaasAdminWithoutTenantRole() throws Exception {
+    BDDMockito.given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
+        .willReturn(Optional.empty());
     mockMvc.perform(get("/api/tasks/1")).andExpect(status().isForbidden());
   }
 
   @Test
   @WithMockSaasAdmin
   void changeStatus_returns403_whenSaasAdminWithoutTenantRole() throws Exception {
+    BDDMockito.given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
+        .willReturn(Optional.empty());
     mockMvc
         .perform(
             patch("/api/tasks/1/status")

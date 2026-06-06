@@ -1,9 +1,11 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
@@ -20,5 +22,15 @@ class UserTenantMembershipAdapter implements TenantMembershipPort {
     return repository
         .findByIdUserIdAndIdTenantIdAndStatus(userId, tenantId, UserTenantStatus.ACTIVE)
         .map(UserTenantJpaEntity::getRole);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<TenantMembership> findActiveMemberships(Long userId) {
+    return repository
+        .findByIdUserIdAndStatusOrderByJoinedAtAsc(userId, UserTenantStatus.ACTIVE)
+        .stream()
+        .map(e -> new TenantMembership(e.getId().getTenantId(), e.getRole()))
+        .toList();
   }
 }

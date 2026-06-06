@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(LogoutController.class)
@@ -39,6 +40,7 @@ class LogoutControllerTest {
   @MockitoBean UserRepository userRepository;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
+  @MockitoBean UserTenantsResolverService userTenantsResolverService;
   @MockitoBean LogoutUseCase logoutUseCase;
 
   @Autowired MockMvc mockMvc;

@@ -13,7 +13,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -31,11 +33,14 @@ import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepositor
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.SwitchTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
@@ -53,6 +58,7 @@ class SecurityConfigTest {
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean LogoutUseCase logoutUseCase;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
+  @MockitoBean UserTenantsResolverService userTenantsResolverService;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
   @MockitoBean SwitchTenantUseCase switchTenantUseCase;
@@ -61,6 +67,12 @@ class SecurityConfigTest {
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
 
   @Autowired MockMvc mockMvc;
+
+  @BeforeEach
+  void stubTenantResolver() {
+    given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
+        .willReturn(Optional.of(new TenantMembership(1L, TenantRole.MEMBER)));
+  }
 
   @Test
   void unauthenticatedRequestReturnsUnauthorized() throws Exception {

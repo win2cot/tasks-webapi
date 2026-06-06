@@ -24,15 +24,22 @@ import tools.jackson.databind.json.JsonMapper;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 
 /**
  * X-Tenant-Id ヘッダを読み取り、user_tenants を検証して TenantContext を設定する。
  *
- * <p>ヘッダ未指定の場合は TenantContext を設定せずに通過させる。認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は
- * ROLE_TENANT_ADMIN または ROLE_MEMBER を SecurityContext に付与する。エラー応答は ADR-0011 の {@link ErrorResponse}
- * 形式で返す。
+ * <p>ヘッダ指定時: 認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は ROLE_TENANT_ADMIN または ROLE_MEMBER
+ * を SecurityContext に付与する。
+ *
+ * <p>ヘッダ未指定時: 免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /actuator/**})および
+ * 非認証リクエストはそのまま通過。それ以外の認証済みリクエストは {@link UserTenantsResolverService} で初期テナントを自動解決する(ADR-0016)。
+ * 所属テナント 0 件の場合は 403 を返す。
+ *
+ * <p>エラー応答は ADR-0011 の {@link ErrorResponse} 形式で返す。
  */
 @Component
 @RequiredArgsConstructor
@@ -43,6 +50,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
   private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   private final TenantMembershipPort tenantMembershipPort;
+  private final UserTenantsResolverService userTenantsResolverService;
   private final JsonMapper objectMapper;
 
   @Override
@@ -52,7 +60,27 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
     String tenantIdHeader = request.getHeader(HEADER_X_TENANT_ID);
     if (tenantIdHeader == null) {
-      filterChain.doFilter(request, response);
+      Authentication preAuth = SecurityContextHolder.getContext().getAuthentication();
+      if (!(preAuth instanceof TasksAuthenticationToken preToken) || isExemptPath(request)) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+      Optional<TenantMembership> resolved =
+          userTenantsResolverService.resolveInitial(preToken.getPrincipal().getId());
+      if (resolved.isEmpty()) {
+        writeErrorResponse(
+            response, HttpStatus.FORBIDDEN, ErrorCode.E_FORBIDDEN, "所属テナントがありません", request);
+        return;
+      }
+      TenantMembership membership = resolved.get();
+      SecurityContextHolder.getContext()
+          .setAuthentication(withTenantRole(preToken, membership.role()));
+      TenantContext.set(membership.tenantId());
+      try {
+        filterChain.doFilter(request, response);
+      } finally {
+        TenantContext.clear();
+      }
       return;
     }
 
@@ -91,6 +119,19 @@ public class TenantContextFilter extends OncePerRequestFilter {
     } finally {
       TenantContext.clear();
     }
+  }
+
+  /**
+   * 初期テナント自動解決を行わない免除パスか判定する。
+   *
+   * <p>/api/auth/** (me / select / logout)、/api/tenants/** (SaaS Admin)、/actuator/** はテナントコンテキスト不要。
+   */
+  private static boolean isExemptPath(HttpServletRequest request) {
+    String uri = request.getRequestURI();
+    return uri.startsWith("/api/auth/")
+        || uri.startsWith("/api/tenants")
+        || uri.startsWith("/actuator/")
+        || uri.equals("/actuator");
   }
 
   private void writeErrorResponse(
