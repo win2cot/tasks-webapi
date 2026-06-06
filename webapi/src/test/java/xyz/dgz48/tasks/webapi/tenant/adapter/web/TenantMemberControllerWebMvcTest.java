@@ -34,6 +34,7 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(TenantMemberController.class)
@@ -50,6 +51,7 @@ class TenantMemberControllerWebMvcTest {
   @MockitoBean UserRepository userRepository;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
+  @MockitoBean UserTenantsResolverService userTenantsResolverService;
   @MockitoBean AddMemberUseCase addMemberUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
