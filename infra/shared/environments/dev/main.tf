@@ -144,6 +144,10 @@ module "keycloak_db" {
   vpc_cidr           = module.network.vpc_cidr
   private_subnet_ids = module.network.private_subnet_ids
   db_password        = "CHANGE_ME"
+
+  # iam_oidc が platform_apply ロールポリシー(rds:*)を更新してから RDS を作成する。
+  # 同一 apply で並列実行するとポリシー反映前に rds:CreateDBSubnetGroup が失敗するため。
+  depends_on = [module.iam_oidc]
 }
 
 # ---------------------------------------------------------------------------
