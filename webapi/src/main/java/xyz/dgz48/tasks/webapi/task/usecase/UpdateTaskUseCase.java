@@ -80,9 +80,33 @@ public class UpdateTaskUseCase {
   private static String toJsonValue(@Nullable Object value) {
     if (value == null) return "null";
     if (value instanceof String s) {
-      return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+      return "\"" + escapeJsonString(s) + "\"";
     }
-    if (value instanceof Enum<?> e) return "\"" + e.name() + "\"";
+    if (value instanceof Enum<?> e) return "\"" + escapeJsonString(e.name()) + "\"";
     return String.valueOf(value);
+  }
+
+  private static String escapeJsonString(String s) {
+    StringBuilder sb = new StringBuilder(s.length() + 16);
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      switch (c) {
+        case '"' -> sb.append("\\\"");
+        case '\\' -> sb.append("\\\\");
+        case '\n' -> sb.append("\\n");
+        case '\r' -> sb.append("\\r");
+        case '\t' -> sb.append("\\t");
+        case '\b' -> sb.append("\\b");
+        case '\f' -> sb.append("\\f");
+        default -> {
+          if (c < 0x20) {
+            sb.append(String.format("\\u%04X", (int) c));
+          } else {
+            sb.append(c);
+          }
+        }
+      }
+    }
+    return sb.toString();
   }
 }
