@@ -49,7 +49,7 @@ jobs:
 
       - name: Trivy config scan — SARIF (全重大度、code scanning 用)
         id: trivy-sarif
-        uses: aquasecurity/trivy-action@v0.31.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: infra/
@@ -67,7 +67,7 @@ jobs:
 
       - name: Trivy config scan — HIGH / CRITICAL で fail
         if: always() && (steps.trivy-sarif.outcome == 'success' || steps.trivy-sarif.outcome == 'failure')
-        uses: aquasecurity/trivy-action@v0.31.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: infra/
