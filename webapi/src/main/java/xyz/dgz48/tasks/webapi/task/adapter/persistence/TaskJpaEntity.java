@@ -116,6 +116,27 @@ public class TaskJpaEntity extends TenantFilteredEntity {
     this.dueDate = dueDate;
   }
 
+  public TaskJpaEntity(
+      Long tenantId,
+      Long ownerId,
+      String title,
+      @Nullable String description,
+      TaskStatus status,
+      Priority priority,
+      Visibility visibility,
+      @Nullable Long assigneeId,
+      LocalDate dueDate) {
+    this.tenantId = tenantId;
+    this.ownerId = ownerId;
+    this.title = title;
+    this.description = description;
+    this.status = status;
+    this.priority = priority;
+    this.visibility = visibility;
+    this.assigneeId = assigneeId;
+    this.dueDate = dueDate;
+  }
+
   public void updateStatus(TaskStatus newStatus, @Nullable LocalDateTime newCompletedAt) {
     this.status = newStatus;
     this.completedAt = newCompletedAt;
