@@ -331,6 +331,12 @@ data "aws_iam_policy_document" "platform_apply" {
       "ec2:RevokeSecurityGroupEgress",
       "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
       "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+      # SG 差し替え時に RDS 等が保持する ENI の SG 関連付けを外すために必要
+      # ec2:ModifyNetworkInterfaceAttribute: ENI の SG リストを更新して旧 SG を除去
+      # ec2:DetachNetworkInterface: ModifyNetworkInterfaceAttribute が使えない ENI の最終手段
+      # いずれも resource-level permission 非対応のため Resource:"*"
+      "ec2:ModifyNetworkInterfaceAttribute",
+      "ec2:DetachNetworkInterface",
       "ec2:CreateTags",
       "ec2:DeleteTags",
     ]
