@@ -1,5 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.adapter.web.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import org.jspecify.annotations.Nullable;
 import org.openapitools.jackson.nullable.JsonNullable;
@@ -15,8 +17,8 @@ import xyz.dgz48.tasks.webapi.task.domain.Priority;
  * </ul>
  */
 public record TaskPatchRequest(
-    JsonNullable<String> title,
-    JsonNullable<@Nullable String> description,
+    JsonNullable<@NotBlank @Size(max = 100) String> title,
+    JsonNullable<@Nullable @Size(max = 2000) String> description,
     JsonNullable<Priority> priority,
     JsonNullable<@Nullable Long> assigneeId,
     JsonNullable<LocalDate> dueDate) {}

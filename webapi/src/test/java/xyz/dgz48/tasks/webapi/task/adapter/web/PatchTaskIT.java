@@ -282,6 +282,36 @@ class PatchTaskIT {
   }
 
   @Test
+  void patchTask_returns400_whenTitleExceedsMaxLength() throws Exception {
+    String longTitle = "a".repeat(101);
+    mockMvc
+        .perform(
+            patch("/api/tasks/" + taskId)
+                .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"" + longTitle + "\"}")
+                .with(authentication(ownerToken)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+  }
+
+  @Test
+  void patchTask_returns400_whenDescriptionExceedsMaxLength() throws Exception {
+    String longDescription = "a".repeat(2001);
+    mockMvc
+        .perform(
+            patch("/api/tasks/" + taskId)
+                .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"" + longDescription + "\"}")
+                .with(authentication(ownerToken)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+  }
+
+  @Test
   void patchTask_concurrentRequests_oneGets412() throws Exception {
     var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
     java.util.concurrent.Callable<org.springframework.test.web.servlet.MvcResult> req =
