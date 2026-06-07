@@ -13,6 +13,8 @@ import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
+import xyz.dgz48.tasks.webapi.task.domain.StakeholderAlreadyExistsException;
+import xyz.dgz48.tasks.webapi.task.domain.StakeholderNotFoundException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotViewableException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
@@ -22,7 +24,11 @@ public class TaskExceptionHandler {
 
   private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
-  @ExceptionHandler({TaskNotFoundException.class, TaskNotViewableException.class})
+  @ExceptionHandler({
+    TaskNotFoundException.class,
+    TaskNotViewableException.class,
+    StakeholderNotFoundException.class
+  })
   @ResponseStatus(HttpStatus.NOT_FOUND)
   public ErrorResponse handleNotFound(DomainException ex, HttpServletRequest request) {
     return new ErrorResponse(
@@ -69,6 +75,18 @@ public class TaskExceptionHandler {
         HttpStatus.BAD_REQUEST.getReasonPhrase(),
         ErrorCode.E_VALIDATION,
         "必須ヘッダが指定されていません: " + ex.getHeaderName(),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(StakeholderAlreadyExistsException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleConflict(DomainException ex, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        HttpStatus.CONFLICT.value(),
+        HttpStatus.CONFLICT.getReasonPhrase(),
+        ErrorCode.E_CONFLICT,
+        Objects.requireNonNullElse(ex.getMessage(), "リソースが既に存在します"),
         request.getRequestURI());
   }
 

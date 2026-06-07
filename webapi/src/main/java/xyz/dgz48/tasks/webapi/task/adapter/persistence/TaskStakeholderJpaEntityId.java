@@ -11,4 +11,9 @@ import org.jspecify.annotations.Nullable;
 class TaskStakeholderJpaEntityId implements Serializable {
   @Nullable private Long taskId;
   @Nullable private Long userId;
+
+  TaskStakeholderJpaEntityId(Long taskId, Long userId) {
+    this.taskId = taskId;
+    this.userId = userId;
+  }
 }
