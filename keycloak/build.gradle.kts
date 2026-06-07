@@ -3,7 +3,7 @@ import net.ltgt.gradle.errorprone.errorprone
 plugins {
     java
     id("net.ltgt.errorprone") version "5.1.0"
-    id("com.diffplug.spotless") version "8.4.0"
+    id("com.diffplug.spotless") version "8.6.0"
 }
 
 group = "xyz.dgz48"
