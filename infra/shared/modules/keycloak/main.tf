@@ -209,6 +209,11 @@ resource "aws_ecs_task_definition" "keycloak" {
     image     = var.image_uri
     essential = true
 
+    # Explicit command overrides Dockerfile CMD; keeps Terraform plan readable.
+    # --import-realm: idempotent realm import from /opt/keycloak/data/import/ (IGNORE_EXISTING by default).
+    # See docs/dev/keycloak-realm-import.md for re-import procedure.
+    command = ["start", "--optimized", "--import-realm"]
+
     portMappings = [{
       containerPort = 8080
       protocol      = "tcp"

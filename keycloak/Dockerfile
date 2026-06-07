@@ -37,6 +37,12 @@ FROM quay.io/keycloak/keycloak:26.2.5
 
 COPY --from=kc-builder /opt/keycloak/ /opt/keycloak/
 
+# Bake realm export JSON for --import-realm.
+# Keycloak imports from /opt/keycloak/data/import/ at startup (IGNORE_EXISTING by default).
+# For local development the same directory is volume-mounted via docker-compose.local.yml,
+# overriding this layer. See docs/dev/keycloak-realm-import.md for full import procedure.
+COPY keycloak/realm-export/ /opt/keycloak/data/import/
+
 # Runtime configuration is injected via environment variables at container start.
 # Credentials must never be baked into the image.
 #
@@ -46,9 +52,8 @@ COPY --from=kc-builder /opt/keycloak/ /opt/keycloak/
 #   KC_DB_PASSWORD          DB password
 #   KEYCLOAK_ADMIN          Admin console username     (first-boot bootstrap only)
 #   KEYCLOAK_ADMIN_PASSWORD Admin console password     (first-boot bootstrap only)
-#
-# For local development override the command to: start-dev --import-realm
-# (see docker-compose.local.yml).
 
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
-CMD ["start", "--optimized"]
+# --import-realm: idempotent import from /opt/keycloak/data/import/ (IGNORE_EXISTING on re-boot).
+# Local development overrides this CMD with: start-dev --import-realm (docker-compose.local.yml).
+CMD ["start", "--optimized", "--import-realm"]
