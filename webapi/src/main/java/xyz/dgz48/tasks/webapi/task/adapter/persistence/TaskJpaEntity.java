@@ -141,4 +141,22 @@ public class TaskJpaEntity extends TenantFilteredEntity {
     this.status = newStatus;
     this.completedAt = newCompletedAt;
   }
+
+  /** PATCH 更新時のフィールド同期。Task ドメインの全可変フィールドを反映する。 */
+  public void updateFields(
+      String title,
+      @Nullable String description,
+      Priority priority,
+      @Nullable Long assigneeId,
+      LocalDate dueDate,
+      TaskStatus status,
+      @Nullable LocalDateTime completedAt) {
+    this.title = title;
+    this.description = description;
+    this.priority = priority;
+    this.assigneeId = assigneeId;
+    this.dueDate = dueDate;
+    this.status = status;
+    this.completedAt = completedAt;
+  }
 }
