@@ -99,7 +99,7 @@ Terraform でリソースを新規実装・変更・削除する PR では、そ
 
 注意: CI ロール自身の IAM ポリシー変更は merge → apply 後に初めて有効になる(自己管理 IAM の循環依存)。列挙漏れがあった場合は追補 PR が必要になることを許容する。
 
-**同一 PR で新リソースと IAM 権限を追加する場合の depends_on 必須ルール**
+#### 同一 PR で新リソースと IAM 権限を追加する場合の depends_on 必須ルール
 
 `module.iam_oidc` に write 権限を追加しつつ同一 PR で新リソースも追加する場合、そのリソースに `depends_on = [module.iam_oidc]` を付けること。`terraform apply` は IAM ポリシー更新と新リソース作成を並列実行するため、ポリシー反映前にリソース作成が走ると AccessDenied になる。
 
