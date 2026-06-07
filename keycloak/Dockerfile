@@ -44,7 +44,11 @@ COPY --from=kc-builder /opt/keycloak/ /opt/keycloak/
 COPY keycloak/realm-export/ /opt/keycloak/data/import/
 
 # Runtime configuration is injected via environment variables at container start.
-# Credentials must never be baked into the image.
+# Production service credentials (DB password, admin password) must never be baked
+# into the image — they are sourced from AWS Parameter Store / Secrets Manager at runtime.
+# The realm-export above contains dev/local test fixture users only; these are
+# intentionally baked into dev/local images for development convenience and must
+# not be used in production.
 #
 # Required at runtime (prod: sourced from AWS Parameter Store / Secrets Manager):
 #   KC_DB_URL               JDBC URL for Keycloak DB  (e.g. jdbc:mysql://host:3306/keycloak)
