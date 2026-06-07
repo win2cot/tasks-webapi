@@ -33,9 +33,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
+import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.AddStakeholderRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.ChangeTaskStatusRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.StakeholderResponse;
+import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskCreateRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskListItemResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskPageResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskResponse;
@@ -45,6 +47,7 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.CreateTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
@@ -57,6 +60,7 @@ import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 @RequiredArgsConstructor
 public class TaskController {
 
+  private final CreateTaskUseCase createTaskUseCase;
   private final GetTaskUseCase getTaskUseCase;
   private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
   private final ListTasksUseCase listTasksUseCase;
@@ -64,6 +68,29 @@ public class TaskController {
   private final AddStakeholderUseCase addStakeholderUseCase;
   private final RemoveStakeholderUseCase removeStakeholderUseCase;
   private final UserRepository userRepository;
+
+  @PostMapping
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<TaskResponse> createTask(
+      @RequestBody @Valid TaskCreateRequest request, TasksAuthenticationToken token) {
+    Long tenantId = TenantContext.get();
+    if (tenantId == null) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "テナントが選択されていません");
+    }
+    Task task =
+        createTaskUseCase.execute(
+            tenantId,
+            token.getPrincipal().getId(),
+            request.title(),
+            request.description(),
+            request.priority(),
+            request.visibility(),
+            request.assigneeId(),
+            request.dueDate(),
+            request.stakeholderUserIds());
+    URI location = URI.create("/api/tasks/" + task.getId());
+    return ResponseEntity.created(location).body(TaskResponse.from(task));
+  }
 
   /**
    * タスク一覧取得(operationId: listTasks)。

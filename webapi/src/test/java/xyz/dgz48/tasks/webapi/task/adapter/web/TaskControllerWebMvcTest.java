@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,6 +43,7 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.CreateTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
@@ -68,6 +70,7 @@ class TaskControllerWebMvcTest {
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
+  @MockitoBean CreateTaskUseCase createTaskUseCase;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
   @MockitoBean ListTasksUseCase listTasksUseCase;
@@ -395,5 +398,134 @@ class TaskControllerWebMvcTest {
         .willReturn(List.of());
 
     mockMvc.perform(get("/api/tasks")).andExpect(status().isOk());
+  }
+
+  // --- createTask ---
+
+  @Test
+  @WithMockMember
+  void createTask_returns201_whenValidRequest() throws Exception {
+    Task created = buildTask(TaskStatus.NOT_STARTED);
+    BDDMockito.given(
+            createTaskUseCase.execute(
+                ArgumentMatchers.any(),
+                ArgumentMatchers.anyLong(),
+                ArgumentMatchers.anyString(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any()))
+        .willReturn(created);
+
+    mockMvc
+        .perform(
+            post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "title": "Test task",
+                      "priority": "MEDIUM",
+                      "visibility": "TENANT",
+                      "dueDate": "2026-06-01"
+                    }
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(1))
+        .andExpect(jsonPath("$.status").value("NOT_STARTED"));
+  }
+
+  @Test
+  @WithMockMember
+  void createTask_returns400_whenTitleIsBlank() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "title": "",
+                      "priority": "MEDIUM",
+                      "visibility": "TENANT",
+                      "dueDate": "2026-06-01"
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+  }
+
+  @Test
+  void createTask_returns401_whenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "title": "Test task",
+                      "priority": "MEDIUM",
+                      "visibility": "TENANT",
+                      "dueDate": "2026-06-01"
+                    }
+                    """))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @WithMockSaasAdmin
+  void createTask_returns403_whenSaasAdminWithoutTenantRole() throws Exception {
+    BDDMockito.given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
+        .willReturn(Optional.empty());
+    mockMvc
+        .perform(
+            post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "title": "Test task",
+                      "priority": "MEDIUM",
+                      "visibility": "TENANT",
+                      "dueDate": "2026-06-01"
+                    }
+                    """))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void createTask_returns201_whenTenantAdmin() throws Exception {
+    Task created = buildTask(TaskStatus.NOT_STARTED);
+    BDDMockito.given(
+            createTaskUseCase.execute(
+                ArgumentMatchers.any(),
+                ArgumentMatchers.anyLong(),
+                ArgumentMatchers.anyString(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any()))
+        .willReturn(created);
+
+    mockMvc
+        .perform(
+            post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "title": "Tenant Admin task",
+                      "priority": "HIGH",
+                      "visibility": "TENANT",
+                      "dueDate": "2026-06-01"
+                    }
+                    """))
+        .andExpect(status().isCreated());
   }
 }

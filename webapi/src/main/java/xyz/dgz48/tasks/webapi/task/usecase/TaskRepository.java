@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
@@ -15,6 +16,17 @@ public interface TaskRepository {
 
   /** Hibernate Filter が有効な場合、現在テナントに属さないタスクは自動的に空を返す。 */
   Optional<Task> findById(Long id);
+
+  /** 新規タスクを永続化して返す。status は常に NOT_STARTED で固定される。 */
+  Task create(
+      Long tenantId,
+      Long ownerId,
+      String title,
+      @Nullable String description,
+      Priority priority,
+      Visibility visibility,
+      @Nullable Long assigneeId,
+      LocalDate dueDate);
 
   /** タスクを保存して最新の状態を返す。 */
   Task save(Task task);

@@ -40,6 +40,30 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
   }
 
   @Override
+  public Task create(
+      Long tenantId,
+      Long ownerId,
+      String title,
+      @Nullable String description,
+      Priority priority,
+      Visibility visibility,
+      @Nullable Long assigneeId,
+      LocalDate dueDate) {
+    TaskJpaEntity entity =
+        new TaskJpaEntity(
+            tenantId,
+            ownerId,
+            title,
+            description,
+            TaskStatus.NOT_STARTED,
+            priority,
+            visibility,
+            assigneeId,
+            dueDate);
+    return toDomain(jpaRepository.saveAndFlush(entity));
+  }
+
+  @Override
   public Task save(Task task) {
     TaskJpaEntity entity =
         jpaRepository

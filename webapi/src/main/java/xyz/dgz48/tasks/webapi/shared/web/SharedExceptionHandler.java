@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -26,6 +27,24 @@ class SharedExceptionHandler {
         HttpStatus.FORBIDDEN.getReasonPhrase(),
         ErrorCode.E_FORBIDDEN,
         Objects.requireNonNullElse(ex.getMessage(), "SaaS Admin ロールが必要です"),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleValidation(
+      MethodArgumentNotValidException ex, HttpServletRequest request) {
+    String message =
+        ex.getBindingResult().getFieldErrors().stream()
+            .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+            .findFirst()
+            .orElse("入力値が不正です");
+    return new ErrorResponse(
+        OffsetDateTime.now(JST),
+        HttpStatus.BAD_REQUEST.value(),
+        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+        ErrorCode.E_VALIDATION,
+        message,
         request.getRequestURI());
   }
 }
