@@ -11,7 +11,9 @@ import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
+import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
+import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 
 /** タスク作成ユースケース(POST /api/tasks)。 */
 @Service
@@ -20,6 +22,7 @@ public class CreateTaskUseCase {
 
   private final TaskRepository taskRepository;
   private final StakeholderRepository stakeholderRepository;
+  private final TenantMembershipPort tenantMembershipPort;
   private final AuditLogPort auditLogPort;
   private final Clock clock;
 
@@ -54,8 +57,15 @@ public class CreateTaskUseCase {
             tenantId, ownerUserId, title, description, priority, visibility, assigneeId, dueDate);
 
     if (visibility == Visibility.STAKEHOLDERS && stakeholderUserIds != null) {
+      List<Long> distinctUserIds = stakeholderUserIds.stream().distinct().toList();
+      // クロステナント登録を拒否(同一テナントの ACTIVE メンバーのみ登録可) — 検証を先に一括実施
+      for (Long userId : distinctUserIds) {
+        if (tenantMembershipPort.findActiveRole(userId, tenantId).isEmpty()) {
+          throw new TaskOwnershipException(task.getId());
+        }
+      }
       LocalDateTime now = LocalDateTime.now(clock);
-      for (Long userId : stakeholderUserIds) {
+      for (Long userId : distinctUserIds) {
         stakeholderRepository.add(task.getId(), tenantId, userId, ownerUserId, now);
       }
     }

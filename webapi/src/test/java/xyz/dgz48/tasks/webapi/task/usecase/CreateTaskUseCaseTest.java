@@ -1,9 +1,11 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,8 +25,11 @@ import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
+import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
+import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 
 @ExtendWith(MockitoExtension.class)
 class CreateTaskUseCaseTest {
@@ -38,6 +44,7 @@ class CreateTaskUseCaseTest {
 
   @Mock TaskRepository taskRepository;
   @Mock StakeholderRepository stakeholderRepository;
+  @Mock TenantMembershipPort tenantMembershipPort;
   @Mock AuditLogPort auditLogPort;
   @Mock Clock clock;
   @InjectMocks CreateTaskUseCase useCase;
@@ -98,6 +105,8 @@ class CreateTaskUseCaseTest {
     Task created = buildCreatedTask(Visibility.STAKEHOLDERS);
     when(taskRepository.create(any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(created);
+    when(tenantMembershipPort.findActiveRole(STAKEHOLDER_ID, TENANT_ID))
+        .thenReturn(Optional.of(TenantRole.MEMBER));
     when(clock.getZone()).thenReturn(JST);
     when(clock.instant()).thenReturn(FIXED_INSTANT);
 
@@ -113,6 +122,56 @@ class CreateTaskUseCaseTest {
         List.of(STAKEHOLDER_ID));
 
     verify(stakeholderRepository)
+        .add(eq(1L), eq(TENANT_ID), eq(STAKEHOLDER_ID), eq(OWNER_ID), any(LocalDateTime.class));
+  }
+
+  @Test
+  void execute_throwsTaskOwnershipException_whenStakeholderNotInTenant() {
+    Task created = buildCreatedTask(Visibility.STAKEHOLDERS);
+    when(taskRepository.create(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(created);
+    when(tenantMembershipPort.findActiveRole(STAKEHOLDER_ID, TENANT_ID))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                useCase.execute(
+                    TENANT_ID,
+                    OWNER_ID,
+                    "STAKEHOLDERSタスク",
+                    null,
+                    Priority.MEDIUM,
+                    Visibility.STAKEHOLDERS,
+                    null,
+                    LocalDate.of(2026, 12, 31),
+                    List.of(STAKEHOLDER_ID)))
+        .isInstanceOf(TaskOwnershipException.class);
+
+    verify(stakeholderRepository, never()).add(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void execute_deduplicatesStakeholderIds_whenDuplicatesGiven() {
+    Task created = buildCreatedTask(Visibility.STAKEHOLDERS);
+    when(taskRepository.create(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(created);
+    when(tenantMembershipPort.findActiveRole(STAKEHOLDER_ID, TENANT_ID))
+        .thenReturn(Optional.of(TenantRole.MEMBER));
+    when(clock.getZone()).thenReturn(JST);
+    when(clock.instant()).thenReturn(FIXED_INSTANT);
+
+    useCase.execute(
+        TENANT_ID,
+        OWNER_ID,
+        "重複IDタスク",
+        null,
+        Priority.MEDIUM,
+        Visibility.STAKEHOLDERS,
+        null,
+        LocalDate.of(2026, 12, 31),
+        List.of(STAKEHOLDER_ID, STAKEHOLDER_ID));
+
+    verify(stakeholderRepository, times(1))
         .add(eq(1L), eq(TENANT_ID), eq(STAKEHOLDER_ID), eq(OWNER_ID), any(LocalDateTime.class));
   }
 

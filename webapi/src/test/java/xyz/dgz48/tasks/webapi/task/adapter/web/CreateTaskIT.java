@@ -52,6 +52,7 @@ class CreateTaskIT {
 
   private Long userId;
   private Long otherUserId;
+  private Long nonTenantUserId;
   private Long tenantId;
   private TasksAuthenticationToken authToken;
 
@@ -68,10 +69,16 @@ class CreateTaskIT {
               new UserJpaEntity(
                   "sub-ct-other", "ct-other@example.com", "作成テスト次郎", "サクセイテストジロウ", null);
           em.persist(otherUser);
+
+          var nonTenantUser =
+              new UserJpaEntity(
+                  "sub-ct-nontenant", "ct-nontenant@example.com", "非テナント三郎", "ヒテナントサブロウ", null);
+          em.persist(nonTenantUser);
           em.flush();
 
           userId = user.getId();
           otherUserId = otherUser.getId();
+          nonTenantUserId = nonTenantUser.getId();
 
           var principal =
               new TasksPrincipal(
@@ -135,9 +142,10 @@ class CreateTaskIT {
           em.createNativeQuery("DELETE FROM tenants WHERE id = ?")
               .setParameter(1, tenantId)
               .executeUpdate();
-          em.createNativeQuery("DELETE FROM users WHERE id IN (?,?)")
+          em.createNativeQuery("DELETE FROM users WHERE id IN (?,?,?)")
               .setParameter(1, userId)
               .setParameter(2, otherUserId)
+              .setParameter(3, nonTenantUserId)
               .executeUpdate();
           return null;
         });
@@ -419,6 +427,75 @@ class CreateTaskIT {
 
       String body = result.getResponse().getContentAsString();
       assertThat(body).contains("\"tenantId\":" + tenantId);
+    }
+  }
+
+  @Nested
+  class StakeholderValidation {
+
+    @Test
+    void createTask_returns403_whenStakeholderNotInTenant() throws Exception {
+      mockMvc
+          .perform(
+              post("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(
+                      String.format(
+                          """
+                          {
+                            "title": "非テナントメンバーステークホルダー",
+                            "priority": "MEDIUM",
+                            "visibility": "STAKEHOLDERS",
+                            "dueDate": "2026-12-31",
+                            "stakeholderUserIds": [%d]
+                          }
+                          """,
+                          nonTenantUserId))
+                  .with(authentication(authToken)))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
+    }
+
+    @Test
+    void createTask_returns201_withDuplicateStakeholderIds() throws Exception {
+      var result =
+          mockMvc
+              .perform(
+                  post("/api/tasks")
+                      .header("X-Tenant-Id", String.valueOf(tenantId))
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(
+                          String.format(
+                              """
+                              {
+                                "title": "重複IDタスク",
+                                "priority": "HIGH",
+                                "visibility": "STAKEHOLDERS",
+                                "dueDate": "2026-12-31",
+                                "stakeholderUserIds": [%d, %d]
+                              }
+                              """,
+                              otherUserId, otherUserId))
+                      .with(authentication(authToken)))
+              .andExpect(status().isCreated())
+              .andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      String taskIdStr = body.replaceAll(".*\"id\":(\\d+).*", "$1");
+      Long taskId = Long.parseLong(taskIdStr);
+
+      txTemplate.execute(
+          ignored -> {
+            List<?> rows =
+                em.createNativeQuery(
+                        "SELECT user_id FROM task_stakeholders WHERE task_id = ? AND tenant_id = ?")
+                    .setParameter(1, taskId)
+                    .setParameter(2, tenantId)
+                    .getResultList();
+            assertThat(rows).hasSize(1);
+            return null;
+          });
     }
   }
 }
