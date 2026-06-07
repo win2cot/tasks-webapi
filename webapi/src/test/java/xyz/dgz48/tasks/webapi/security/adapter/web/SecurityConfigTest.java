@@ -20,6 +20,8 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -33,6 +35,7 @@ import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepositor
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
@@ -61,6 +64,7 @@ class SecurityConfigTest {
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
+  @MockitoBean ListTasksUseCase listTasksUseCase;
   @MockitoBean SwitchTenantUseCase switchTenantUseCase;
   @MockitoBean AddMemberUseCase addMemberUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
@@ -72,6 +76,8 @@ class SecurityConfigTest {
   void stubTenantResolver() {
     given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
         .willReturn(Optional.of(new TenantMembership(1L, TenantRole.MEMBER)));
+    given(listTasksUseCase.execute(any(), any(), any(), any(), any(), any()))
+        .willReturn(new ListTasksUseCase.Result(Page.empty(PageRequest.of(0, 50)), 0));
   }
 
   @Test
@@ -103,25 +109,25 @@ class SecurityConfigTest {
   @Test
   @WithMockJwt
   void authenticatedRequestIsAllowed() throws Exception {
-    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isOk());
   }
 
   @Test
   @WithMockMember
   void memberIsAllowed() throws Exception {
-    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isOk());
   }
 
   @Test
   @WithMockTenantAdmin
   void tenantAdminIsAllowed() throws Exception {
-    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isOk());
   }
 
   @Test
   @WithMockSaasAdmin
   void saasAdminIsAllowed() throws Exception {
-    mockMvc.perform(get("/api/tasks")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isOk());
   }
 
   @Test

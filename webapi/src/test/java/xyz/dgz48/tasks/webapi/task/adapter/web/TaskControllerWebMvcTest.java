@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,9 @@ import org.mockito.BDDMockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -38,10 +42,12 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
+import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(TaskController.class)
@@ -61,6 +67,7 @@ class TaskControllerWebMvcTest {
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
+  @MockitoBean ListTasksUseCase listTasksUseCase;
 
   @Autowired MockMvc mockMvc;
 
@@ -313,5 +320,74 @@ class TaskControllerWebMvcTest {
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("DONE"));
+  }
+
+  // --- listTasks ---
+
+  @Test
+  @WithMockMember
+  void listTasks_returns200WithPage() throws Exception {
+    Task task = buildTask(TaskStatus.NOT_STARTED);
+    Page<Task> taskPage = new PageImpl<>(List.of(task), PageRequest.of(0, 50), 1);
+    ListTasksUseCase.Result result = new ListTasksUseCase.Result(taskPage, 0);
+
+    BDDMockito.given(
+            listTasksUseCase.execute(
+                ArgumentMatchers.eq(USER_ID),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.any()))
+        .willReturn(result);
+
+    UserJpaEntity ownerEntity =
+        new UserJpaEntity("sub-t1", "owner@example.com", "Owner Name", "オーナーネーム", null);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of(ownerEntity));
+
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.number").value(0))
+        .andExpect(jsonPath("$.size").value(50))
+        .andExpect(jsonPath("$.overdueCount").value(0))
+        .andExpect(jsonPath("$.content").isArray());
+  }
+
+  @Test
+  void listTasks_returns401_whenUnauthenticated() throws Exception {
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @WithMockSaasAdmin
+  void listTasks_returns403_whenSaasAdminWithoutTenantRole() throws Exception {
+    BDDMockito.given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
+        .willReturn(Optional.empty());
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void listTasks_returns200_whenTenantAdmin() throws Exception {
+    Task task = buildTask(TaskStatus.NOT_STARTED);
+    Page<Task> taskPage = new PageImpl<>(List.of(task), PageRequest.of(0, 50), 1);
+    ListTasksUseCase.Result result = new ListTasksUseCase.Result(taskPage, 0);
+
+    BDDMockito.given(
+            listTasksUseCase.execute(
+                ArgumentMatchers.anyLong(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any()))
+        .willReturn(result);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
+
+    mockMvc.perform(get("/api/tasks")).andExpect(status().isOk());
   }
 }
