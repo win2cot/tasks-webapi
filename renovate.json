@@ -50,6 +50,18 @@
     {
       "matchFileNames": [".github/**"],
       "addLabels": ["area/ci", "renovate"]
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "addLabels": ["update:patch"]
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "addLabels": ["update:minor"]
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["update:major"]
     }
   ]
 }
