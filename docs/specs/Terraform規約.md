@@ -99,6 +99,26 @@ Terraform でリソースを新規実装・変更・削除する PR では、そ
 
 注意: CI ロール自身の IAM ポリシー変更は merge → apply 後に初めて有効になる(自己管理 IAM の循環依存)。列挙漏れがあった場合は追補 PR が必要になることを許容する。
 
+**同一 PR で新リソースと IAM 権限を追加する場合の depends_on 必須ルール**
+
+`module.iam_oidc` に write 権限を追加しつつ同一 PR で新リソースも追加する場合、そのリソースに `depends_on = [module.iam_oidc]` を付けること。`terraform apply` は IAM ポリシー更新と新リソース作成を並列実行するため、ポリシー反映前にリソース作成が走ると AccessDenied になる。
+
+```hcl
+# OK: iam_oidc に ecs:CreateCluster を追加した同 PR で ECS クラスタを追加する場合
+resource "aws_ecs_cluster" "example" {
+  name = "..."
+  depends_on = [module.iam_oidc]
+}
+
+# OK: モジュール呼び出しでも同様
+module "keycloak" {
+  source     = "..."
+  depends_on = [module.iam_oidc]
+}
+```
+
+参考: `module.keycloak_db`(PR #455)・`aws_ecs_cluster.platform`/`module.keycloak`(PR #465)に同じ対策を適用済み。
+
 ### 1.4 CI による機械検知
 
 R1 は `terraform-lint.yml` の wildcard gate で機械検知する(Issue #457)。`infra/**/*.tf` の IAM action のうち、wildcard を含み action 名が `Get` / `List` / `Describe` で始まらないものを検知して fail する(判定基準は R1 と同一)。
