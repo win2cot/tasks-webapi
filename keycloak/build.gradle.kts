@@ -34,7 +34,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     errorprone("com.google.errorprone:error_prone_core:2.49.0")
-    errorprone("com.uber.nullaway:nullaway:0.13.4")
+    errorprone("com.uber.nullaway:nullaway:0.13.6")
 }
 
 tasks.named<JavaCompile>("compileJava") {
