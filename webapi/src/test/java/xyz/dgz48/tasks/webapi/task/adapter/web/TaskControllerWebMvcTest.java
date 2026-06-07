@@ -40,9 +40,12 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskNotViewableException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
+import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.RemoveStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
@@ -68,6 +71,9 @@ class TaskControllerWebMvcTest {
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
   @MockitoBean ListTasksUseCase listTasksUseCase;
+  @MockitoBean ListStakeholdersUseCase listStakeholdersUseCase;
+  @MockitoBean AddStakeholderUseCase addStakeholderUseCase;
+  @MockitoBean RemoveStakeholderUseCase removeStakeholderUseCase;
 
   @Autowired MockMvc mockMvc;
 

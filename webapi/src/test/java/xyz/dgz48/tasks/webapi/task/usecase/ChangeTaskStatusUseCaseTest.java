@@ -41,6 +41,7 @@ class ChangeTaskStatusUseCaseTest {
   private static final LocalDateTime FIXED_LDT = LocalDateTime.ofInstant(FIXED_INSTANT, JST);
 
   @Mock TaskRepository taskRepository;
+  @Mock StakeholderRepository stakeholderRepository;
   @Mock TaskAuthorizationDomainService taskAuthorizationDomainService;
   @Mock Clock clock;
   @InjectMocks ChangeTaskStatusUseCase useCase;

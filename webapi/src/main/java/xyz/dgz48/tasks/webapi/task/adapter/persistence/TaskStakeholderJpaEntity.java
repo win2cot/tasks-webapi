@@ -35,4 +35,13 @@ class TaskStakeholderJpaEntity extends TenantFilteredEntity {
 
   @Column(name = "added_at", nullable = false)
   private LocalDateTime addedAt;
+
+  TaskStakeholderJpaEntity(
+      Long taskId, Long userId, Long tenantId, Long addedBy, LocalDateTime addedAt) {
+    this.taskId = taskId;
+    this.userId = userId;
+    this.tenantId = tenantId;
+    this.addedBy = addedBy;
+    this.addedAt = addedAt;
+  }
 }

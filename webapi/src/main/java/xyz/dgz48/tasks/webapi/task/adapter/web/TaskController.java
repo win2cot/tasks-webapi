@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.net.URI;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -20,9 +21,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,16 +33,22 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
+import xyz.dgz48.tasks.webapi.task.adapter.web.dto.AddStakeholderRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.ChangeTaskStatusRequest;
+import xyz.dgz48.tasks.webapi.task.adapter.web.dto.StakeholderResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskListItemResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskPageResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskResponse;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
+import xyz.dgz48.tasks.webapi.task.domain.TaskStakeholder;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
+import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.RemoveStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
@@ -51,6 +60,9 @@ public class TaskController {
   private final GetTaskUseCase getTaskUseCase;
   private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
   private final ListTasksUseCase listTasksUseCase;
+  private final ListStakeholdersUseCase listStakeholdersUseCase;
+  private final AddStakeholderUseCase addStakeholderUseCase;
+  private final RemoveStakeholderUseCase removeStakeholderUseCase;
   private final UserRepository userRepository;
 
   /**
@@ -97,13 +109,13 @@ public class TaskController {
             taskPage.getNumber(),
             taskPage.getSize(),
             result.overdueCount());
-
     return ResponseEntity.ok(response);
   }
 
   @GetMapping("/{id}")
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
-  public ResponseEntity<TaskResponse> get(@PathVariable Long id, TasksAuthenticationToken token) {
+  public ResponseEntity<TaskResponse> getTask(
+      @PathVariable Long id, TasksAuthenticationToken token) {
     Task task = getTaskUseCase.execute(id, token.getPrincipal().getId());
     TaskResponse body = TaskResponse.from(task);
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
@@ -122,6 +134,35 @@ public class TaskController {
             id, token.getPrincipal().getId(), request.status(), ifMatchVersion);
     TaskResponse body = TaskResponse.from(task);
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
+  }
+
+  @GetMapping("/{id}/stakeholders")
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<List<StakeholderResponse>> listStakeholders(
+      @PathVariable Long id, TasksAuthenticationToken token) {
+    List<TaskStakeholder> stakeholders =
+        listStakeholdersUseCase.execute(id, token.getPrincipal().getId());
+    return ResponseEntity.ok(stakeholders.stream().map(StakeholderResponse::from).toList());
+  }
+
+  @PostMapping("/{id}/stakeholders")
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<StakeholderResponse> addStakeholder(
+      @PathVariable Long id,
+      @RequestBody @Valid AddStakeholderRequest request,
+      TasksAuthenticationToken token) {
+    TaskStakeholder stakeholder =
+        addStakeholderUseCase.execute(id, token.getPrincipal().getId(), request.userId());
+    return ResponseEntity.created(URI.create("/api/tasks/" + id + "/stakeholders"))
+        .body(StakeholderResponse.from(stakeholder));
+  }
+
+  @DeleteMapping("/{taskId}/stakeholders/{userId}")
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<Void> removeStakeholder(
+      @PathVariable Long taskId, @PathVariable Long userId, TasksAuthenticationToken token) {
+    removeStakeholderUseCase.execute(taskId, token.getPrincipal().getId(), userId);
+    return ResponseEntity.noContent().build();
   }
 
   private Map<Long, UserJpaEntity> loadUserMap(List<Task> tasks) {
