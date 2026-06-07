@@ -41,8 +41,10 @@ import xyz.dgz48.tasks.webapi.task.adapter.web.dto.StakeholderResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskCreateRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskListItemResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskPageResponse;
+import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskPatchRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskResponse;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
+import xyz.dgz48.tasks.webapi.task.domain.TaskPatchCommand;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStakeholder;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
@@ -53,6 +55,7 @@ import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.RemoveStakeholderUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.UpdateTaskUseCase;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
@@ -64,6 +67,7 @@ public class TaskController {
   private final CreateTaskUseCase createTaskUseCase;
   private final GetTaskUseCase getTaskUseCase;
   private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
+  private final UpdateTaskUseCase updateTaskUseCase;
   private final ListTasksUseCase listTasksUseCase;
   private final ListStakeholdersUseCase listStakeholdersUseCase;
   private final AddStakeholderUseCase addStakeholderUseCase;
@@ -149,6 +153,26 @@ public class TaskController {
   public ResponseEntity<TaskResponse> getTask(
       @PathVariable Long id, TasksAuthenticationToken token) {
     Task task = getTaskUseCase.execute(id, token.getPrincipal().getId());
+    TaskResponse body = TaskResponse.from(task);
+    return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
+  }
+
+  @PatchMapping("/{id}")
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<TaskResponse> patchTask(
+      @PathVariable Long id,
+      @RequestHeader(name = HttpHeaders.IF_MATCH) String ifMatch,
+      @RequestBody TaskPatchRequest request,
+      TasksAuthenticationToken token) {
+    Long ifMatchVersion = parseIfMatchVersion(ifMatch);
+    TaskPatchCommand cmd =
+        new TaskPatchCommand(
+            request.title(),
+            request.description(),
+            request.priority(),
+            request.assigneeId(),
+            request.dueDate());
+    Task task = updateTaskUseCase.execute(id, token.getPrincipal().getId(), cmd, ifMatchVersion);
     TaskResponse body = TaskResponse.from(task);
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
   }

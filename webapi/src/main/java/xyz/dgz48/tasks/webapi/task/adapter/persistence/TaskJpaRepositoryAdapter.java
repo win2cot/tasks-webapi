@@ -70,7 +70,14 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
             .findById(task.getId())
             .orElseThrow(
                 () -> new IllegalStateException("Task not found for save: " + task.getId()));
-    entity.updateStatus(task.getStatus(), task.getCompletedAt());
+    entity.updateFields(
+        task.getTitle(),
+        task.getDescription(),
+        task.getPriority(),
+        task.getAssigneeId(),
+        task.getDueDate(),
+        task.getStatus(),
+        task.getCompletedAt());
     try {
       return toDomain(jpaRepository.saveAndFlush(entity));
     } catch (ObjectOptimisticLockingFailureException e) {

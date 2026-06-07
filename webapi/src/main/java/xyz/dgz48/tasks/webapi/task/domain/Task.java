@@ -16,14 +16,14 @@ public class Task {
 
   @EqualsAndHashCode.Include private final Long id;
   private final Long tenantId;
-  private final String title;
-  @Nullable private final String description;
+  private String title;
+  @Nullable private String description;
   private TaskStatus status;
-  private final Priority priority;
+  private Priority priority;
   private Visibility visibility;
   private final Long ownerId;
-  @Nullable private final Long assigneeId;
-  private final LocalDate dueDate;
+  @Nullable private Long assigneeId;
+  private LocalDate dueDate;
   @Nullable private LocalDateTime completedAt;
   @Nullable private final LocalDateTime deletedAt;
   private final LocalDateTime createdAt;
@@ -83,5 +83,27 @@ public class Task {
       this.completedAt = null;
     }
     this.status = newStatus;
+  }
+
+  /** PATCH コマンドを適用する。JsonNullable.undefined() のフィールドは変更しない(ADR-0014)。 */
+  public void applyPatch(TaskPatchCommand cmd) {
+    if (cmd.title().isPresent()) {
+      String v = cmd.title().get();
+      if (v != null) this.title = v;
+    }
+    if (cmd.description().isPresent()) {
+      this.description = cmd.description().get();
+    }
+    if (cmd.priority().isPresent()) {
+      Priority v = cmd.priority().get();
+      if (v != null) this.priority = v;
+    }
+    if (cmd.assigneeId().isPresent()) {
+      this.assigneeId = cmd.assigneeId().get();
+    }
+    if (cmd.dueDate().isPresent()) {
+      LocalDate v = cmd.dueDate().get();
+      if (v != null) this.dueDate = v;
+    }
   }
 }

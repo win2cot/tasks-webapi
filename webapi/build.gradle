@@ -65,6 +65,13 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers-mysql'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 
+    // JsonNullable for PATCH partial-update DTOs (ADR-0014)
+    // jackson-databind-nullable は Jackson 2/3 両対応だが当プロジェクトは Jackson 3 (tools.jackson) のみ使用する。
+    // Jackson 2 の transitive 依存は Flyway / Logback から別途持ち込まれるため機能上問題なく除外可能。
+    implementation('org.openapitools:jackson-databind-nullable:0.2.10') {
+        exclude group: 'com.fasterxml.jackson.core'
+    }
+
     // Other dependencies
     errorprone 'com.google.errorprone:error_prone_core:2.49.0'
     errorprone 'com.uber.nullaway:nullaway:0.13.6'
