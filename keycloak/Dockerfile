@@ -19,7 +19,7 @@ RUN printf "rootProject.name = 'tasks-webapi-monorepo'\ninclude 'keycloak'\n" > 
 # Installs the SPI JAR into Keycloak's providers/ directory and runs kc.sh build
 # to produce an optimized Quarkus augmentation for MySQL. No DB connection is
 # needed at this stage — kc.sh build only sets compile-time configuration.
-FROM quay.io/keycloak/keycloak:26.2.5 AS kc-builder
+FROM quay.io/keycloak/keycloak:26.6.3 AS kc-builder
 
 COPY --from=spi-builder /workspace/keycloak/build/libs/*.jar /opt/keycloak/providers/
 
@@ -33,7 +33,7 @@ RUN /opt/keycloak/bin/kc.sh build
 # Final image: copies the optimized Keycloak installation from the builder stage.
 # Dev image tag convention: v<major>.<minor>.<patch>-dev  (e.g. v0.1.0-dev)
 # ECR push and CI/CD tagging are handled in #324 / S2Infra-5.
-FROM quay.io/keycloak/keycloak:26.2.5
+FROM quay.io/keycloak/keycloak:26.6.3
 
 COPY --from=kc-builder /opt/keycloak/ /opt/keycloak/
 
