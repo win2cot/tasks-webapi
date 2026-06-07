@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.ChangeTaskStatusRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskListItemResponse;
@@ -140,9 +142,15 @@ public class TaskController {
     return PageRequest.of(page, size, sortSpec);
   }
 
+  private static final Set<String> VALID_SORT_FIELDS =
+      Set.of("dueDate", "createdAt", "updatedAt", "title", "priority");
+
   private Sort parseSortSpec(String sort) {
     String[] parts = sort.split(",", 2);
     String field = parts[0].strip();
+    if (!VALID_SORT_FIELDS.contains(field)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sort field: " + field);
+    }
     String direction = parts.length > 1 ? parts[1].strip().toLowerCase(Locale.ROOT) : "asc";
     Sort.Direction dir = "desc".equals(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
     return Sort.by(new Sort.Order(dir, field));
