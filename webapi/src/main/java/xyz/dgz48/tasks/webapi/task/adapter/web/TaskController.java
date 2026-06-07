@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.AddStakeholderRequest;
@@ -88,7 +89,11 @@ public class TaskController {
             request.assigneeId(),
             request.dueDate(),
             request.stakeholderUserIds());
-    URI location = URI.create("/api/tasks/" + task.getId());
+    URI location =
+        ServletUriComponentsBuilder.fromCurrentRequest()
+            .path("/{id}")
+            .buildAndExpand(task.getId())
+            .toUri();
     return ResponseEntity.created(location).body(TaskResponse.from(task));
   }
 
@@ -180,8 +185,8 @@ public class TaskController {
       TasksAuthenticationToken token) {
     TaskStakeholder stakeholder =
         addStakeholderUseCase.execute(id, token.getPrincipal().getId(), request.userId());
-    return ResponseEntity.created(URI.create("/api/tasks/" + id + "/stakeholders"))
-        .body(StakeholderResponse.from(stakeholder));
+    URI location = ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
+    return ResponseEntity.created(location).body(StakeholderResponse.from(stakeholder));
   }
 
   @DeleteMapping("/{taskId}/stakeholders/{userId}")

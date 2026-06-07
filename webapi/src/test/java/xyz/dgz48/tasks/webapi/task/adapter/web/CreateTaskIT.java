@@ -1,6 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.adapter.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -163,7 +164,7 @@ class CreateTaskIT {
                       """)
                   .with(authentication(authToken)))
           .andExpect(status().isCreated())
-          .andExpect(header().exists("Location"))
+          .andExpect(header().string("Location", startsWith("http://localhost/api/tasks/")))
           .andExpect(jsonPath("$.id").isNumber())
           .andExpect(jsonPath("$.title").value("テストタスク"))
           .andExpect(jsonPath("$.status").value("NOT_STARTED"))
@@ -326,6 +327,19 @@ class CreateTaskIT {
                         "dueDate": "2026-12-31"
                       }
                       """)
+                  .with(authentication(authToken)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+    }
+
+    @Test
+    void createTask_returns400_whenJsonIsMalformed() throws Exception {
+      mockMvc
+          .perform(
+              post("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{ invalid json }")
                   .with(authentication(authToken)))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.code").value("E_VALIDATION"));
