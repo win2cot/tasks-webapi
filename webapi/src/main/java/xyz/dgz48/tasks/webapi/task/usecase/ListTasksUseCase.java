@@ -47,7 +47,7 @@ public class ListTasksUseCase {
 
     long overdueCount = taskRepository.countOverdueTasks(userId, LocalDate.now(clock));
 
-    return new Result(taskPage, (int) overdueCount);
+    return new Result(taskPage, Math.toIntExact(overdueCount));
   }
 
   public record Result(Page<Task> taskPage, int overdueCount) {}

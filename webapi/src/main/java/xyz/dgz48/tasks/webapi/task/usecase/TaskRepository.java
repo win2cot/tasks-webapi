@@ -23,7 +23,7 @@ public interface TaskRepository {
    * 認可フィルタ済みタスク一覧を返す。
    *
    * <p>Hibernate Filter による tenant_id 自動絞込 + deleted_at IS NULL + visibility 3 役割評価(ADR-0005)を
-   * 適用する。priority ソートは HIGH=1 / MEDIUM=2 / LOW=3 の意味順で処理する。
+   * 適用する。priority ソートは HIGH=3 / MEDIUM=2 / LOW=1 に内部変換。desc ソートで HIGH が先頭(重要度高い順)。
    */
   Page<Task> findVisibleTasks(
       Long userId,
