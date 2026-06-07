@@ -5,12 +5,20 @@
 # ---------------------------------------------------------------------------
 
 resource "aws_security_group" "keycloak_db" {
-  name        = "platform-${var.env}-sg-keycloak-db"
+  # name_prefix: create_before_destroy と組み合わせることで新旧 SG が同時存在できる。
+  # GroupName は VPC 内でユニークでなければならないため固定 name ではなく name_prefix を使用。
+  name_prefix = "platform-${var.env}-sg-keycloak-db-"
   description = "Keycloak DB: inbound from SG-Keycloak on :3306 (see main.tf sg rule), no outbound"
   vpc_id      = var.vpc_id
 
   tags = {
     Name = "platform-${var.env}-sg-keycloak-db"
+  }
+
+  # create_before_destroy: SG 差し替え時に「新SG作成 → RDS 切替 → 旧SG削除」の順を保証する。
+  # デフォルト(destroy-first)では旧SG削除時に RDS ENI がまだ旧SGを参照しており削除失敗する。
+  lifecycle {
+    create_before_destroy = true
   }
 }
 

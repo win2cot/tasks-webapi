@@ -2,7 +2,7 @@
 
 タスク管理システム(tasks-webapi)
 
-Version 1.0
+Version 1.1
 
 2026-06-07
 
@@ -13,6 +13,7 @@ Version 1.0
 | 版数 | 改訂日 | 改訂内容 | 改訂者 |
 |---|---|---|---|
 | 1.0 | 2026-06-07 | 新規作成(Issue #456)。IAM ポリシー最小権限 3 ルール(R1〜R3)+ CI 機械検知 + 命名・タグ規約 pointer | 開発チーム |
+| 1.1 | 2026-06-07 | R3 補足: SG 差し替え時の `create_before_destroy` + `name_prefix` 必須ルールを追加(PR #467) | 開発チーム |
 
 ## 目次
 
@@ -118,6 +119,33 @@ module "keycloak" {
 ```
 
 参考: `module.keycloak_db`(PR #455)・`aws_ecs_cluster.platform`/`module.keycloak`(PR #465)に同じ対策を適用済み。
+
+#### SG 差し替え時の create_before_destroy 必須ルール
+
+`aws_security_group` リソースで `description` などの差し替えを伴うプロパティを変更する場合、`lifecycle { create_before_destroy = true }` と `name_prefix` をセットで設定すること。
+
+**理由**: デフォルト(destroy-first)では旧 SG の削除時に RDS などの ENI がまだ旧 SG を参照しており、`ec2:DetachNetworkInterface` が必要になる。RDS-managed ENI は `rds:ModifyDBInstance` 経由でしか SG を切り替えられないため、Terraform が ENI を直接デタッチしようとしても失敗する。`create_before_destroy = true` にすると「新 SG 作成 → DB インスタンスの SG 切替(`rds:ModifyDBInstance`) → 旧 SG 削除」の順が保証され、旧 SG 削除時には ENI が旧 SG を参照していない。
+
+**`name_prefix` も必須**: `create_before_destroy` では新旧 SG が同時存在する瞬間があるため、固定 `name`(AWS GroupName)を使うと同一 VPC 内で重複エラーになる。`name_prefix` を使うことで Terraform がユニークなサフィックスを付与する。表示名は `tags.Name` で管理すれば十分。
+
+```hcl
+# OK: SG の差し替えを安全に行う定型パターン
+resource "aws_security_group" "example" {
+  name_prefix = "platform-${var.env}-sg-example-"  # ユニーク名を自動付与
+  description = "..."
+  vpc_id      = var.vpc_id
+
+  tags = {
+    Name = "platform-${var.env}-sg-example"  # 表示名は tags.Name で管理
+  }
+
+  lifecycle {
+    create_before_destroy = true  # 新SG作成 → DB切替 → 旧SG削除 の順を保証
+  }
+}
+```
+
+参考: `infra/shared/modules/keycloak_db/main.tf`(PR #467)に同じ対策を適用済み。
 
 ### 1.4 CI による機械検知
 
