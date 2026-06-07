@@ -28,7 +28,7 @@ public class UpdateTaskUseCase {
   private final TaskAuditDiffDomainService taskAuditDiffDomainService;
   private final AuditLogPort auditLogPort;
 
-  @Transactional
+  @Transactional(readOnly = false)
   public Task execute(Long taskId, Long userId, TaskPatchCommand cmd, Long ifMatchVersion) {
     Task task =
         taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException(taskId));

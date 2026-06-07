@@ -162,7 +162,7 @@ public class TaskController {
   public ResponseEntity<TaskResponse> patchTask(
       @PathVariable Long id,
       @RequestHeader(name = HttpHeaders.IF_MATCH) String ifMatch,
-      @RequestBody TaskPatchRequest request,
+      @RequestBody @Valid TaskPatchRequest request,
       TasksAuthenticationToken token) {
     Long ifMatchVersion = parseIfMatchVersion(ifMatch);
     TaskPatchCommand cmd =
