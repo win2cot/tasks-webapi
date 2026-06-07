@@ -76,7 +76,7 @@ class RemoveStakeholderUseCaseTest {
     assertThatCode(() -> useCase.execute(TASK_ID, OWNER_ID, STAKEHOLDER_ID))
         .doesNotThrowAnyException();
 
-    verify(stakeholderRepository).removeByTaskIdAndUserId(TASK_ID, STAKEHOLDER_ID);
+    verify(stakeholderRepository).removeByTaskIdAndUserId(TASK_ID, STAKEHOLDER_ID, TENANT_ID);
     verify(auditLogPort)
         .record(eq(AuditEventType.STAKEHOLDER_REMOVED), eq(TENANT_ID), eq(OWNER_ID), any());
   }

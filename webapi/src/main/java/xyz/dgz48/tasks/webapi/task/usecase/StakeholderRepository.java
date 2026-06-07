@@ -18,7 +18,7 @@ public interface StakeholderRepository {
       Long taskId, Long tenantId, Long userId, Long addedByUserId, LocalDateTime addedAt);
 
   /** 指定ユーザーを関係者から削除する。 */
-  void removeByTaskIdAndUserId(Long taskId, Long userId);
+  void removeByTaskIdAndUserId(Long taskId, Long userId, Long tenantId);
 
   /** 指定ユーザーが関係者として登録済みか返す。 */
   boolean existsByTaskIdAndUserId(Long taskId, Long userId);

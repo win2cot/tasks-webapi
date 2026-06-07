@@ -39,8 +39,8 @@ class TaskStakeholderJpaRepositoryAdapter implements StakeholderRepository {
   }
 
   @Override
-  public void removeByTaskIdAndUserId(Long taskId, Long userId) {
-    jpaRepository.deleteByTaskIdAndUserId(taskId, userId);
+  public void removeByTaskIdAndUserId(Long taskId, Long userId, Long tenantId) {
+    jpaRepository.deleteByTaskIdAndUserId(taskId, userId, tenantId);
   }
 
   @Override

@@ -37,7 +37,7 @@ public class RemoveStakeholderUseCase {
     if (!stakeholderRepository.existsByTaskIdAndUserId(taskId, targetUserId)) {
       throw new StakeholderNotFoundException(taskId, targetUserId);
     }
-    stakeholderRepository.removeByTaskIdAndUserId(taskId, targetUserId);
+    stakeholderRepository.removeByTaskIdAndUserId(taskId, targetUserId, task.getTenantId());
     auditLogPort.record(
         AuditEventType.STAKEHOLDER_REMOVED,
         task.getTenantId(),
