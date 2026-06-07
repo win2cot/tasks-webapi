@@ -200,6 +200,10 @@ resource "aws_ecs_cluster" "platform" {
   tags = {
     Name = "platform-dev-cluster"
   }
+
+  # iam_oidc が platform_apply に ecs:CreateCluster を付与してから作成する。
+  # 同一 apply で並列実行するとポリシー反映前に AccessDenied になるため。
+  depends_on = [module.iam_oidc]
 }
 
 resource "aws_ecs_cluster_capacity_providers" "platform" {
@@ -235,6 +239,10 @@ module "keycloak" {
   hostname             = "auth-dev.dgz48.xyz"
   account_id           = data.aws_caller_identity.current.account_id
   region               = "ap-northeast-1"
+
+  # iam_oidc が platform_apply に ECS/Logs/ELB 権限を付与してから作成する。
+  # 同一 apply で並列実行するとポリシー反映前に AccessDenied になるため。
+  depends_on = [module.iam_oidc]
 }
 
 # SG-KeycloakDB: ingress を VPC CIDR(暫定)から SG-Keycloak に tighten (#322)
