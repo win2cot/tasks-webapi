@@ -60,7 +60,7 @@ tasks.named<Test>("test") {
 spotless {
     lineEndings = com.diffplug.spotless.LineEnding.UNIX
     java {
-        googleJavaFormat("1.34.0")
+        googleJavaFormat("1.24.0")
     }
 }
 
