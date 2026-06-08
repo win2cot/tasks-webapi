@@ -65,9 +65,13 @@ native image 配信を続ける以上、JDK バージョンの引き上げが必
 
 ## 3. 決定
 
-**採用**: 選択肢 A — ランタイム / ビルド JDK を Java 25 (LTS) に引き上げる
+**採用**: 選択肢 A — **webapi モジュールの**ランタイム / ビルド JDK を Java 25 (LTS) に引き上げる
 
-`webapi/build.gradle` の toolchain を `JavaLanguageVersion.of(25)` とし、CI(`cicd.yml` / `keycloak-ci.yml`)の Set up JDK を 25 に、native ビルドの GraalVM も 25 に統一する。
+`webapi/build.gradle` の toolchain を `JavaLanguageVersion.of(25)` とし、`cicd.yml` の Set up JDK を 25 に、native ビルドの GraalVM も 25 に統一する。
+
+**スコープは webapi に限定する。keycloak サブプロジェクト(User Storage SPI)は対象外で Java 21 を維持する。** 理由は、SPI JAR が公式 Keycloak イメージ(`quay.io/keycloak/keycloak:26.6.3`、OpenJDK 21 ランタイム)に**ロードされて他プロセス上で動く**成果物であり、bytecode を載せ先の JVM に合わせる必要があるため(Java は上位互換がなく、Java 25 でコンパイルした class は JDK 21 ランタイムで `UnsupportedClassVersionError` になる)。`keycloak/Dockerfile` のビルドステージも `eclipse-temurin:21-jdk-jammy` である。したがって `keycloak/build.gradle.kts` の toolchain と `keycloak-ci.yml` の JDK はいずれも 21 のまま据え置く。
+
+native 配信される webapi は「自分自身が実行バイナリ」であるため Java 25 を選べるが、SPI は「他者のランタイムに従う」という非対称性が本決定の境界である。
 
 ## 4. 理由
 
@@ -93,14 +97,14 @@ native image 配信を続ける以上、JDK バージョンの引き上げが必
 
 - 基本設計書 §技術スタック「Eclipse Temurin 21」→ 25
 - 要件定義書 / 開発計画書 / コーディング規約 / `docs/dev/local-setup.md` の Java 21 記述を 25 に
-- CI 2 ファイル(`cicd.yml` / `keycloak-ci.yml`)の Set up JDK を 25 に
+- CI: `cicd.yml`(webapi)の Set up JDK を 25 に。**`keycloak-ci.yml` は 21 のまま据え置く**(keycloak SPI は対象外)
 - ADR-0008 の前提(「Java 21 で native 配信」)を本 ADR が更新する旨を ADR-0008 に注記
 - コーディング規約 §20(Native Image 実装制約)の JDK バージョン関連記述(#493 の同期作業に統合可)
 
 ## 6. 実装メモ
 
 - JDK 25 化は **#478(native 基盤)とは別 PR** とする。#478 の事実上の blocker であり、JDK 25 化を先行 merge する
-- 最小変更: `webapi/build.gradle`(toolchain 21→25、gjf 1.24.0→1.34.0)+ CI 2 ファイル + docs 群
+- 最小変更: `webapi/build.gradle`(toolchain 21→25、gjf 1.24.0→1.34.0)+ `cicd.yml` + docs 群。**keycloak サブプロジェクト(`build.gradle.kts` / `keycloak-ci.yml`)は触らない**
 - native の Java 25 起動検証は GHA の使い捨て workflow で行う(#478 の native build 検証と共通の手段)
 - Lombok 警告の解消(バージョン明示 pin 等)は別フォローアップ Issue で扱う
 
