@@ -30,24 +30,24 @@
 |--------|-----------|-----------------|
 | WSL 2 (Ubuntu 24.04) | 24.04 LTS | `wsl --install -d Ubuntu-24.04` |
 | Docker Desktop | 4.x 以上 | [公式サイト](https://www.docker.com/products/docker-desktop/) からインストール後、Settings → Resources → WSL integration を有効化 |
-| JDK 21 | 21 (LTS) | SDKMAN! 推奨: `sdk install java 21-tem` |
+| JDK 25 | 25 | SDKMAN! 推奨: `sdk install java 25-tem` |
 | gh CLI | 2.x 以上 | `sudo apt install gh` または [公式サイト](https://cli.github.com/) |
 | Git | 2.x 以上 | `sudo apt install git` |
 
-### JDK 21 のインストール (SDKMAN! 推奨)
+### JDK 25 のインストール (SDKMAN! 推奨)
 
 ```bash
 # SDKMAN! のインストール
 curl -s "https://get.sdkman.io" | bash
 source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-# JDK 21 のインストール
-sdk install java 21-tem
-sdk use java 21-tem
+# JDK 25 のインストール
+sdk install java 25-tem
+sdk use java 25-tem
 
 # 確認
 java -version
-# openjdk version "21.x.x" ...
+# openjdk version "25" ...
 ```
 
 ### Docker Desktop の WSL Integration 確認

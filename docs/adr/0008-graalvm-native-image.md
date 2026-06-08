@@ -28,6 +28,8 @@
 
 ## 1. コンテキスト
 
+> 前提更新(2026-06-09): 本 ADR は策定時に Java 21 を前提としていたが、Spring Framework 7 / Spring Boot 4 が native image の GraalVM baseline を Java 25 に引き上げているため(#478 実装中に判明)、ランタイム / ビルド JDK を Java 25 に引き上げる。詳細と根拠は [ADR-0021](0021-runtime-jdk-25.md) を参照。native image 採用そのもの(本 ADR の決定)は維持され、supersede ではない。
+
 2026-05-23 に策定した infrastructure-plan v5 で、tasks-webapi を **ECS Fargate** 上で動作させるアーキテクチャを確定した。Fargate ではコンテナ起動のたびに JVM の初期化・クラスロード・JIT ウォームアップが発生し、cold start が問題になる。また Fargate task size(CPU / メモリ)はコスト直結であり、JVM ヒープ用のメモリオーバープロビジョニングを避けたい。
 
 infrastructure-plan v5 §2 #5 では **Spring プロファイル不使用**(`@Profile` 禁止)を規定した。これは GraalVM Native Image への移行を前提とした設計判断であり(Native Image はビルド時に profile 分岐を解決できないため)、本 ADR でその根拠を集約する。
