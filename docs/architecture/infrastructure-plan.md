@@ -179,6 +179,8 @@ flowchart TB
 | 2 | `auth-dev.dgz48.xyz`(中立・共有 IdP) | platform Keycloak Custom target group |
 | (ALB 経由しない) | `tasks-dev.dgz48.xyz` | CloudFront → S3 |
 
+**WAF / API 前段方針(infra ADR-0006)**: API は CloudFront を経由せず ALB 直のまま(全 API が認証付き・テナント別でキャッシュ不可、利用者は国内のみのため CloudFront 配下化の便益が実質ゼロ)。WAF は **stg / prd の ALB に REGIONAL Web ACL** を関連付け、api + auth(Keycloak)を 1 ACL で保護する(platform stack 所有)。**dev は WAF なし**。初期ルールは Core(`AWSManagedRulesCommonRuleSet`)+ IP reputation + rate-based を出発点に count モードで観測してから block 昇格(最終選定は Phase 2 #501)。CloudFront 配下化は再評価トリガ該当時に検討(infra ADR-0006 §6)。
+
 ### 3.3 リポジトリ構成(1 リポ monorepo)
 
 ```text
