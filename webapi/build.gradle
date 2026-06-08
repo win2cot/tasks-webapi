@@ -107,7 +107,6 @@ tasks.named('compileAotTestJava') {
     }
 }
 
-
 tasks.named('test') {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
@@ -147,6 +146,9 @@ tasks.named('check') {
 
 bootBuildImage {
     imageName = "tasks-webapi:${project.version}"
+    // builder/run image: Spring Boot 4 の既定 (paketobuildpacks/builder-noble-java-tiny /
+    // paketobuildpacks/ubuntu-noble-run-tiny) を使用し、明示指定・digest 固定は行わない。
+    // CVE 追従はリビルド+再 push で対応する方針 (ADR-0018 §3/§5)。
     // Paketo Spring Boot buildpack 5.36+ requires GraalVM >= 25 when Spring Boot >= 4.0.0.
     // (https://github.com/paketo-buildpacks/spring-boot/issues/562)
     // Set explicitly to match the project toolchain and ensure the buildpack
