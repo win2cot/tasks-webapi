@@ -18,7 +18,8 @@
 6. [Keycloak Realm 動作確認](#6-keycloak-realm-動作確認)
 7. [Frontend skeleton 起動](#7-frontend-skeleton-起動)
 8. [動作確認 E2E](#8-動作確認-e2e)
-9. [トラブルシューティング](#9-トラブルシューティング)
+9. [Native Image ビルド(任意)](#9-native-image-ビルド任意)
+10. [トラブルシューティング](#10-トラブルシューティング)
 
 ---
 
@@ -318,7 +319,58 @@ echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool | grep 
 
 ---
 
-## 9. トラブルシューティング
+## 9. Native Image ビルド(任意)
+
+> **通常開発では不要。** ADR-0008 の方針に従い、Native Image ビルドはローカルではなく CI(GitHub Actions)で行う。ローカルで手動検証したい場合のみ実施する。
+
+### 前提条件
+
+- Docker Desktop が起動していること
+- Docker Compose(MySQL + Keycloak)を **停止** していること(Native コンパイルに ~6GB RAM が必要)
+- Docker Desktop のメモリ割り当てが 8GB 以上であること
+
+```bash
+# Docker Compose を停止してから実行
+docker compose -f docker-compose.local.yml stop
+```
+
+### ビルド
+
+```bash
+./gradlew :webapi:bootBuildImage
+```
+
+成功すると `tasks-webapi:0.0.1-SNAPSHOT` イメージが生成される(所要時間: 10〜20 分)。
+
+### 動作確認
+
+```bash
+docker run --rm \
+  -e DATASOURCE_URL="jdbc:mysql://host.docker.internal:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" \
+  -e DATASOURCE_USERNAME=tasks_webapi \
+  -e DATASOURCE_PASSWORD=tasks_webapi \
+  -e OIDC_ISSUER_URI=http://host.docker.internal:18080/realms/tasks \
+  -e TZ=Asia/Tokyo \
+  -p 8080:8080 \
+  tasks-webapi:0.0.1-SNAPSHOT
+```
+
+確認コマンド:
+
+```bash
+# ヘルスチェック
+curl http://localhost:8080/actuator/health
+# 期待: {"status":"UP"}
+```
+
+### 関連ドキュメント
+
+- [ADR-0008](../adr/0008-graalvm-native-image.md) — GraalVM Native Image 採用決定
+- [ADR-0018](../adr/0018-container-image-build-with-boot-build-image.md) — bootBuildImage(Cloud Native Buildpacks)採用決定
+
+---
+
+## 10. トラブルシューティング
 
 ### Q1. Docker WSL Integration が動かない
 
