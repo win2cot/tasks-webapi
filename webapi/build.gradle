@@ -136,6 +136,7 @@ spotless {
     // OS に依存せず常に LF を正とする(CI は Linux=LF、Windows ローカルでの CRLF 誤検知を防ぐ)。
     lineEndings = 'UNIX'
     java {
+        targetExclude('build/**')
         googleJavaFormat('1.34.0')
     }
 }
