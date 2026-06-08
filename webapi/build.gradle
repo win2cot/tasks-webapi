@@ -3,6 +3,7 @@ plugins {
     id 'jacoco'
     id 'org.springframework.boot' version '4.0.6'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.graalvm.buildtools.native' version '1.1.1'
     id 'net.ltgt.errorprone' version '5.1.0'
     id 'com.diffplug.spotless' version '8.6.0'
 }
@@ -93,6 +94,20 @@ tasks.named('compileTestJava') {
     }
 }
 
+// Spring Boot AOT generates sources that are not in xyz.dgz48.* — skip NullAway.
+tasks.named('compileAotJava') {
+    options.errorprone {
+        disable('NullAway')
+    }
+}
+
+tasks.named('compileAotTestJava') {
+    options.errorprone {
+        disable('NullAway')
+    }
+}
+
+
 tasks.named('test') {
     useJUnitPlatform()
     finalizedBy jacocoTestReport
@@ -127,4 +142,55 @@ spotless {
 
 tasks.named('check') {
     dependsOn 'spotlessCheck', 'jacocoTestCoverageVerification'
+}
+
+bootBuildImage {
+    imageName = "tasks-webapi:${project.version}"
+    // Paketo Spring Boot buildpack 5.36+ requires GraalVM >= 25 when Spring Boot >= 4.0.0.
+    // (https://github.com/paketo-buildpacks/spring-boot/issues/562)
+    // Set explicitly to match the project toolchain and ensure the buildpack
+    // downloads BellSoft Liberica NIK 25 to compile the native image.
+    environment = [
+        'BP_JVM_VERSION': '25',
+        // Password$ConsoleHolder has a static final field set to System.console() at class-init time.
+        // On Java 25 that returns java.io.ProxyingConsole (new in JDK 25), which GraalVM cannot
+        // store in the image heap because ProxyingConsole defaults to run-time initialization.
+        // Deferring Password$ConsoleHolder to run time prevents the heap-object conflict.
+        'BP_NATIVE_IMAGE_BUILD_ARGUMENTS': '--initialize-at-run-time=sun.security.util.Password$ConsoleHolder'
+    ]
+}
+
+graalvmNative {
+    // Native test support is not used — JVM tests cover all scenarios (ADR-0008).
+    // Disabling prevents nativeTest/processTestAot from being wired into 'check'.
+    testSupport = false
+    binaries {
+        main {
+            imageName = 'tasks-webapi'
+        }
+    }
+    toolchainDetection = false
+}
+
+// AOT processing runs a trimmed Spring context at build time and requires
+// the same env vars as the runtime application (OIDC_ISSUER_URI, DATASOURCE_*).
+// Fall back to local-dev defaults so 'bootBuildImage' and 'nativeCompile' work
+// when the caller has already started Docker Compose but hasn't sourced .env.local.
+def aotEnv = { String key, String fallback ->
+    def v = System.getenv(key)
+    return (v != null && !v.isBlank()) ? v : fallback
+}
+
+tasks.named('processAot') {
+    environment 'OIDC_ISSUER_URI',    aotEnv('OIDC_ISSUER_URI',    'http://localhost:18080/realms/tasks')
+    environment 'DATASOURCE_URL',     aotEnv('DATASOURCE_URL',     'jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true')
+    environment 'DATASOURCE_USERNAME', aotEnv('DATASOURCE_USERNAME', 'tasks_webapi')
+    environment 'DATASOURCE_PASSWORD', aotEnv('DATASOURCE_PASSWORD', 'tasks_webapi')
+}
+
+tasks.named('processTestAot') {
+    environment 'OIDC_ISSUER_URI',    aotEnv('OIDC_ISSUER_URI',    'http://localhost:18080/realms/tasks')
+    environment 'DATASOURCE_URL',     aotEnv('DATASOURCE_URL',     'jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true')
+    environment 'DATASOURCE_USERNAME', aotEnv('DATASOURCE_USERNAME', 'tasks_webapi')
+    environment 'DATASOURCE_PASSWORD', aotEnv('DATASOURCE_PASSWORD', 'tasks_webapi')
 }
