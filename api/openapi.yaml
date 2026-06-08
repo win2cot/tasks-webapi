@@ -214,6 +214,8 @@ paths:
         コレクション全体への列挙拒否では存在秘匿の必要がないため慣習どおり `403` を採用する。
 
         **デフォルトソート順**: `createdAt DESC`(最近作成されたテナントを先頭)。
+
+        **監査記録**: 成功時に `action=TENANT_LIST_VIEWED` として `tenant_id=NULL`(横断操作)で監査ログに記録される(ADR-0020 §3.1 / §3.2)。`GET /api/audit-logs`(A-22)では参照不可。
       operationId: listTenants
       security:
         - bearerAuth: []
@@ -275,6 +277,8 @@ paths:
         所属していないテナントを指定した場合・存在しない ID を指定した場合は、いずれも **404** を返す
         (HTTP Status Policy: 参照系で参照不可は 404、NIST AC-4 リソース存在秘匿)。
         `X-Tenant-Id` ヘッダ不要(クエリ対象テナントはパスパラメータで指定)。
+
+        **監査記録(SaaS Admin のみ)**: SaaS Admin が成功した場合、`action=TENANT_VIEWED` として `tenant_id=対象テナント id` で監査ログに記録される(ADR-0020 §3.1 / §3.2)。対象テナントの Tenant Admin が `GET /api/audit-logs`(A-22)で確認可能。一般ユーザーのアクセスは記録しない。
       operationId: getTenant
       security:
         - bearerAuth: []
@@ -298,6 +302,8 @@ paths:
         認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要。
         状態切替は `PATCH /api/tenants/{id}/status` を使用すること(本エンドポイントでは status を変更できない)。
         プラン変更は Phase 2(契約管理機能)で実装する。
+
+        **監査記録**: 成功時に `action=TENANT_UPDATED` として `tenant_id=対象テナント id` で監査ログに記録される(ADR-0020 §3.1 / §3.3)。差分は ADR-0013 の field-by-field diff 形式(`[{"field":"name","old":...,"new":...}]`)で `detail` に記録。対象テナントの Tenant Admin が `GET /api/audit-logs`(A-22)で確認可能。
       operationId: updateTenant
       security:
         - bearerAuth: []
@@ -336,7 +342,7 @@ paths:
         (no-op、監査ログには記録しない)。
 
         認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
-        状態が実際に変更された場合のみ、監査ログに `TENANT_SUSPENDED` / `TENANT_REACTIVATED` として記録される。
+        状態が実際に変更された場合のみ、`action=TENANT_SUSPENDED` または `action=TENANT_REACTIVATED` として `tenant_id=対象テナント id` で監査ログに記録される(ADR-0020 §3.1)。no-op(同一状態への変更要求)は記録しない。対象テナントの Tenant Admin が `GET /api/audit-logs`(A-22)で確認可能。
       operationId: updateTenantStatus
       security:
         - bearerAuth: []
@@ -448,6 +454,8 @@ paths:
         プラットフォーム全体の数値メトリクスを返す(S-12 監視ダッシュボード用)。
         認可: SaaS Admin のみ。`X-Tenant-Id` ヘッダ不要(プラットフォーム運用 API)。
         時系列グラフ用のトレンドデータは Phase 2 で追加する。
+
+        **監査記録**: 成功時に `action=PLATFORM_METRICS_VIEWED` として `tenant_id=NULL`(横断集計)で監査ログに記録される(ADR-0020 §3.1 / §3.2)。`GET /api/audit-logs`(A-22)では参照不可(`tenant_id=NULL` は Tenant Admin スコープ外)。
       operationId: getPlatformMetrics
       security:
         - bearerAuth: []
@@ -1029,7 +1037,10 @@ paths:
     get:
       tags: [Audit]
       summary: 監査ログ参照 (Tenant Admin)
-      description: "認可: Tenant Admin のみ。現在のテナントの監査ログをページングで返す。`from` / `to` / `action` で絞り込み可能。"
+      description: |
+        認可: Tenant Admin のみ。現在のテナント(`X-Tenant-Id`)の監査ログをページングで返す。`from` / `to` / `action` で絞り込み可能。
+
+        **参照スコープ(ADR-0020 §3.4)**: `audit_logs.tenant_id` が現在のテナントと一致するすべてのレコードを返す。特定テナントを対象とする SaaS Admin 操作(テナント停止・再開・名称更新・詳細閲覧)は `tenant_id=当該テナント id` で記録されるため、このエンドポイントで参照可能。横断操作(テナント一覧閲覧・プラットフォームメトリクス閲覧、`tenant_id=NULL`)は参照不可。
       operationId: listAuditLogs
       parameters:
         - { name: from, in: query, description: "絞り込み開始日時 (ISO 8601)", schema: { type: string, format: date-time } }
@@ -1580,15 +1591,14 @@ components:
 
     AuditLog:
       description: |
-        監査ログのレスポンス表現。`audit_logs` テーブル(基本設計書 v1.4.3 §4.2.6)に対応するが、
+        監査ログのレスポンス表現。`audit_logs` テーブル(基本設計書 §4.2.6)に対応するが、
         **以下の DDL 列は API レスポンスに含めない**(内部分離キー / 内部実装 / 重複情報のため):
 
         - `tenant_id` — `/api/audit-logs` は Tenant Admin が自テナントの監査ログを参照する API であり、
-          レスポンスは常に呼び出し時の `X-Tenant-Id` ヘッダ値と一致する。内部分離キーであり返却不要(Issue #107、方針 B)。
+          返却されるレコードは呼び出し時の `X-Tenant-Id` ヘッダ値と一致するテナントのもの(ADR-0020 §3.4 により SaaS Admin の対象テナント操作も含む)。内部分離キーであり返却不要(Issue #107、方針 B)。
         - `actor_sub` — Keycloak `sub` クレーム。Tenant Admin が監査ログを参照する目的(自テナント内で「誰が操作したか」の追跡)では
           `userId`(`users.id` への FK)で十分であり、Keycloak の内部識別子を API レスポンスに含める必要はない。
-          DB 上は SaaS Admin 操作の追跡用に保持される(基本設計書 §3.2.1 / §4.2 冒頭、ADR-0004)が、本エンドポイントは
-          Tenant Admin 専用であり SaaS Admin の業務テーブル操作はそもそも発生しない方針(ADR-0004)。
+          DB 上は SaaS Admin 操作の追跡用に保持される(基本設計書 §4.2 冒頭、ADR-0004)。
         - `hash_chain` — 監査ログ改ざん検知用の SHA-256 ハッシュ(基本設計書 §6.7)。API では公開せず、
           改ざん検知ロジック自体を露出させない方針。
       type: object
