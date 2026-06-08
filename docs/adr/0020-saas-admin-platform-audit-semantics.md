@@ -1,6 +1,6 @@
 # ADR-0020: SaaS Admin プラットフォーム操作の監査セマンティクス(`tenant_id` 帰属・read 監査・Tenant Admin 可視性)
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-06-08
 - **Deciders**: win2cot
 - **Tags**: audit, security, authorization, multi-tenancy
