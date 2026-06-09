@@ -2,7 +2,6 @@ package xyz.dgz48.tasks.webapi.shared.infra;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +18,7 @@ class ClockConfig {
   @Bean
   @ConditionalOnMissingBean
   Clock clock() {
-    return Clock.system(ZoneId.of("Asia/Tokyo"));
+    return Clock.system(AppZones.JST);
   }
 
   @Bean

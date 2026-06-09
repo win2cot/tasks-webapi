@@ -12,7 +12,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.StakeholderAlreadyExistsException;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
@@ -45,7 +45,6 @@ class AddStakeholderUseCaseTest {
   private static final Long OTHER_TENANT_USER_ID = 30L;
   private static final Long NEW_STAKEHOLDER_ID = 50L;
 
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
   private static final Instant FIXED_INSTANT = Instant.parse("2026-06-01T01:00:00Z");
 
   @Mock TaskRepository taskRepository;
@@ -82,11 +81,11 @@ class AddStakeholderUseCaseTest {
         "new-stakeholder@example.com",
         OWNER_ID,
         "所有者 太郎",
-        LocalDateTime.now());
+        LocalDateTime.now(AppZones.JST));
   }
 
   private void setupClock() {
-    when(clock.getZone()).thenReturn(JST);
+    when(clock.getZone()).thenReturn(AppZones.JST);
     when(clock.instant()).thenReturn(FIXED_INSTANT);
   }
 

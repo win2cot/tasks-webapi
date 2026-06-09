@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.json.JsonMapper;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
@@ -46,8 +46,6 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 public class TenantContextFilter extends OncePerRequestFilter {
 
   static final String HEADER_X_TENANT_ID = "X-Tenant-Id";
-
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   private final TenantMembershipPort tenantMembershipPort;
   private final UserTenantsResolverService userTenantsResolverService;
@@ -146,7 +144,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     ErrorResponse errorResponse =
         new ErrorResponse(
-            OffsetDateTime.now(JST),
+            OffsetDateTime.now(AppZones.JST),
             status.value(),
             status.getReasonPhrase(),
             code,

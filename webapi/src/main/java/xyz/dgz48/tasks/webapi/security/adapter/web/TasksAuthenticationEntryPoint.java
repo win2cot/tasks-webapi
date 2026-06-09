@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -14,6 +13,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 
@@ -22,8 +22,6 @@ import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 @Component
 @RequiredArgsConstructor
 public class TasksAuthenticationEntryPoint implements AuthenticationEntryPoint {
-
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   private final JsonMapper objectMapper;
 
@@ -40,7 +38,7 @@ public class TasksAuthenticationEntryPoint implements AuthenticationEntryPoint {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     ErrorResponse errorResponse =
         new ErrorResponse(
-            OffsetDateTime.now(JST),
+            OffsetDateTime.now(AppZones.JST),
             HttpStatus.UNAUTHORIZED.value(),
             HttpStatus.UNAUTHORIZED.getReasonPhrase(),
             ErrorCode.E_UNAUTHORIZED,

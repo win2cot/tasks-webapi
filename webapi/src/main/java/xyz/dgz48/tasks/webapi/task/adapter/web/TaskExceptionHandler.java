@@ -2,7 +2,6 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -11,6 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 import xyz.dgz48.tasks.webapi.task.domain.StakeholderAlreadyExistsException;
@@ -22,8 +22,6 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
 @RestControllerAdvice(assignableTypes = TaskController.class)
 public class TaskExceptionHandler {
 
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-
   @ExceptionHandler({
     TaskNotFoundException.class,
     TaskNotViewableException.class,
@@ -32,7 +30,7 @@ public class TaskExceptionHandler {
   @ResponseStatus(HttpStatus.NOT_FOUND)
   public ErrorResponse handleNotFound(DomainException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.NOT_FOUND.value(),
         HttpStatus.NOT_FOUND.getReasonPhrase(),
         ErrorCode.E_NOT_FOUND,
@@ -44,7 +42,7 @@ public class TaskExceptionHandler {
   @ResponseStatus(HttpStatus.FORBIDDEN)
   public ErrorResponse handleForbidden(DomainException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.FORBIDDEN.value(),
         HttpStatus.FORBIDDEN.getReasonPhrase(),
         ErrorCode.E_FORBIDDEN,
@@ -57,7 +55,7 @@ public class TaskExceptionHandler {
   public ErrorResponse handlePreconditionFailed(
       PreconditionFailedException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.PRECONDITION_FAILED.value(),
         HttpStatus.PRECONDITION_FAILED.getReasonPhrase(),
         ErrorCode.E_PRECONDITION_FAILED,
@@ -70,7 +68,7 @@ public class TaskExceptionHandler {
   public ErrorResponse handleMissingHeader(
       MissingRequestHeaderException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.BAD_REQUEST.value(),
         HttpStatus.BAD_REQUEST.getReasonPhrase(),
         ErrorCode.E_VALIDATION,
@@ -82,7 +80,7 @@ public class TaskExceptionHandler {
   @ResponseStatus(HttpStatus.CONFLICT)
   public ErrorResponse handleConflict(DomainException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.CONFLICT.value(),
         HttpStatus.CONFLICT.getReasonPhrase(),
         ErrorCode.E_CONFLICT,
@@ -95,7 +93,7 @@ public class TaskExceptionHandler {
   public ErrorResponse handleInvalidIfMatchFormat(
       InvalidIfMatchFormatException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.BAD_REQUEST.value(),
         HttpStatus.BAD_REQUEST.getReasonPhrase(),
         ErrorCode.E_VALIDATION,

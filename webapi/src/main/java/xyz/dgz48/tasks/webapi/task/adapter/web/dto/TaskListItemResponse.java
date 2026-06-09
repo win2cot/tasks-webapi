@@ -2,9 +2,9 @@ package xyz.dgz48.tasks.webapi.task.adapter.web.dto;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
@@ -28,8 +28,6 @@ public record TaskListItemResponse(
     OffsetDateTime updatedAt,
     boolean editable,
     boolean deletable) {
-
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   public static TaskListItemResponse from(
       Task task, Long currentUserId, Map<Long, UserJpaEntity> userMap) {
@@ -61,9 +59,11 @@ public record TaskListItemResponse(
         owner,
         assignee,
         task.getDueDate(),
-        task.getCompletedAt() != null ? task.getCompletedAt().atZone(JST).toOffsetDateTime() : null,
-        task.getCreatedAt().atZone(JST).toOffsetDateTime(),
-        task.getUpdatedAt().atZone(JST).toOffsetDateTime(),
+        task.getCompletedAt() != null
+            ? task.getCompletedAt().atZone(AppZones.JST).toOffsetDateTime()
+            : null,
+        task.getCreatedAt().atZone(AppZones.JST).toOffsetDateTime(),
+        task.getUpdatedAt().atZone(AppZones.JST).toOffsetDateTime(),
         isOwner,
         isOwner);
   }

@@ -2,7 +2,6 @@ package xyz.dgz48.tasks.webapi.shared.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
@@ -18,12 +17,11 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import xyz.dgz48.tasks.webapi.shared.exception.SaasAdminRequiredException;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 
 /** 共通業務例外を HTTP レスポンスにマップするグローバル例外ハンドラ。 */
 @RestControllerAdvice
 class SharedExceptionHandler extends ResponseEntityExceptionHandler {
-
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   @Override
   protected ResponseEntity<Object> createResponseEntity(
@@ -49,7 +47,7 @@ class SharedExceptionHandler extends ResponseEntityExceptionHandler {
         .headers(headers)
         .body(
             new ErrorResponse(
-                OffsetDateTime.now(JST),
+                OffsetDateTime.now(AppZones.JST),
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 ErrorCode.E_VALIDATION,
@@ -67,7 +65,7 @@ class SharedExceptionHandler extends ResponseEntityExceptionHandler {
         .headers(headers)
         .body(
             new ErrorResponse(
-                OffsetDateTime.now(JST),
+                OffsetDateTime.now(AppZones.JST),
                 statusCode.value(),
                 reasonPhrase,
                 code,
@@ -99,7 +97,7 @@ class SharedExceptionHandler extends ResponseEntityExceptionHandler {
   public ErrorResponse handleSaasAdminRequired(
       SaasAdminRequiredException ex, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         HttpStatus.FORBIDDEN.value(),
         HttpStatus.FORBIDDEN.getReasonPhrase(),
         ErrorCode.E_FORBIDDEN,

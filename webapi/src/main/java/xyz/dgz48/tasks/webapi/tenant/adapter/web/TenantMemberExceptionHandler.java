@@ -2,13 +2,13 @@ package xyz.dgz48.tasks.webapi.tenant.adapter.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Objects;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantCrossBoundaryException;
@@ -18,8 +18,6 @@ import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
 
 @RestControllerAdvice(assignableTypes = TenantMemberController.class)
 public class TenantMemberExceptionHandler {
-
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   @ExceptionHandler(UserTenantNotFoundException.class)
   @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -62,7 +60,7 @@ public class TenantMemberExceptionHandler {
   private static ErrorResponse error(
       HttpStatus status, ErrorCode code, String message, HttpServletRequest request) {
     return new ErrorResponse(
-        OffsetDateTime.now(JST),
+        OffsetDateTime.now(AppZones.JST),
         status.value(),
         status.getReasonPhrase(),
         code,

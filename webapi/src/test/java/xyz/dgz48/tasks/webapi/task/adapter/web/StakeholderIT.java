@@ -28,6 +28,7 @@ import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.adapter.persistence.TaskJpaEntity;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
@@ -147,8 +148,8 @@ class StakeholderIT {
               .setParameter(7, "STAKEHOLDERS")
               .setParameter(8, LocalDate.of(2026, 12, 31))
               .setParameter(9, 0L)
-              .setParameter(10, LocalDateTime.now())
-              .setParameter(11, LocalDateTime.now())
+              .setParameter(10, LocalDateTime.now(AppZones.JST))
+              .setParameter(11, LocalDateTime.now(AppZones.JST))
               .setParameter(12, ownerId)
               .setParameter(13, ownerId)
               .executeUpdate();
@@ -170,8 +171,8 @@ class StakeholderIT {
               .setParameter(7, "PRIVATE")
               .setParameter(8, LocalDate.of(2026, 12, 31))
               .setParameter(9, 0L)
-              .setParameter(10, LocalDateTime.now())
-              .setParameter(11, LocalDateTime.now())
+              .setParameter(10, LocalDateTime.now(AppZones.JST))
+              .setParameter(11, LocalDateTime.now(AppZones.JST))
               .setParameter(12, ownerId)
               .setParameter(13, ownerId)
               .executeUpdate();
@@ -462,7 +463,7 @@ class StakeholderIT {
               .setParameter(2, userId)
               .setParameter(3, tenantId)
               .setParameter(4, addedBy)
-              .setParameter(5, LocalDateTime.now())
+              .setParameter(5, LocalDateTime.now(AppZones.JST))
               .executeUpdate();
           return null;
         });

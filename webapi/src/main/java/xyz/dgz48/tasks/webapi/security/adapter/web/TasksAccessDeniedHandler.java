@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +12,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 
@@ -20,8 +20,6 @@ import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 @Component
 @RequiredArgsConstructor
 public class TasksAccessDeniedHandler implements AccessDeniedHandler {
-
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
 
   private final JsonMapper objectMapper;
 
@@ -36,7 +34,7 @@ public class TasksAccessDeniedHandler implements AccessDeniedHandler {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     ErrorResponse errorResponse =
         new ErrorResponse(
-            OffsetDateTime.now(JST),
+            OffsetDateTime.now(AppZones.JST),
             HttpStatus.FORBIDDEN.value(),
             HttpStatus.FORBIDDEN.getReasonPhrase(),
             ErrorCode.E_FORBIDDEN,

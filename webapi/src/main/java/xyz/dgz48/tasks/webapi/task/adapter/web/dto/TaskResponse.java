@@ -2,8 +2,8 @@ package xyz.dgz48.tasks.webapi.task.adapter.web.dto;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import org.jspecify.annotations.Nullable;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
@@ -24,8 +24,6 @@ public record TaskResponse(
     OffsetDateTime updatedAt,
     Long version) {
 
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
-
   public static TaskResponse from(Task task) {
     return new TaskResponse(
         task.getId(),
@@ -37,9 +35,11 @@ public record TaskResponse(
         task.getVisibility(),
         task.getAssigneeId(),
         task.getDueDate(),
-        task.getCompletedAt() != null ? task.getCompletedAt().atZone(JST).toOffsetDateTime() : null,
-        task.getCreatedAt().atZone(JST).toOffsetDateTime(),
-        task.getUpdatedAt().atZone(JST).toOffsetDateTime(),
+        task.getCompletedAt() != null
+            ? task.getCompletedAt().atZone(AppZones.JST).toOffsetDateTime()
+            : null,
+        task.getCreatedAt().atZone(AppZones.JST).toOffsetDateTime(),
+        task.getUpdatedAt().atZone(AppZones.JST).toOffsetDateTime(),
         task.getVersion());
   }
 }
