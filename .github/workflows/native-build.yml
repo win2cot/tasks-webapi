@@ -1,0 +1,99 @@
+# Native Image compile check – PR validation only (no deployable image produced).
+# Role: nativeCompile のみ実行し native build 破壊を PR で検知する(#490)。
+#       bootBuildImage(フルコンテナイメージ生成)は #481 が担当 — ADR-0018 §3 役割分担参照。
+# Estimated duration: 5–15 min (with -Ob quick build mode).
+# ADR references: ADR-0018 (bootBuildImage 役割分担), ADR-0021 (JDK 25 baseline).
+
+name: Native Build
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      native: ${{ steps.filter.outputs.native }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            native:
+              - 'webapi/**'
+              - '*.gradle*'
+              - 'settings.gradle*'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - '.github/workflows/native-build.yml'
+
+  nativeCompile:
+    needs: changes
+    if: needs.changes.outputs.native == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tasks
+          MYSQL_USER: tasks_webapi
+          MYSQL_PASSWORD: tasks_webapi
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # processAot starts the production Spring context (Flyway + Hibernate validate).
+      # These env vars are picked up by the aotEnv() fallback in webapi/build.gradle.
+      DATASOURCE_URL: "jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true"
+      DATASOURCE_USERNAME: tasks_webapi
+      DATASOURCE_PASSWORD: tasks_webapi
+      # Spring Security JwtDecoder is lazy (no network call at context startup).
+      OIDC_ISSUER_URI: "http://localhost:18080/realms/tasks"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up GraalVM 25 (Community)
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          cache: 'gradle'
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Native compile
+        # -PciNativeBuild activates GHA-only memory-reduction flags in webapi/build.gradle:
+        #   -Ob           quick build mode (less optimization, lower memory + time)
+        #   -J-Xmx12g     cap native-image JVM heap on the 16 GB GHA standard runner
+        #   --parallelism=2  reduce concurrent compilation threads
+        # These flags are PR-check-only and do NOT affect bootBuildImage (#481).
+        run: ./gradlew :webapi:nativeCompile -PciNativeBuild=true

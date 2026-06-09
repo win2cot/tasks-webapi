@@ -170,6 +170,12 @@ graalvmNative {
     binaries {
         main {
             imageName = 'tasks-webapi'
+            // CI-only memory flags activated by -PciNativeBuild=true (native-build.yml).
+            // -Ob reduces optimization level to cut build time/memory on 16 GB GHA runners.
+            // Does NOT affect bootBuildImage (#481) which bypasses this Gradle config.
+            if (project.hasProperty('ciNativeBuild')) {
+                buildArgs.addAll(['-Ob', '-J-Xmx12g', '--parallelism=2'])
+            }
         }
     }
     toolchainDetection = false
