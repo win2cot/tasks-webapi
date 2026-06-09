@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
@@ -60,7 +60,7 @@ class ListTasksUseCaseTest {
   }
 
   private void setupClock() {
-    when(clock.getZone()).thenReturn(ZoneId.of("Asia/Tokyo"));
+    when(clock.getZone()).thenReturn(AppZones.JST);
     when(clock.instant()).thenReturn(TODAY.atStartOfDay().toInstant(ZoneOffset.of("+09:00")));
   }
 

@@ -13,7 +13,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
@@ -38,9 +38,9 @@ class CreateTaskUseCaseTest {
   private static final Long OWNER_ID = 10L;
   private static final Long STAKEHOLDER_ID = 20L;
 
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
   private static final Instant FIXED_INSTANT = Instant.parse("2026-06-01T01:00:00Z");
-  private static final LocalDateTime FIXED_LDT = LocalDateTime.ofInstant(FIXED_INSTANT, JST);
+  private static final LocalDateTime FIXED_LDT =
+      LocalDateTime.ofInstant(FIXED_INSTANT, AppZones.JST);
 
   @Mock TaskRepository taskRepository;
   @Mock StakeholderRepository stakeholderRepository;
@@ -107,7 +107,7 @@ class CreateTaskUseCaseTest {
         .thenReturn(created);
     when(tenantMembershipPort.findActiveRole(STAKEHOLDER_ID, TENANT_ID))
         .thenReturn(Optional.of(TenantRole.MEMBER));
-    when(clock.getZone()).thenReturn(JST);
+    when(clock.getZone()).thenReturn(AppZones.JST);
     when(clock.instant()).thenReturn(FIXED_INSTANT);
 
     useCase.execute(
@@ -157,7 +157,7 @@ class CreateTaskUseCaseTest {
         .thenReturn(created);
     when(tenantMembershipPort.findActiveRole(STAKEHOLDER_ID, TENANT_ID))
         .thenReturn(Optional.of(TenantRole.MEMBER));
-    when(clock.getZone()).thenReturn(JST);
+    when(clock.getZone()).thenReturn(AppZones.JST);
     when(clock.instant()).thenReturn(FIXED_INSTANT);
 
     useCase.execute(

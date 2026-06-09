@@ -9,7 +9,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -18,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskAuthorizationDomainService;
@@ -36,9 +36,9 @@ class ChangeTaskStatusUseCaseTest {
   private static final Long ASSIGNEE_ID = 20L;
   private static final Long OTHER_USER_ID = 30L;
 
-  private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
   private static final Instant FIXED_INSTANT = Instant.parse("2026-06-01T01:00:00Z");
-  private static final LocalDateTime FIXED_LDT = LocalDateTime.ofInstant(FIXED_INSTANT, JST);
+  private static final LocalDateTime FIXED_LDT =
+      LocalDateTime.ofInstant(FIXED_INSTANT, AppZones.JST);
 
   @Mock TaskRepository taskRepository;
   @Mock StakeholderRepository stakeholderRepository;
@@ -68,7 +68,7 @@ class ChangeTaskStatusUseCaseTest {
   }
 
   private void setupClock() {
-    when(clock.getZone()).thenReturn(JST);
+    when(clock.getZone()).thenReturn(AppZones.JST);
     when(clock.instant()).thenReturn(FIXED_INSTANT);
   }
 
