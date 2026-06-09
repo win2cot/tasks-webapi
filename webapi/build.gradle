@@ -78,6 +78,10 @@ dependencies {
     errorprone 'com.uber.nullaway:nullaway:0.13.6'
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone.excludedPaths = ".*/build/generated/.*"
+}
+
 tasks.named('compileJava') {
     options.errorprone {
         error('NullAway')
@@ -89,19 +93,6 @@ tasks.named('compileJava') {
 }
 
 tasks.named('compileTestJava') {
-    options.errorprone {
-        disable('NullAway')
-    }
-}
-
-// Spring Boot AOT generates sources that are not in xyz.dgz48.* — skip NullAway.
-tasks.named('compileAotJava') {
-    options.errorprone {
-        disable('NullAway')
-    }
-}
-
-tasks.named('compileAotTestJava') {
     options.errorprone {
         disable('NullAway')
     }
@@ -135,7 +126,13 @@ spotless {
     // OS に依存せず常に LF を正とする(CI は Linux=LF、Windows ローカルでの CRLF 誤検知を防ぐ)。
     lineEndings = 'UNIX'
     java {
-        targetExclude('build/**')
+        // target は source set ベース(デフォルト)ではなく Ant 形式のファイルパターンで指定する。
+        // デフォルトの java {} は全 source set の Java を対象にするため、Spring Boot AOT が
+        // source set に登録する生成ソース(build/generated/aot*)まで対象に含まれ、Gradle の
+        // 入出力依存検証を満たすために spotlessJava が processAot / compileAotJava へ dependsOn を
+        // 自動付与してしまう(spotlessApply のたびに AOT パイプラインが走る)。静的ファイルパターンに
+        // すれば source set 由来の依存推論が行われず、手書き src/ のみを整形対象にできる。
+        target 'src/*/java/**/*.java'
         googleJavaFormat('1.34.0')
     }
 }
