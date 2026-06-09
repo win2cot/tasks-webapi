@@ -43,6 +43,7 @@ jobs:
               - 'gradle/**'
               - 'gradlew'
               - 'gradlew.bat'
+              - '.github/workflows/native-build.yml'
 
   nativeCompile:
     needs: changes
