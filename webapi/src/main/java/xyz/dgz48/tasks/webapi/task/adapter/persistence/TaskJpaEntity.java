@@ -150,7 +150,8 @@ public class TaskJpaEntity extends TenantFilteredEntity {
       @Nullable Long assigneeId,
       LocalDate dueDate,
       TaskStatus status,
-      @Nullable LocalDateTime completedAt) {
+      @Nullable LocalDateTime completedAt,
+      Visibility visibility) {
     this.title = title;
     this.description = description;
     this.priority = priority;
@@ -158,5 +159,10 @@ public class TaskJpaEntity extends TenantFilteredEntity {
     this.dueDate = dueDate;
     this.status = status;
     this.completedAt = completedAt;
+    this.visibility = visibility;
+  }
+
+  public void markDeleted(LocalDateTime deletedAt) {
+    this.deletedAt = deletedAt;
   }
 }

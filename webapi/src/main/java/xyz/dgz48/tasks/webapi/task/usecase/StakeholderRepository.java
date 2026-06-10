@@ -22,4 +22,11 @@ public interface StakeholderRepository {
 
   /** 指定ユーザーが関係者として登録済みか返す。 */
   boolean existsByTaskIdAndUserId(Long taskId, Long userId);
+
+  /** 指定タスクの関係者を全件削除して削除件数を返す。visibility = PRIVATE への変更時に使用。 */
+  int deleteAllByTaskId(Long taskId, Long tenantId);
+
+  /** 指定タスクの関係者を全件削除後、userIds で置換する。visibility = STAKEHOLDERS への変更時に使用。 */
+  void replaceAll(
+      Long taskId, Long tenantId, List<Long> userIds, Long addedByUserId, LocalDateTime addedAt);
 }
