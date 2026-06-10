@@ -59,4 +59,12 @@ public class TenantJpaEntity {
     this.plan = TenantPlan.STANDARD;
     this.status = TenantStatus.ACTIVE;
   }
+
+  public void updateName(String name) {
+    this.name = name;
+  }
+
+  public void updateStatus(TenantStatus status) {
+    this.status = status;
+  }
 }
