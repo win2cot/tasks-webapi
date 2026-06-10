@@ -47,9 +47,14 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.GetPlatformMetricsUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.GetTenantUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantsUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.SwitchTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UpdateTenantStatusUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.UpdateTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -83,6 +88,11 @@ class SecurityConfigTest {
   @MockitoBean AddMemberUseCase addMemberUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
+  @MockitoBean ListTenantsUseCase listTenantsUseCase;
+  @MockitoBean GetTenantUseCase getTenantUseCase;
+  @MockitoBean UpdateTenantUseCase updateTenantUseCase;
+  @MockitoBean UpdateTenantStatusUseCase updateTenantStatusUseCase;
+  @MockitoBean GetPlatformMetricsUseCase getPlatformMetricsUseCase;
 
   @Autowired MockMvc mockMvc;
 
