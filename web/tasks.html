@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>タスク一覧 — Tasks</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="css/app.css" />
+  <style>
+    /* ---- App shell (design-system.md §6.7) ---- */
+    body { font-size: 14px; }
+
+    .app-navbar {
+      background: var(--app-surface);
+      border-bottom: 1px solid var(--app-border);
+      height: 56px;
+    }
+    .app-brand {
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: var(--app-ink);
+      text-decoration: none;
+    }
+    .app-brand .bi { color: var(--app-primary); }
+
+    .app-layout { display: flex; min-height: calc(100vh - 56px); }
+
+    .app-sidebar {
+      width: 220px;
+      flex: 0 0 220px;
+      background: var(--app-surface);
+      border-right: 1px solid var(--app-border);
+      padding: 16px 12px;
+    }
+    .app-main { flex: 1 1 auto; min-width: 0; padding: 22px 26px 60px; }
+
+    .nav-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      color: #9aa1ad;
+      text-transform: uppercase;
+      padding: 0 12px;
+      margin: 14px 0 6px;
+    }
+    .side-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      color: #3f4855;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 13.5px;
+      margin-bottom: 2px;
+    }
+    .side-link .bi { font-size: 16px; color: #7a828f; }
+    .side-link:hover { background: #f2f4f7; }
+    .side-link.active { background: #eef2ff; color: var(--app-primary); }
+    .side-link.active .bi { color: var(--app-primary); }
+
+    .admin-only { display: none; }
+    body.role-admin .admin-only { display: block; }
+
+    /* Adapt tenant-switcher to white navbar */
+    #tenant-switcher-container .btn-outline-light {
+      color: var(--app-ink) !important;
+      border-color: var(--app-border) !important;
+    }
+    #tenant-switcher-container .btn-outline-light:hover {
+      background: #f2f4f7 !important;
+      color: var(--app-ink) !important;
+    }
+    #tenant-switcher-container .badge {
+      background-color: #eef2ff !important;
+      color: #3b4cca !important;
+      opacity: 1 !important;
+    }
+
+    /* ---- Page header ---- */
+    .page-title { font-weight: 700; font-size: 20px; margin: 0; }
+
+    /* ---- Task table section (design-system.md §6.3) ---- */
+    .task-section {
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--app-border);
+    }
+    .section-head h2 { font-size: 15px; font-weight: 700; margin: 0; }
+    .sec-count { font-size: 12px; color: var(--app-muted); font-weight: 500; }
+
+    table.tasks { width: 100%; border-collapse: collapse; }
+    table.tasks th {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9aa1ad;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--app-border);
+      text-align: left;
+      background: #fafbfc;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    table.tasks th[data-nosort] { cursor: default; }
+    table.tasks th .bi { font-size: 10px; opacity: .6; }
+    table.tasks td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f1f2f4;
+      vertical-align: middle;
+    }
+    table.tasks tr:last-child td { border-bottom: none; }
+    table.tasks tbody tr { cursor: pointer; }
+    table.tasks tbody tr:hover { background: #f8f9fb; }
+    .task-title { font-weight: 500; color: var(--app-ink); }
+    .task-desc { font-size: 11.5px; color: var(--app-muted); margin-top: 1px; }
+    .due-overdue { color: var(--c-overdue); font-weight: 700; }
+    .due-today   { color: var(--c-today);   font-weight: 700; }
+    .owner-mini {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #eef2ff;
+      color: #3b4cca;
+      display: inline-grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .empty-row td {
+      text-align: center;
+      color: #9aa1ad;
+      padding: 40px 14px;
+      font-size: 13px;
+    }
+
+    /* ---- Badges (design-system.md §6.4) ---- */
+    .vis-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid transparent;
+    }
+    .vis-TENANT       { background: #e7f5ec; color: #207a3a; border-color: #c3e6cf; }
+    .vis-STAKEHOLDERS { background: #e7f0fb; color: #1f5fb0; border-color: #c2d8f2; }
+    .vis-PRIVATE      { background: #f3eef7; color: #7a4ba8; border-color: #e0d2ee; }
+
+    .pri-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; }
+    .pri-HIGH   { background: #fdeaea; color: #c92a2a; }
+    .pri-MEDIUM { background: #fff3e2; color: #b8650b; }
+    .pri-LOW    { background: #eef1f6; color: #566173; }
+
+    .st-badge { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 6px; }
+    .st-NOT_STARTED { background: #eef1f6; color: #566173; }
+    .st-IN_PROGRESS { background: #e7f0fb; color: #1f5fb0; }
+    .st-DONE        { background: #e7f5ec; color: #207a3a; }
+    .st-ON_HOLD     { background: #fff3e2; color: #b8650b; }
+
+    /* ---- Pagination ---- */
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--app-border);
+      font-size: 12px;
+      color: var(--app-muted);
+      background: #fafbfc;
+    }
+
+    /* ---- Loading skeleton (design-system.md §6.11) ---- */
+    .skel-row { height: 44px; border-bottom: 1px solid #f1f2f4; padding: 10px 14px; }
+
+    /* ---- Drawer ---- */
+    .offcanvas-end { width: 440px; }
+  </style>
+</head>
+<body>
+<a href="#main-content" class="visually-hidden-focusable position-absolute p-2 m-2 bg-primary text-white rounded">
+  メインコンテンツへスキップ
+</a>
+
+<!-- ===== Top navbar ===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top" aria-label="グローバルナビゲーション">
+  <a class="app-brand d-flex align-items-center gap-2" href="index.html">
+    <i class="bi bi-check2-square fs-5" aria-hidden="true"></i><span>Tasks</span>
+  </a>
+  <div id="tenant-switcher-container" class="d-none"></div>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <label for="roleSel" class="text-muted small mb-0 d-none d-md-inline">ロール</label>
+      <select id="roleSel" class="form-select form-select-sm" style="width:148px;"
+        onchange="switchRole(this.value)" aria-label="ロール切替">
+        <option value="member">Member</option>
+        <option value="admin">Tenant Admin</option>
+      </select>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <div id="user-avatar"
+        class="rounded-circle bg-primary-subtle text-primary d-grid"
+        style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;"
+        aria-hidden="true">?</div>
+      <span id="nav-username" class="small d-none d-lg-inline"></span>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="handleLogout()">
+      <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>ログアウト
+    </button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar ===== -->
+  <aside class="app-sidebar d-none d-lg-block" aria-label="サイドナビゲーション">
+    <div class="nav-group-label" aria-hidden="true">メイン</div>
+    <a class="side-link" href="index.html">
+      <i class="bi bi-speedometer2" aria-hidden="true"></i>ダッシュボード
+    </a>
+    <a class="side-link active" href="tasks.html" aria-current="page">
+      <i class="bi bi-list-check" aria-hidden="true"></i>タスク一覧
+    </a>
+    <div class="admin-only">
+      <div class="nav-group-label" aria-hidden="true">テナント運営</div>
+      <a class="side-link" href="#">
+        <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>運営者ダッシュボード
+      </a>
+      <a class="side-link" href="#">
+        <i class="bi bi-people" aria-hidden="true"></i>ユーザー管理
+      </a>
+    </div>
+    <div class="nav-group-label" aria-hidden="true">アカウント</div>
+    <a class="side-link" href="#"><i class="bi bi-person-circle" aria-hidden="true"></i>プロフィール</a>
+    <a class="side-link" href="#"><i class="bi bi-bell" aria-hidden="true"></i>通知設定</a>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main id="main-content" class="app-main">
+
+    <!-- Page header -->
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <h1 class="page-title">タスク一覧</h1>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <label for="sortSel" class="text-muted small mb-0">
+          <i class="bi bi-sort-down me-1" aria-hidden="true"></i>並び替え
+        </label>
+        <select id="sortSel" class="form-select form-select-sm" style="width:172px;"
+          onchange="onSortChange(this.value)" aria-label="並び替え">
+          <option value="dueDate,asc">期限(昇順)</option>
+          <option value="dueDate,desc">期限(降順)</option>
+          <option value="priority,desc">優先度(高→低)</option>
+          <option value="priority,asc">優先度(低→高)</option>
+          <option value="createdAt,desc">作成日(新しい順)</option>
+          <option value="createdAt,asc">作成日(古い順)</option>
+        </select>
+        <button class="btn btn-sm btn-primary" onclick="openNew()" aria-label="新規タスクを作成">
+          <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>新規
+        </button>
+      </div>
+    </div>
+
+    <!-- Tenant Admin role note -->
+    <div class="alert alert-info py-2 small mb-3 admin-only" role="note">
+      <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>
+      Tenant Admin に切り替えても<b>業務タスクの操作権限は変わりません</b>(ADR-0005:所有者 / 担当者 / 関係者の3役割で評価)。
+    </div>
+
+    <!-- Error banner (design-system.md §6.11) -->
+    <div id="error-banner" class="alert alert-danger d-none d-flex align-items-center gap-2" role="alert" aria-live="assertive">
+      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+      <span id="error-message"></span>
+      <button class="btn btn-sm btn-outline-danger ms-auto" onclick="loadTasks()">
+        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再試行
+      </button>
+    </div>
+
+    <!-- Loading skeleton (design-system.md §6.11) -->
+    <div id="loading-skeleton" class="task-section" aria-busy="true" aria-label="読み込み中">
+      <div class="section-head placeholder-glow">
+        <span class="placeholder col-2"></span>
+        <span class="placeholder col-1 ms-2"></span>
+      </div>
+      <div class="p-0">
+        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block" style="border-radius:4px;"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-11 h-100 d-block" style="border-radius:4px;"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block" style="border-radius:4px;"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-10 h-100 d-block" style="border-radius:4px;"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block" style="border-radius:4px;"></span></div>
+      </div>
+    </div>
+
+    <!-- Task table panel -->
+    <div id="task-panel" class="task-section d-none">
+      <div class="section-head">
+        <i class="bi bi-list-check text-primary" aria-hidden="true"></i>
+        <h2>タスク</h2>
+        <span id="total-count" class="sec-count" aria-live="polite"></span>
+      </div>
+      <div class="table-responsive">
+        <table class="tasks" aria-label="タスク一覧">
+          <thead>
+            <tr>
+              <!-- status は OpenAPI sort pattern 対象外のため非ソート列 -->
+              <th scope="col" style="width:110px;" data-nosort>状態</th>
+              <th scope="col" data-nosort>タイトル</th>
+              <th scope="col" style="width:104px;" data-nosort>所有者</th>
+              <th scope="col" style="width:104px;" data-nosort>担当者</th>
+              <th scope="col" style="width:96px;" onclick="cycleSort('dueDate')">
+                期限 <i id="sort-caret-dueDate" class="bi bi-caret-up-fill" aria-hidden="true"></i>
+              </th>
+              <th scope="col" style="width:72px;" onclick="cycleSort('priority')">
+                優先度 <i id="sort-caret-priority" class="bi bi-chevron-expand" aria-hidden="true"></i>
+              </th>
+              <th scope="col" style="width:112px;" data-nosort>公開範囲</th>
+            </tr>
+          </thead>
+          <tbody id="task-tbody">
+            <!-- filled by JS -->
+          </tbody>
+        </table>
+      </div>
+      <!-- Pagination (design-system.md §6.3) -->
+      <div class="pager" role="navigation" aria-label="ページング">
+        <span id="pager-info">0 件</span>
+        <div class="ms-auto d-flex align-items-center gap-1">
+          <button id="btn-prev" class="btn btn-sm btn-outline-secondary py-0 px-2"
+            onclick="goPage(currentPage - 1)" disabled aria-label="前のページ">
+            <i class="bi bi-chevron-left" aria-hidden="true"></i> 前へ
+          </button>
+          <span id="pager-pages" class="px-2" aria-live="polite">1 / 1</span>
+          <button id="btn-next" class="btn btn-sm btn-outline-secondary py-0 px-2"
+            onclick="goPage(currentPage + 1)" disabled aria-label="次のページ">
+            次へ <i class="bi bi-chevron-right" aria-hidden="true"></i>
+          </button>
+          <span class="ms-2 text-muted">50 件 / ページ</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== New task drawer (create wired in later sprint) ===== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="newTaskDrawer" aria-labelledby="newTaskLabel">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="newTaskLabel">
+      <i class="bi bi-plus-circle me-2 text-primary" aria-hidden="true"></i>新規タスク
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+  </div>
+  <div class="offcanvas-body">
+    <form id="new-task-form" onsubmit="submitNewTask(event)">
+      <div class="mb-3">
+        <label class="form-label small fw-bold" for="newTitle">
+          タイトル <span class="text-danger" aria-hidden="true">*</span>
+        </label>
+        <input id="newTitle" class="form-control" maxlength="100"
+          placeholder="例: 設計レビュー" required aria-required="true" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold" for="newDesc">説明</label>
+        <textarea id="newDesc" class="form-control" rows="3"
+          maxlength="2000" placeholder="任意・最大2000文字"></textarea>
+      </div>
+      <div class="row g-3">
+        <div class="col-6">
+          <label class="form-label small fw-bold" for="newDue">
+            期限日 <span class="text-danger" aria-hidden="true">*</span>
+          </label>
+          <input type="date" id="newDue" class="form-control" required aria-required="true" />
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-bold" for="newAssignee">担当者</label>
+          <select id="newAssignee" class="form-select">
+            <option value="">未割当</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-3">
+        <fieldset>
+          <legend class="form-label small fw-bold">
+            優先度 <span class="text-danger" aria-hidden="true">*</span>
+          </legend>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="newPri" id="newPri-H" value="HIGH">
+            <label class="btn btn-outline-danger" for="newPri-H">高</label>
+            <input type="radio" class="btn-check" name="newPri" id="newPri-M" value="MEDIUM" checked>
+            <label class="btn btn-outline-warning" for="newPri-M">中</label>
+            <input type="radio" class="btn-check" name="newPri" id="newPri-L" value="LOW">
+            <label class="btn btn-outline-secondary" for="newPri-L">低</label>
+          </div>
+        </fieldset>
+      </div>
+      <div class="mt-3">
+        <fieldset>
+          <legend class="form-label small fw-bold">
+            公開範囲 <span class="text-danger" aria-hidden="true">*</span>
+          </legend>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="newVis" id="newVis-T" value="TENANT" checked>
+            <label class="btn btn-outline-success" for="newVis-T">
+              <i class="bi bi-globe2" aria-hidden="true"></i> テナント
+            </label>
+            <input type="radio" class="btn-check" name="newVis" id="newVis-S" value="STAKEHOLDERS">
+            <label class="btn btn-outline-primary" for="newVis-S">
+              <i class="bi bi-people-fill" aria-hidden="true"></i> 関係者
+            </label>
+            <input type="radio" class="btn-check" name="newVis" id="newVis-P" value="PRIVATE">
+            <label class="btn btn-outline-secondary" for="newVis-P">
+              <i class="bi bi-lock-fill" aria-hidden="true"></i> 非公開
+            </label>
+          </div>
+        </fieldset>
+      </div>
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary flex-grow-1">作成</button>
+        <button type="button" class="btn btn-light" data-bs-dismiss="offcanvas">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+  integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/keycloak-js@24.0.5/dist/keycloak.min.js"
+  integrity="sha384-BgPO16I1RACwKx5rebvaepuOdvkbIHpw6I7ekUJ1tGfSnPOf5V2rUwq89iQkJz1E" crossorigin="anonymous"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/tenant-switcher.js"></script>
+<script>
+  // ---- Page state ----
+  let currentPage = 0;
+  let currentSort = 'dueDate,asc';
+  let totalPages = 1;
+  let totalElements = 0;
+  const PAGE_SIZE = 50;
+
+  // ---- Meta helpers (design-system.md §6.4) ----
+  function statusMeta(s) {
+    return {
+      NOT_STARTED: ['未着手', 'st-NOT_STARTED'],
+      IN_PROGRESS:  ['進行中', 'st-IN_PROGRESS'],
+      DONE:         ['完了',   'st-DONE'],
+      ON_HOLD:      ['保留',   'st-ON_HOLD'],
+    }[s] || [s, 'st-NOT_STARTED'];
+  }
+
+  function priMeta(p) {
+    return {
+      HIGH:   ['高', 'pri-HIGH'],
+      MEDIUM: ['中', 'pri-MEDIUM'],
+      LOW:    ['低', 'pri-LOW'],
+    }[p] || [p, 'pri-LOW'];
+  }
+
+  function visMeta(v) {
+    return {
+      TENANT:       ['テナント', 'vis-TENANT',       'bi-globe2'],
+      STAKEHOLDERS: ['関係者',   'vis-STAKEHOLDERS', 'bi-people-fill'],
+      PRIVATE:      ['非公開',   'vis-PRIVATE',      'bi-lock-fill'],
+    }[v] || [v, 'vis-TENANT', 'bi-globe2'];
+  }
+
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function dueLabelHtml(dueDate) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const due   = new Date(dueDate + 'T00:00:00');
+    const diff  = Math.round((due - today) / 86400000);
+    const md    = dueDate.slice(5).replace('-', '/');
+    if (diff < 0)  return `<span class="due-overdue">${md}(${diff}日)</span>`;
+    if (diff === 0) return `<span class="due-today">今日</span>`;
+    if (diff === 1) return `明日 ${md}`;
+    return md;
+  }
+
+  function rowHTML(task) {
+    const [sl, sc]   = statusMeta(task.status);
+    const [pl, pc]   = priMeta(task.priority);
+    const [vl, vc, vi] = visMeta(task.visibility);
+    const ownerIni   = (task.owner?.fullName || '?').slice(0, 1);
+    const ownerName  = task.owner?.fullName  ?? '—';
+    const assigneeName = task.assignee?.fullName ?? '—';
+    const desc = task.description
+      ? `<div class="task-desc">${escHtml(task.description.slice(0, 80))}${task.description.length > 80 ? '…' : ''}</div>`
+      : '';
+    return `<tr tabindex="0"
+        onclick="onRowClick(${task.id})"
+        onkeydown="if(event.key==='Enter'||event.key===' ')onRowClick(${task.id})">
+      <td><span class="st-badge ${sc}">${sl}</span></td>
+      <td>
+        <div class="task-title">${escHtml(task.title)}</div>${desc}
+      </td>
+      <td>
+        <span class="d-inline-flex align-items-center">
+          <span class="owner-mini" aria-hidden="true">${escHtml(ownerIni)}</span>${escHtml(ownerName)}
+        </span>
+      </td>
+      <td>${escHtml(assigneeName)}</td>
+      <td style="white-space:nowrap">${dueLabelHtml(task.dueDate)}</td>
+      <td><span class="pri-badge ${pc}">${pl}</span></td>
+      <td><span class="vis-badge ${vc}"><i class="bi ${vi}" aria-hidden="true"></i>${vl}</span></td>
+    </tr>`;
+  }
+
+  // ---- UI state helpers (design-system.md §6.11) ----
+  function showLoading(on) {
+    document.getElementById('loading-skeleton').classList.toggle('d-none', !on);
+    document.getElementById('task-panel').classList.toggle('d-none', on);
+  }
+
+  function showError(msg) {
+    const banner = document.getElementById('error-banner');
+    document.getElementById('error-message').textContent = msg;
+    banner.classList.remove('d-none');
+  }
+
+  function clearError() {
+    document.getElementById('error-banner').classList.add('d-none');
+  }
+
+  // ---- Task list (A-1 GET /api/tasks) ----
+  async function loadTasks() {
+    clearError();
+    showLoading(true);
+    try {
+      const data = await Api.listTasks({ page: currentPage, size: PAGE_SIZE, sort: currentSort });
+      totalPages    = data.totalPages    || 1;
+      totalElements = data.totalElements || 0;
+      renderTasks(data.content);
+      renderPagination();
+      showLoading(false); // 成功時のみ task-panel を表示
+    } catch (err) {
+      // エラー時はスケルトンを隠すが task-panel は見せない(空テーブルとエラーバナーの同時表示を避ける)
+      document.getElementById('loading-skeleton').classList.add('d-none');
+      showError(err.message || 'タスクの取得に失敗しました');
+    }
+  }
+
+  function renderTasks(tasks) {
+    document.getElementById('total-count').textContent = `${totalElements} 件`;
+    const tbody = document.getElementById('task-tbody');
+    if (!tasks || tasks.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7"><i class="bi bi-inbox me-2" aria-hidden="true"></i>タスクはありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = tasks.map(rowHTML).join('');
+  }
+
+  function renderPagination() {
+    const start = totalElements > 0 ? currentPage * PAGE_SIZE + 1 : 0;
+    const end   = Math.min((currentPage + 1) * PAGE_SIZE, totalElements);
+    document.getElementById('pager-info').textContent =
+      totalElements > 0 ? `${totalElements} 件中 ${start}–${end} 件を表示` : '0 件';
+    document.getElementById('pager-pages').textContent =
+      `${currentPage + 1} / ${Math.max(totalPages, 1)}`;
+    document.getElementById('btn-prev').disabled = currentPage <= 0;
+    document.getElementById('btn-next').disabled = currentPage >= totalPages - 1;
+  }
+
+  function goPage(p) {
+    if (p < 0 || p >= totalPages) return;
+    currentPage = p;
+    loadTasks();
+  }
+
+  // ---- Sort ----
+  function onSortChange(value) {
+    currentSort = value;
+    currentPage = 0;
+    updateSortCarets();
+    loadTasks();
+  }
+
+  function cycleSort(field) {
+    const [f, d] = currentSort.split(',');
+    currentSort = f === field
+      ? `${field},${d === 'asc' ? 'desc' : 'asc'}`
+      : `${field},asc`;
+    const sel = document.getElementById('sortSel');
+    const match = [...sel.options].find(o => o.value === currentSort);
+    if (match) sel.value = currentSort;
+    currentPage = 0;
+    updateSortCarets();
+    loadTasks();
+  }
+
+  function updateSortCarets() {
+    const [f, d] = currentSort.split(',');
+    // status は OpenAPI sort フィールドに含まれないため対象外
+    ['dueDate', 'priority'].forEach(field => {
+      const el = document.getElementById(`sort-caret-${field}`);
+      if (!el) return;
+      el.className = f === field
+        ? (d === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill')
+        : 'bi bi-chevron-expand';
+    });
+  }
+
+  // ---- Role switcher ----
+  function switchRole(r) {
+    document.body.classList.toggle('role-admin', r === 'admin');
+  }
+
+  // ---- Row click (S-05 detail — wired in later sprint) ----
+  function onRowClick(id) {
+    // TODO: open detail drawer (S-05, Sprint 3+)
+    console.log('task row clicked:', id);
+  }
+
+  // ---- New task drawer ----
+  function openNew() {
+    document.getElementById('new-task-form').reset();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('newTaskDrawer')).show();
+  }
+
+  function submitNewTask(event) {
+    event.preventDefault();
+    // TODO: POST /api/tasks (Sprint 3+)
+    bootstrap.Offcanvas.getInstance(document.getElementById('newTaskDrawer'))?.hide();
+  }
+
+  // ---- Logout ----
+  function handleLogout() {
+    Auth.logout();
+  }
+
+  // ---- Init ----
+  async function main() {
+    const authenticated = await Auth.init();
+    if (!authenticated) return;
+
+    let me;
+    try {
+      me = await Api.getMe();
+    } catch (err) {
+      showError('ユーザー情報の取得に失敗しました: ' + err.message);
+      return;
+    }
+
+    // Populate navbar user info
+    const user = Auth.getUser();
+    const displayName = user?.name || user?.preferred_username || '';
+    document.getElementById('nav-username').textContent = displayName;
+    document.getElementById('user-avatar').textContent  = displayName.slice(0, 1) || '?';
+
+    // テナント未選択はテナント選択画面へ
+    if (!me.activeTenantId) {
+      window.location.replace('index.html');
+      return;
+    }
+    Api.setTenantId(me.activeTenantId);
+
+    // Tenant switcher in navbar
+    TenantSwitcher.render(
+      document.getElementById('tenant-switcher-container'),
+      me.tenants,
+      me.activeTenantId,
+    );
+
+    // Reflect Tenant Admin role in sidebar
+    const activeTenant = me.tenants?.find(t => t.id === me.activeTenantId);
+    if (activeTenant?.role === 'TENANT_ADMIN') {
+      document.getElementById('roleSel').value = 'admin';
+      switchRole('admin');
+    }
+
+    updateSortCarets();
+    await loadTasks();
+  }
+
+  main();
+</script>
+</body>
+</html>
