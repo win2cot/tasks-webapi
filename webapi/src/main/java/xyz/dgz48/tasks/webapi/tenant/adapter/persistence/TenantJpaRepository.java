@@ -1,6 +1,7 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -87,8 +88,26 @@ interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
       value =
           """
           SELECT COUNT(*) FROM tenants
-          WHERE created_at >= :since
+          WHERE created_at >= :since AND status != 'DELETED'
           """,
       nativeQuery = true)
   long countTenantsCreatedSince(@Param("since") LocalDateTime since);
+
+  @Query(
+      """
+      SELECT ut.id.tenantId, COUNT(ut) FROM UserTenantJpaEntity ut
+      WHERE ut.id.tenantId IN :tenantIds
+      GROUP BY ut.id.tenantId
+      """)
+  List<Object[]> countUsersByTenantIds(@Param("tenantIds") List<Long> tenantIds);
+
+  @Query(
+      value =
+          """
+          SELECT tenant_id, COUNT(*) FROM tasks
+          WHERE tenant_id IN :tenantIds AND deleted_at IS NULL
+          GROUP BY tenant_id
+          """,
+      nativeQuery = true)
+  List<Object[]> countTasksByTenantIds(@Param("tenantIds") List<Long> tenantIds);
 }

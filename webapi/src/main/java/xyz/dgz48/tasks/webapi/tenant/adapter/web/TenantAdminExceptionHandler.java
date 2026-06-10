@@ -11,6 +11,7 @@ import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantNotFoundException;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatusNotAllowedException;
 
 @RestControllerAdvice(assignableTypes = TenantAdminController.class)
 class TenantAdminExceptionHandler {
@@ -24,6 +25,19 @@ class TenantAdminExceptionHandler {
         HttpStatus.NOT_FOUND.getReasonPhrase(),
         ErrorCode.E_NOT_FOUND,
         Objects.requireNonNullElse(ex.getMessage(), "テナントが見つかりません"),
+        request.getRequestURI());
+  }
+
+  @ExceptionHandler(TenantStatusNotAllowedException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse handleStatusNotAllowed(
+      TenantStatusNotAllowedException ex, HttpServletRequest request) {
+    return new ErrorResponse(
+        OffsetDateTime.now(AppZones.JST),
+        HttpStatus.BAD_REQUEST.value(),
+        HttpStatus.BAD_REQUEST.getReasonPhrase(),
+        ErrorCode.E_VALIDATION,
+        Objects.requireNonNullElse(ex.getMessage(), "不正なステータス値です"),
         request.getRequestURI());
   }
 }

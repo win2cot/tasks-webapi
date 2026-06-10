@@ -9,6 +9,7 @@ import xyz.dgz48.tasks.webapi.shared.usecase.TenantFilterBypassService;
 import xyz.dgz48.tasks.webapi.tenant.domain.Tenant;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantNotFoundException;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatusNotAllowedException;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatusUpdateCommand;
 
 /**
@@ -27,6 +28,10 @@ public class UpdateTenantStatusUseCase {
 
   @Transactional
   public Tenant execute(Long tenantId, Long userId, TenantStatusUpdateCommand cmd) {
+    if (cmd.status() == TenantStatus.DELETED) {
+      throw new TenantStatusNotAllowedException(cmd.status());
+    }
+
     Tenant previous =
         tenantFilterBypassService
             .runAsSaaSAdmin(() -> adminTenantRepository.findById(tenantId))

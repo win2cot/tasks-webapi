@@ -222,6 +222,17 @@ class TenantAdminAuditIT {
         });
   }
 
+  @Test
+  void updateTenantStatus_returns400_whenStatusIsDeleted() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tenants/{id}/status", tenantId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DELETED\"}")
+                .with(authentication(saasAdminToken)))
+        .andExpect(status().isBadRequest());
+  }
+
   // =========================================================
   // A-25: GET /api/tenants/{id} — read audit (SaaS Admin only)
   // =========================================================
