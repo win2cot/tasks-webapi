@@ -1,6 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -47,4 +48,7 @@ public interface TaskRepository {
 
   /** 認可フィルタを適用した期限切れ未完了タスク件数を返す。 */
   long countOverdueTasks(Long userId, LocalDate today);
+
+  /** タスクを論理削除する(deleted_at セット)。楽観ロック競合時は PreconditionFailedException を投げる。 */
+  void softDelete(Task task, LocalDateTime deletedAt);
 }

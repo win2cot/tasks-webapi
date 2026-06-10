@@ -48,4 +48,10 @@ interface TaskStakeholderJpaRepository
       nativeQuery = true)
   void deleteByTaskIdAndUserId(
       @Param("taskId") Long taskId, @Param("userId") Long userId, @Param("tenantId") Long tenantId);
+
+  @Modifying
+  @Query(
+      value = "DELETE FROM task_stakeholders WHERE task_id = :taskId AND tenant_id = :tenantId",
+      nativeQuery = true)
+  int deleteAllByTaskIdAndTenantId(@Param("taskId") Long taskId, @Param("tenantId") Long tenantId);
 }

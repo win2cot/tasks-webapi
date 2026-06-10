@@ -48,6 +48,23 @@ class TaskStakeholderJpaRepositoryAdapter implements StakeholderRepository {
     return jpaRepository.existsById(new TaskStakeholderJpaEntityId(taskId, userId));
   }
 
+  @Override
+  public int deleteAllByTaskId(Long taskId, Long tenantId) {
+    return jpaRepository.deleteAllByTaskIdAndTenantId(taskId, tenantId);
+  }
+
+  @Override
+  public void replaceAll(
+      Long taskId, Long tenantId, List<Long> userIds, Long addedByUserId, LocalDateTime addedAt) {
+    jpaRepository.deleteAllByTaskIdAndTenantId(taskId, tenantId);
+    jpaRepository.flush();
+    for (Long userId : userIds) {
+      jpaRepository.save(
+          new TaskStakeholderJpaEntity(taskId, userId, tenantId, addedByUserId, addedAt));
+    }
+    jpaRepository.flush();
+  }
+
   private TaskStakeholder toDomain(StakeholderProjection p) {
     return new TaskStakeholder(
         p.getUserId(),

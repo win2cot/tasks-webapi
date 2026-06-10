@@ -43,7 +43,9 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.ChangeVisibilityUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.CreateTaskUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.DeleteTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
@@ -75,6 +77,8 @@ class TaskControllerWebMvcTest {
   @MockitoBean GetTaskUseCase getTaskUseCase;
   @MockitoBean ChangeTaskStatusUseCase changeTaskStatusUseCase;
   @MockitoBean UpdateTaskUseCase updateTaskUseCase;
+  @MockitoBean DeleteTaskUseCase deleteTaskUseCase;
+  @MockitoBean ChangeVisibilityUseCase changeVisibilityUseCase;
   @MockitoBean ListTasksUseCase listTasksUseCase;
   @MockitoBean ListStakeholdersUseCase listStakeholdersUseCase;
   @MockitoBean AddStakeholderUseCase addStakeholderUseCase;

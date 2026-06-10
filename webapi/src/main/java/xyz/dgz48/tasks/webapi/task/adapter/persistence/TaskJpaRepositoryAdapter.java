@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -77,7 +78,8 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
         task.getAssigneeId(),
         task.getDueDate(),
         task.getStatus(),
-        task.getCompletedAt());
+        task.getCompletedAt(),
+        task.getVisibility());
     try {
       return toDomain(jpaRepository.saveAndFlush(entity));
     } catch (ObjectOptimisticLockingFailureException e) {
@@ -243,6 +245,21 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       case "title" -> "title";
       default -> throw new IllegalArgumentException("Unknown sort field: " + apiField);
     };
+  }
+
+  @Override
+  public void softDelete(Task task, LocalDateTime deletedAt) {
+    TaskJpaEntity entity =
+        jpaRepository
+            .findById(task.getId())
+            .orElseThrow(
+                () -> new IllegalStateException("Task not found for softDelete: " + task.getId()));
+    entity.markDeleted(deletedAt);
+    try {
+      jpaRepository.saveAndFlush(entity);
+    } catch (ObjectOptimisticLockingFailureException e) {
+      throw new PreconditionFailedException("バージョンが競合しています: task=" + task.getId());
+    }
   }
 
   private Task toDomain(TaskJpaEntity entity) {

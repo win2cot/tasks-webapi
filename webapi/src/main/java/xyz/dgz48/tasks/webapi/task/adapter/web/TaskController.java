@@ -37,6 +37,7 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.AddStakeholderRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.ChangeTaskStatusRequest;
+import xyz.dgz48.tasks.webapi.task.adapter.web.dto.ChangeVisibilityRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.StakeholderResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskCreateRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskListItemResponse;
@@ -50,7 +51,9 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.ChangeVisibilityUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.CreateTaskUseCase;
+import xyz.dgz48.tasks.webapi.task.usecase.DeleteTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.GetTaskUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
@@ -68,6 +71,8 @@ public class TaskController {
   private final GetTaskUseCase getTaskUseCase;
   private final ChangeTaskStatusUseCase changeTaskStatusUseCase;
   private final UpdateTaskUseCase updateTaskUseCase;
+  private final DeleteTaskUseCase deleteTaskUseCase;
+  private final ChangeVisibilityUseCase changeVisibilityUseCase;
   private final ListTasksUseCase listTasksUseCase;
   private final ListStakeholdersUseCase listStakeholdersUseCase;
   private final AddStakeholderUseCase addStakeholderUseCase;
@@ -175,6 +180,29 @@ public class TaskController {
     Task task = updateTaskUseCase.execute(id, token.getPrincipal().getId(), cmd, ifMatchVersion);
     TaskResponse body = TaskResponse.from(task);
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
+  }
+
+  @DeleteMapping("/{id}")
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<Void> deleteTask(
+      @PathVariable Long id,
+      @RequestHeader(name = HttpHeaders.IF_MATCH) String ifMatch,
+      TasksAuthenticationToken token) {
+    Long ifMatchVersion = parseIfMatchVersion(ifMatch);
+    deleteTaskUseCase.execute(id, token.getPrincipal().getId(), ifMatchVersion);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PatchMapping("/{id}/visibility")
+  @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
+  public ResponseEntity<TaskResponse> changeVisibility(
+      @PathVariable Long id,
+      @RequestBody @Valid ChangeVisibilityRequest request,
+      TasksAuthenticationToken token) {
+    Task task =
+        changeVisibilityUseCase.execute(
+            id, token.getPrincipal().getId(), request.visibility(), request.stakeholderUserIds());
+    return ResponseEntity.ok(TaskResponse.from(task));
   }
 
   @PatchMapping("/{id}/status")
