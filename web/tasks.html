@@ -194,6 +194,71 @@
 
     /* ---- Drawer ---- */
     .offcanvas-end { width: 440px; }
+
+    /* ---- Inline editing (screen-flow.md §5.2) ---- */
+
+    /* Editable cell: subtle hover hint */
+    .edit-cell {
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      display: inline-block;
+    }
+    .edit-cell:hover {
+      background: #eef2ff;
+      outline: 1px solid #c5cff9;
+    }
+
+    /* Non-editable status/priority badge in readonly rows */
+    .readonly-cell { cursor: default; }
+
+    /* Inline selects for status and priority */
+    .inline-sel {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 24px 3px 8px;
+      height: auto;
+      border-radius: 6px;
+      min-width: 76px;
+      background-size: 12px;
+    }
+    /* Status select colors per value */
+    .st-sel-NOT_STARTED { background-color: #eef1f6; color: #566173; border-color: #c6cbd5; }
+    .st-sel-IN_PROGRESS { background-color: #e7f0fb; color: #1f5fb0; border-color: #b4cff0; }
+    .st-sel-DONE        { background-color: #e7f5ec; color: #207a3a; border-color: #b2dfc0; }
+    .st-sel-ON_HOLD     { background-color: #fff3e2; color: #b8650b; border-color: #ffd6a0; }
+    /* Priority select colors per value */
+    .pri-sel-HIGH   { background-color: #fdeaea; color: #c92a2a; border-color: #f5c6cb; }
+    .pri-sel-MEDIUM { background-color: #fff3e2; color: #b8650b; border-color: #ffd6a0; }
+    .pri-sel-LOW    { background-color: #eef1f6; color: #566173; border-color: #c6cbd5; }
+
+    /* Inline text/date inputs that replace cell content */
+    td .inline-input {
+      font-size: 13px;
+      padding: 4px 8px;
+      height: auto;
+      width: 100%;
+    }
+
+    /* Description popover overlay */
+    .desc-overlay {
+      position: fixed;
+      z-index: 1055;
+      background: #fff;
+      border: 1px solid var(--app-border);
+      border-radius: 10px;
+      padding: 14px;
+      width: 300px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.14);
+    }
+    .desc-overlay textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* Disabled/saving state */
+    .inline-sel:disabled { opacity: .6; cursor: wait; }
   </style>
 </head>
 <body>
@@ -285,12 +350,22 @@
     </div>
 
     <!-- Error banner (design-system.md §6.11) -->
-    <div id="error-banner" class="alert alert-danger d-none d-flex align-items-center gap-2" role="alert" aria-live="assertive">
+    <div id="error-banner" class="alert alert-danger d-none d-flex align-items-center gap-2 mb-3" role="alert" aria-live="assertive">
       <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
       <span id="error-message"></span>
       <button class="btn btn-sm btn-outline-danger ms-auto" onclick="loadTasks()">
         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再試行
       </button>
+    </div>
+
+    <!-- 412 Conflict banner (ADR-0012) -->
+    <div id="conflict-banner" class="alert alert-warning d-none d-flex align-items-center gap-2 mb-3" role="alert" aria-live="polite">
+      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+      <span>別のユーザーによってタスクが更新されました。最新のデータに更新してください。</span>
+      <button class="btn btn-sm btn-outline-warning ms-auto" onclick="loadTasks(); clearConflict();">
+        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再読み込み
+      </button>
+      <button class="btn-close ms-1" onclick="clearConflict()" aria-label="閉じる"></button>
     </div>
 
     <!-- Loading skeleton (design-system.md §6.11) -->
@@ -319,15 +394,14 @@
         <table class="tasks" aria-label="タスク一覧">
           <thead>
             <tr>
-              <!-- status は OpenAPI sort pattern 対象外のため非ソート列 -->
               <th scope="col" style="width:110px;" data-nosort>状態</th>
               <th scope="col" data-nosort>タイトル</th>
               <th scope="col" style="width:104px;" data-nosort>所有者</th>
-              <th scope="col" style="width:104px;" data-nosort>担当者</th>
+              <th scope="col" style="width:116px;" data-nosort>担当者</th>
               <th scope="col" style="width:96px;" onclick="cycleSort('dueDate')">
                 期限 <i id="sort-caret-dueDate" class="bi bi-caret-up-fill" aria-hidden="true"></i>
               </th>
-              <th scope="col" style="width:72px;" onclick="cycleSort('priority')">
+              <th scope="col" style="width:80px;" onclick="cycleSort('priority')">
                 優先度 <i id="sort-caret-priority" class="bi bi-chevron-expand" aria-hidden="true"></i>
               </th>
               <th scope="col" style="width:112px;" data-nosort>公開範囲</th>
@@ -357,6 +431,17 @@
     </div>
 
   </main>
+</div>
+
+<!-- ===== Description edit overlay (screen-flow.md §5.2: popover型) ===== -->
+<div id="desc-overlay" class="desc-overlay d-none" role="dialog" aria-label="説明を編集" aria-modal="false">
+  <label class="form-label small fw-bold mb-1" for="desc-overlay-ta">説明</label>
+  <textarea id="desc-overlay-ta" class="form-control form-control-sm" rows="4"
+    maxlength="2000" placeholder="説明（最大2000文字）"></textarea>
+  <div class="d-flex gap-2 mt-2">
+    <button class="btn btn-sm btn-primary" onclick="saveDescEdit()">保存</button>
+    <button class="btn btn-sm btn-light" onclick="cancelDescEdit()">取消</button>
+  </div>
 </div>
 
 <!-- ===== New task drawer (create wired in later sprint) ===== -->
@@ -454,6 +539,13 @@
   let totalElements = 0;
   const PAGE_SIZE = 50;
 
+  // ---- Inline-edit state ----
+  let taskMap      = new Map(); // taskId(number) → Task object
+  let currentUserId = null;     // logged-in user's id
+  let tenantUsers  = [];        // TenantUser[]  — for assignee dropdown
+  let currentEdit  = null;      // { td, taskId, field, originalHTML } | null
+  let descEditTaskId = null;    // taskId being edited in the description overlay
+
   // ---- Meta helpers (design-system.md §6.4) ----
   function statusMeta(s) {
     return {
@@ -480,6 +572,12 @@
     }[v] || [v, 'vis-TENANT', 'bi-globe2'];
   }
 
+  // Derive option lists from the badge helpers so labels stay in sync (fix: no duplicate strings)
+  const STATUS_OPTIONS   = ['NOT_STARTED', 'IN_PROGRESS', 'DONE', 'ON_HOLD']
+    .map(v => ({ v, l: statusMeta(v)[0] }));
+  const PRIORITY_OPTIONS = ['HIGH', 'MEDIUM', 'LOW']
+    .map(v => ({ v, l: priMeta(v)[0] }));
+
   function escHtml(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -495,34 +593,341 @@
     return md;
   }
 
+  // ETag format per ADR-0012: W/"<version>"
+  function buildEtag(task) {
+    return `W/"${task.version}"`;
+  }
+
+  // ---- Row HTML generation ----
   function rowHTML(task) {
-    const [sl, sc]   = statusMeta(task.status);
-    const [pl, pc]   = priMeta(task.priority);
     const [vl, vc, vi] = visMeta(task.visibility);
     const ownerIni   = (task.owner?.fullName || '?').slice(0, 1);
-    const ownerName  = task.owner?.fullName  ?? '—';
+    const ownerName  = task.owner?.fullName ?? '—';
     const assigneeName = task.assignee?.fullName ?? '—';
-    const desc = task.description
-      ? `<div class="task-desc">${escHtml(task.description.slice(0, 80))}${task.description.length > 80 ? '…' : ''}</div>`
+
+    // Authorization flags (screen-flow.md §5.2, ADR-0005)
+    const canEdit         = task.editable; // owner only
+    const canChangeStatus = task.editable || task.assignee?.id === currentUserId;
+
+    // -- Status cell --
+    let statusCell;
+    if (canChangeStatus) {
+      const opts = STATUS_OPTIONS.map(o =>
+        `<option value="${o.v}"${task.status === o.v ? ' selected' : ''}>${o.l}</option>`
+      ).join('');
+      statusCell = `<td onclick="event.stopPropagation()">
+        <select class="inline-sel st-sel-${escHtml(task.status)}"
+          aria-label="ステータス"
+          onchange="onStatusChange(event,${task.id})">${opts}</select>
+      </td>`;
+    } else {
+      const [sl, sc] = statusMeta(task.status);
+      statusCell = `<td><span class="st-badge ${sc}" title="編集権限がありません">${sl}</span></td>`;
+    }
+
+    // -- Title + description cell --
+    const descText = task.description
+      ? escHtml(task.description.slice(0, 80)) + (task.description.length > 80 ? '…' : '')
       : '';
-    return `<tr tabindex="0"
+    let titleCell;
+    if (canEdit) {
+      const descPart = task.description
+        ? `<div class="task-desc edit-cell" onclick="openDescEdit(event,${task.id})" title="クリックして説明を編集">${descText}</div>`
+        : `<div class="task-desc text-muted fst-italic edit-cell" style="font-size:11px;" onclick="openDescEdit(event,${task.id})" title="説明を追加">説明を追加...</div>`;
+      titleCell = `<td onclick="event.stopPropagation()">
+        <div class="task-title edit-cell" onclick="activateCellEdit(event,${task.id},'title')" title="クリックしてタイトルを編集">${escHtml(task.title)}</div>
+        ${descPart}
+      </td>`;
+    } else {
+      const descPart = task.description ? `<div class="task-desc">${descText}</div>` : '';
+      titleCell = `<td>
+        <div class="task-title">${escHtml(task.title)}</div>${descPart}
+      </td>`;
+    }
+
+    // -- Owner cell (never editable inline) --
+    const ownerCell = `<td>
+      <span class="d-inline-flex align-items-center">
+        <span class="owner-mini" aria-hidden="true">${escHtml(ownerIni)}</span>${escHtml(ownerName)}
+      </span>
+    </td>`;
+
+    // -- Assignee cell --
+    let assigneeCell;
+    if (canEdit) {
+      assigneeCell = `<td onclick="event.stopPropagation()">
+        <span class="edit-cell" onclick="activateCellEdit(event,${task.id},'assigneeId')" title="クリックして担当者を変更">${escHtml(assigneeName)}</span>
+      </td>`;
+    } else {
+      const tooltip = canChangeStatus ? '' : ' title="編集権限がありません"';
+      assigneeCell = `<td><span${tooltip}>${escHtml(assigneeName)}</span></td>`;
+    }
+
+    // -- Due date cell --
+    let dueDateCell;
+    if (canEdit) {
+      dueDateCell = `<td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <span class="edit-cell" onclick="activateCellEdit(event,${task.id},'dueDate')" title="クリックして期限を変更">${dueLabelHtml(task.dueDate)}</span>
+      </td>`;
+    } else {
+      dueDateCell = `<td style="white-space:nowrap">${dueLabelHtml(task.dueDate)}</td>`;
+    }
+
+    // -- Priority cell --
+    let priorityCell;
+    if (canEdit) {
+      const opts = PRIORITY_OPTIONS.map(o =>
+        `<option value="${o.v}"${task.priority === o.v ? ' selected' : ''}>${o.l}</option>`
+      ).join('');
+      priorityCell = `<td onclick="event.stopPropagation()">
+        <select class="inline-sel pri-sel-${escHtml(task.priority)}"
+          aria-label="優先度"
+          onchange="onPriorityChange(event,${task.id})">${opts}</select>
+      </td>`;
+    } else {
+      const [pl, pc] = priMeta(task.priority);
+      priorityCell = `<td><span class="pri-badge ${pc}" title="編集権限がありません">${pl}</span></td>`;
+    }
+
+    // -- Visibility cell (inline edit out of scope, screen-flow.md §5.2) --
+    const visCell = `<td><span class="vis-badge ${vc}"><i class="bi ${vi}" aria-hidden="true"></i>${vl}</span></td>`;
+
+    return `<tr data-task-id="${task.id}" tabindex="0"
         onclick="onRowClick(${task.id})"
         onkeydown="if(event.key==='Enter'||event.key===' ')onRowClick(${task.id})">
-      <td><span class="st-badge ${sc}">${sl}</span></td>
-      <td>
-        <div class="task-title">${escHtml(task.title)}</div>${desc}
-      </td>
-      <td>
-        <span class="d-inline-flex align-items-center">
-          <span class="owner-mini" aria-hidden="true">${escHtml(ownerIni)}</span>${escHtml(ownerName)}
-        </span>
-      </td>
-      <td>${escHtml(assigneeName)}</td>
-      <td style="white-space:nowrap">${dueLabelHtml(task.dueDate)}</td>
-      <td><span class="pri-badge ${pc}">${pl}</span></td>
-      <td><span class="vis-badge ${vc}"><i class="bi ${vi}" aria-hidden="true"></i>${vl}</span></td>
+      ${statusCell}${titleCell}${ownerCell}${assigneeCell}${dueDateCell}${priorityCell}${visCell}
     </tr>`;
   }
+
+  // ---- Re-render a single row in place ----
+  function rerenderRow(taskId) {
+    const task = taskMap.get(taskId);
+    if (!task) return;
+    const tr = document.querySelector(`tr[data-task-id="${taskId}"]`);
+    if (!tr) return;
+    const tmp = document.createElement('tbody');
+    tmp.innerHTML = rowHTML(task);
+    tr.replaceWith(tmp.firstElementChild);
+  }
+
+  // ---- Inline status change (PATCH /api/tasks/{id}/status, no ETag needed) ----
+  async function onStatusChange(event, taskId) {
+    event.stopPropagation();
+    const sel = event.target;
+    const status = sel.value;
+    sel.disabled = true;
+    try {
+      const updated = await Api.changeStatus(taskId, status);
+      taskMap.set(taskId, updated);
+      rerenderRow(taskId);
+    } catch (err) {
+      rerenderRow(taskId); // revert to server state
+      // PATCH /api/tasks/{id}/status は ADR-0012 の If-Match 対象外のため 412 は理論上返らない。API 契約変更に備えた防御的ガードとして残す。
+      if (err.status === 412) showConflictBanner();
+      else showError('ステータスの更新に失敗しました: ' + (err.message || ''));
+    }
+  }
+
+  // ---- Inline priority change (PATCH /api/tasks/{id} with ETag) ----
+  async function onPriorityChange(event, taskId) {
+    event.stopPropagation();
+    const sel = event.target;
+    const priority = sel.value;
+    const task = taskMap.get(taskId);
+    if (!task) return;
+    sel.disabled = true;
+    try {
+      const updated = await Api.patchTask(taskId, buildEtag(task), { priority });
+      taskMap.set(taskId, updated);
+      rerenderRow(taskId);
+    } catch (err) {
+      rerenderRow(taskId);
+      if (err.status === 412) showConflictBanner();
+      else showError('優先度の更新に失敗しました: ' + (err.message || ''));
+    }
+  }
+
+  // ---- Cancel active cell edit (restore original HTML) ----
+  function cancelCurrentEdit() {
+    if (!currentEdit) return;
+    const { td, originalHTML, abort } = currentEdit;
+    // Set done=true via the closure's own abort handle BEFORE replacing innerHTML,
+    // so the blur event fired by removing a focused input doesn't re-enter doCommit.
+    if (abort) abort();
+    td.innerHTML = originalHTML;
+    currentEdit = null;
+  }
+
+  // ---- Commit a field patch (PATCH /api/tasks/{id} with ETag) ----
+  async function commitFieldEdit(taskId, field, value) {
+    const task = taskMap.get(taskId);
+    if (!task) { cancelCurrentEdit(); return; }
+
+    let body;
+    if (field === 'assigneeId') {
+      body = { assigneeId: value ? Number(value) : null };
+    } else if (field === 'dueDate') {
+      body = { dueDate: value };
+    } else if (field === 'title') {
+      body = { title: value };
+    } else if (field === 'description') {
+      body = { description: value || null };
+    }
+    if (!body) { cancelCurrentEdit(); return; }
+
+    currentEdit = null; // cell will be re-rendered on success/error
+
+    try {
+      const updated = await Api.patchTask(taskId, buildEtag(task), body);
+      taskMap.set(taskId, updated);
+      rerenderRow(taskId);
+    } catch (err) {
+      rerenderRow(taskId);
+      if (err.status === 412) showConflictBanner();
+      else showError('更新に失敗しました: ' + (err.message || ''));
+    }
+  }
+
+  // ---- Activate inline editor for title / dueDate / assigneeId ----
+  function activateCellEdit(event, taskId, field) {
+    event.stopPropagation();
+    const task = taskMap.get(taskId);
+    if (!task?.editable) return;
+
+    cancelCurrentEdit();
+    closeDescOverlay();
+
+    const td = event.target.closest('td');
+    const originalHTML = td.innerHTML;
+    let input;
+    let originalValue;
+
+    if (field === 'title') {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'form-control form-control-sm inline-input';
+      input.value = task.title;
+      input.maxLength = 100;
+      originalValue = task.title;
+    } else if (field === 'dueDate') {
+      input = document.createElement('input');
+      input.type = 'date';
+      input.className = 'form-control form-control-sm inline-input';
+      input.value = task.dueDate;
+      originalValue = task.dueDate;
+    } else if (field === 'assigneeId') {
+      input = document.createElement('select');
+      input.className = 'form-select form-select-sm inline-input';
+      const opts = tenantUsers
+        .map(u => `<option value="${u.userId}"${task.assignee?.id === u.userId ? ' selected' : ''}>${escHtml(u.fullName)}</option>`)
+        .join('');
+      input.innerHTML = `<option value="">未割当</option>${opts}`;
+      input.value = task.assignee?.id != null ? String(task.assignee.id) : '';
+      originalValue = input.value;
+    }
+
+    if (!input) return;
+
+    td.innerHTML = '';
+    td.appendChild(input);
+
+    let done = false;
+    currentEdit = { td, taskId, field, originalHTML, abort: () => { done = true; } };
+
+    input.focus();
+    if (field === 'title') input.select();
+
+    async function doCommit() {
+      if (done) return;
+      done = true;
+      const val = input.value;
+      if (field === 'title' && !val.trim()) { cancelCurrentEdit(); return; }
+      // Empty dueDate → null (allows clearing an existing due date via PATCH dueDate:null)
+      const commitVal = (field === 'dueDate' && !val) ? null : val;
+      if (commitVal === (originalValue || null)) { cancelCurrentEdit(); return; }
+      await commitFieldEdit(taskId, field, commitVal);
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { done = true; cancelCurrentEdit(); }
+      if (e.key === 'Enter')  { e.preventDefault(); doCommit(); }
+    });
+
+    // dueDate and assignee commit on selection change; title commits on blur
+    if (field === 'dueDate' || field === 'assigneeId') {
+      input.addEventListener('change', doCommit);
+    }
+    input.addEventListener('blur', doCommit);
+  }
+
+  // ---- Description overlay (screen-flow.md §5.2: popover型) ----
+  function openDescEdit(event, taskId) {
+    event.stopPropagation();
+    const task = taskMap.get(taskId);
+    if (!task?.editable) return;
+
+    cancelCurrentEdit();
+    descEditTaskId = taskId;
+
+    const overlay = document.getElementById('desc-overlay');
+    const ta      = document.getElementById('desc-overlay-ta');
+    ta.value = task.description || '';
+
+    // Position below the clicked element, keeping inside the viewport
+    const rect = event.target.getBoundingClientRect();
+    let top  = rect.bottom + 8;
+    let left = rect.left;
+    if (left + 310 > window.innerWidth) left = Math.max(8, window.innerWidth - 318);
+    if (top + 190 > window.innerHeight)  top  = rect.top - 198;
+
+    overlay.style.top  = top  + 'px';
+    overlay.style.left = left + 'px';
+    overlay.classList.remove('d-none');
+    ta.focus();
+  }
+
+  function closeDescOverlay() {
+    document.getElementById('desc-overlay').classList.add('d-none');
+    descEditTaskId = null;
+  }
+
+  async function saveDescEdit() {
+    if (descEditTaskId === null) return;
+    const taskId = descEditTaskId;
+    const task   = taskMap.get(taskId);
+    const ta     = document.getElementById('desc-overlay-ta');
+    const value  = ta.value.trim() || null;
+
+    closeDescOverlay();
+    if (!task) return; // task evicted from map (e.g. concurrent loadTasks) — discard silently
+    if (value === (task.description || null)) return; // no change
+
+    try {
+      const updated = await Api.patchTask(taskId, buildEtag(task), { description: value });
+      taskMap.set(taskId, updated);
+      rerenderRow(taskId);
+    } catch (err) {
+      if (err.status === 412) showConflictBanner();
+      else showError('説明の更新に失敗しました: ' + (err.message || ''));
+    }
+  }
+
+  function cancelDescEdit() {
+    closeDescOverlay();
+  }
+
+  // Close desc overlay when clicking outside of it
+  document.addEventListener('mousedown', e => {
+    const overlay = document.getElementById('desc-overlay');
+    if (!overlay.classList.contains('d-none') && !overlay.contains(e.target)) {
+      cancelDescEdit();
+    }
+  });
+
+  // Close desc overlay with Escape (keyboard-only accessibility)
+  document.getElementById('desc-overlay-ta').addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); cancelDescEdit(); }
+  });
 
   // ---- UI state helpers (design-system.md §6.11) ----
   function showLoading(on) {
@@ -540,19 +945,34 @@
     document.getElementById('error-banner').classList.add('d-none');
   }
 
+  function showConflictBanner() {
+    document.getElementById('conflict-banner').classList.remove('d-none');
+  }
+
+  function clearConflict() {
+    document.getElementById('conflict-banner').classList.add('d-none');
+  }
+
   // ---- Task list (A-1 GET /api/tasks) ----
   async function loadTasks() {
     clearError();
+    clearConflict();
+    cancelCurrentEdit();
+    closeDescOverlay();
     showLoading(true);
     try {
       const data = await Api.listTasks({ page: currentPage, size: PAGE_SIZE, sort: currentSort });
       totalPages    = data.totalPages    || 1;
       totalElements = data.totalElements || 0;
+      // Rebuild taskMap from the current page (clear stale entries from previous pages)
+      taskMap.clear();
+      if (data.content) {
+        data.content.forEach(t => taskMap.set(t.id, t));
+      }
       renderTasks(data.content);
       renderPagination();
-      showLoading(false); // 成功時のみ task-panel を表示
+      showLoading(false);
     } catch (err) {
-      // エラー時はスケルトンを隠すが task-panel は見せない(空テーブルとエラーバナーの同時表示を避ける)
       document.getElementById('loading-skeleton').classList.add('d-none');
       showError(err.message || 'タスクの取得に失敗しました');
     }
@@ -608,7 +1028,6 @@
 
   function updateSortCarets() {
     const [f, d] = currentSort.split(',');
-    // status は OpenAPI sort フィールドに含まれないため対象外
     ['dueDate', 'priority'].forEach(field => {
       const el = document.getElementById(`sort-caret-${field}`);
       if (!el) return;
@@ -632,6 +1051,10 @@
   // ---- New task drawer ----
   function openNew() {
     document.getElementById('new-task-form').reset();
+    // Populate assignee options from tenantUsers
+    const sel = document.getElementById('newAssignee');
+    sel.innerHTML = '<option value="">未割当</option>' +
+      tenantUsers.map(u => `<option value="${u.userId}">${escHtml(u.fullName)}</option>`).join('');
     bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('newTaskDrawer')).show();
   }
 
@@ -659,6 +1082,9 @@
       return;
     }
 
+    // Store current user id for assignee/status auth checks
+    currentUserId = me.user?.id ?? null;
+
     // Populate navbar user info
     const user = Auth.getUser();
     const displayName = user?.name || user?.preferred_username || '';
@@ -684,6 +1110,13 @@
     if (activeTenant?.role === 'TENANT_ADMIN') {
       document.getElementById('roleSel').value = 'admin';
       switchRole('admin');
+    }
+
+    // Load tenant users for assignee dropdowns (non-fatal if it fails)
+    try {
+      tenantUsers = await Api.listTenantUsers();
+    } catch {
+      tenantUsers = [];
     }
 
     updateSortCarets();

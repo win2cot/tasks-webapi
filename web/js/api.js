@@ -54,7 +54,9 @@ const Api = (() => {
   async function _parseResponse(response) {
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new Error(`${response.status} ${response.statusText}: ${body}`);
+      const err = new Error(`${response.status} ${response.statusText}: ${body}`);
+      err.status = response.status;
+      throw err;
     }
 
     const contentType = response.headers.get('content-type') || '';
@@ -117,5 +119,41 @@ const Api = (() => {
     return request(`/api/tasks${qs ? '?' + qs : ''}`);
   }
 
-  return { setTenantId, request, getMe, selectTenant, listTasks };
+  /**
+   * PATCH /api/tasks/{id} — タスク部分更新(A-29)。
+   * @param {number} id
+   * @param {string} etag  - W/"<version>" 形式の If-Match 値
+   * @param {Object} body  - TaskPatchRequest (title/description/priority/assigneeId/dueDate の任意組合せ)
+   * @returns {Promise<TaskDetail>}
+   */
+  function patchTask(id, etag, body) {
+    return request(`/api/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'If-Match': etag },
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * PATCH /api/tasks/{id}/status — ステータス変更(A-16)。
+   * @param {number} id
+   * @param {string} status - TaskStatus 値
+   * @returns {Promise<TaskDetail>}
+   */
+  function changeStatus(id, status) {
+    return request(`/api/tasks/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  /**
+   * GET /api/tenant/users — テナント内ユーザー一覧。
+   * @returns {Promise<TenantUser[]>}
+   */
+  function listTenantUsers() {
+    return request('/api/tenant/users');
+  }
+
+  return { setTenantId, request, getMe, selectTenant, listTasks, patchTask, changeStatus, listTenantUsers };
 })();
