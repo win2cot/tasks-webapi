@@ -722,6 +722,7 @@
       rerenderRow(taskId);
     } catch (err) {
       rerenderRow(taskId); // revert to server state
+      // PATCH /api/tasks/{id}/status は ADR-0012 の If-Match 対象外のため 412 は理論上返らない。API 契約変更に備えた防御的ガードとして残す。
       if (err.status === 412) showConflictBanner();
       else showError('ステータスの更新に失敗しました: ' + (err.message || ''));
     }
@@ -841,10 +842,10 @@
       done = true;
       const val = input.value;
       if (field === 'title' && !val.trim()) { cancelCurrentEdit(); return; }
-      if (field === 'dueDate' && !val) { cancelCurrentEdit(); return; }
-      // no change → cancel
-      if (val === originalValue) { cancelCurrentEdit(); return; }
-      await commitFieldEdit(taskId, field, val);
+      // Empty dueDate → null (allows clearing an existing due date via PATCH dueDate:null)
+      const commitVal = (field === 'dueDate' && !val) ? null : val;
+      if (commitVal === (originalValue || null)) { cancelCurrentEdit(); return; }
+      await commitFieldEdit(taskId, field, commitVal);
     }
 
     input.addEventListener('keydown', e => {
@@ -921,6 +922,11 @@
     if (!overlay.classList.contains('d-none') && !overlay.contains(e.target)) {
       cancelDescEdit();
     }
+  });
+
+  // Close desc overlay with Escape (keyboard-only accessibility)
+  document.getElementById('desc-overlay-ta').addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); cancelDescEdit(); }
   });
 
   // ---- UI state helpers (design-system.md §6.11) ----
