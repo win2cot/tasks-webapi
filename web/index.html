@@ -71,11 +71,16 @@
 
         try {
           const me = await Api.getMe();
-          document.getElementById('user-info').textContent = JSON.stringify(me, null, 2);
 
           if (me.activeTenantId !== null) {
             Api.setTenantId(me.activeTenantId);
+            window.location.replace('tasks.html');
+            return;
           }
+
+          // テナント未選択: テナント選択 UI を表示
+          document.getElementById('user-info').textContent =
+            'テナントを選択してタスク一覧を開いてください。';
 
           TenantSwitcher.render(
             document.getElementById('tenant-switcher-container'),
