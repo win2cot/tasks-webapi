@@ -30,6 +30,7 @@ interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
       """)
   long countUsersByTenantId(@Param("tenantId") Long tenantId);
 
+  // native 理由: モジュール境界越え（他モジュールのテーブル参照）
   @Query(
       value =
           """
@@ -40,32 +41,21 @@ interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
   long countTasksByTenantId(@Param("tenantId") Long tenantId);
 
   @Query(
-      value =
-          """
-          SELECT COUNT(*) FROM tenants
-          WHERE status != 'DELETED'
-          """,
-      nativeQuery = true)
+      "SELECT COUNT(t) FROM TenantJpaEntity t"
+          + " WHERE t.status <> xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus.DELETED")
   long countNonDeletedTenants();
 
   @Query(
-      value =
-          """
-          SELECT COUNT(*) FROM tenants
-          WHERE status = 'ACTIVE'
-          """,
-      nativeQuery = true)
+      "SELECT COUNT(t) FROM TenantJpaEntity t"
+          + " WHERE t.status = xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus.ACTIVE")
   long countActiveTenants();
 
   @Query(
-      value =
-          """
-          SELECT COUNT(*) FROM tenants
-          WHERE status = 'SUSPENDED'
-          """,
-      nativeQuery = true)
+      "SELECT COUNT(t) FROM TenantJpaEntity t"
+          + " WHERE t.status = xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus.SUSPENDED")
   long countSuspendedTenants();
 
+  // native 理由: モジュール境界越え（他モジュールのテーブル参照）
   @Query(
       value =
           """
@@ -75,6 +65,7 @@ interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
       nativeQuery = true)
   long countTotalUsers();
 
+  // native 理由: モジュール境界越え（他モジュールのテーブル参照）
   @Query(
       value =
           """
@@ -85,12 +76,9 @@ interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
   long countTotalTasks();
 
   @Query(
-      value =
-          """
-          SELECT COUNT(*) FROM tenants
-          WHERE created_at >= :since AND status != 'DELETED'
-          """,
-      nativeQuery = true)
+      "SELECT COUNT(t) FROM TenantJpaEntity t"
+          + " WHERE t.createdAt >= :since"
+          + " AND t.status <> xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus.DELETED")
   long countTenantsCreatedSince(@Param("since") LocalDateTime since);
 
   @Query(
@@ -101,6 +89,7 @@ interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
       """)
   List<Object[]> countUsersByTenantIds(@Param("tenantIds") List<Long> tenantIds);
 
+  // native 理由: モジュール境界越え（他モジュールのテーブル参照）
   @Query(
       value =
           """
