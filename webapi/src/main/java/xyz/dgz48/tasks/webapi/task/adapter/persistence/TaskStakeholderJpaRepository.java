@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 interface TaskStakeholderJpaRepository
     extends JpaRepository<TaskStakeholderJpaEntity, TaskStakeholderJpaEntityId> {
 
-  /** ユーザー情報を JOIN した関係者一覧。テナントフィルタは native なので明示指定。 */
+  // native 理由: モジュール境界越え（users テーブル JOIN — task モジュールから users 列を取得）
   @Query(
       value =
           """
@@ -29,29 +29,23 @@ interface TaskStakeholderJpaRepository
   List<StakeholderProjection> findWithUserInfoByTaskIdAndTenantId(
       @Param("taskId") Long taskId, @Param("tenantId") Long tenantId);
 
-  @Query(
-      value =
-          "SELECT ts.user_id FROM task_stakeholders ts"
-              + " WHERE ts.task_id = :taskId AND ts.tenant_id = :tenantId",
-      nativeQuery = true)
-  List<Long> findUserIdsByTaskIdAndTenantId(
-      @Param("taskId") Long taskId, @Param("tenantId") Long tenantId);
+  List<TaskStakeholderJpaEntity> findByTaskId(Long taskId);
 
   @Override
   boolean existsById(TaskStakeholderJpaEntityId id);
 
+  // tenant_id 明示: bulk DML は Filter 不適用(ADR-0010 §3)
   @Modifying
   @Query(
-      value =
-          "DELETE FROM task_stakeholders"
-              + " WHERE task_id = :taskId AND user_id = :userId AND tenant_id = :tenantId",
-      nativeQuery = true)
+      "DELETE FROM TaskStakeholderJpaEntity ts"
+          + " WHERE ts.taskId = :taskId AND ts.userId = :userId AND ts.tenantId = :tenantId")
   void deleteByTaskIdAndUserId(
       @Param("taskId") Long taskId, @Param("userId") Long userId, @Param("tenantId") Long tenantId);
 
+  // tenant_id 明示: bulk DML は Filter 不適用(ADR-0010 §3)
   @Modifying
   @Query(
-      value = "DELETE FROM task_stakeholders WHERE task_id = :taskId AND tenant_id = :tenantId",
-      nativeQuery = true)
+      "DELETE FROM TaskStakeholderJpaEntity ts"
+          + " WHERE ts.taskId = :taskId AND ts.tenantId = :tenantId")
   int deleteAllByTaskIdAndTenantId(@Param("taskId") Long taskId, @Param("tenantId") Long tenantId);
 }

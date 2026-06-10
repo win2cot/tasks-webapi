@@ -22,7 +22,9 @@ class TaskStakeholderJpaRepositoryAdapter implements StakeholderRepository {
 
   @Override
   public List<Long> findUserIdsByTaskId(Long taskId, Long tenantId) {
-    return jpaRepository.findUserIdsByTaskIdAndTenantId(taskId, tenantId);
+    return jpaRepository.findByTaskId(taskId).stream()
+        .map(TaskStakeholderJpaEntity::getUserId)
+        .toList();
   }
 
   @Override
