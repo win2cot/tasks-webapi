@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Import;
 /**
  * ADR-0019 §6: Boot logstash 形式の出力 JSON が現行 LogstashEncoder と同形であることを確認。
  *
- * <p>{@code LOGGING_STRUCTURED_FORMAT_CONSOLE=logstash} 相当のプロパティを有効化した状態で
- * {@link OutputCaptureExtension} により JSON フィールド存在を検証する。
+ * <p>{@code LOGGING_STRUCTURED_FORMAT_CONSOLE=logstash} 相当のプロパティを有効化した状態で {@link
+ * OutputCaptureExtension} により JSON フィールド存在を検証する。
  */
 @ExtendWith(OutputCaptureExtension.class)
 @SpringBootTest(properties = "logging.structured.format.console=logstash")
@@ -61,8 +61,6 @@ class StructuredLoggingFormatIT {
   void logstashFormat_exception_hasStackTrace(CapturedOutput output) {
     log.error("error-with-exception", new IllegalStateException("test-exception-marker"));
 
-    assertThat(output.getAll())
-        .contains("\"stack_trace\"")
-        .contains("test-exception-marker");
+    assertThat(output.getAll()).contains("\"stack_trace\"").contains("test-exception-marker");
   }
 }
