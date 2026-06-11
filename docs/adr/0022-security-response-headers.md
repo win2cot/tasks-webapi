@@ -77,7 +77,7 @@ CSP 設計に効く実装事実: keycloak-js は `checkLoginIframe: false`(ifram
 
 CSP(`<env>` は Terraform 変数でテンプレート化、外部資産は自前配信のため `'self'`):
 
-```
+```text
 default-src 'none';
 script-src 'self';
 style-src 'self';
@@ -111,7 +111,7 @@ object-src 'none'
 
 JSON 専用の防御的最小 CSP:
 
-```
+```text
 Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
 ```
 
