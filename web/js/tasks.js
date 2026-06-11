@@ -194,9 +194,9 @@ function updateSortCarets() {
   });
 }
 
-// ---- Row click (S-05 detail — wired in later sprint) ----
+// ---- Row click → open detail drawer (S-05) ----
 function onRowClick(id) {
-  console.log('task row clicked:', id);
+  taskDrawer.openDetail(id);
 }
 
 // ---- Event listeners on CEs ----
@@ -220,6 +220,16 @@ errorBanner.addEventListener('error-retry', loadTasks);
 
 // app-conflict-banner
 conflictBanner.addEventListener('conflict-reload', () => { conflictBanner.hide(); loadTasks(); });
+
+// app-task-drawer events
+taskDrawer.addEventListener('drawer-task-created', () => loadTasks());
+taskDrawer.addEventListener('drawer-task-deleted', () => loadTasks());
+taskDrawer.addEventListener('drawer-task-updated', e => {
+  const updated = e.detail?.task;
+  if (!updated) { loadTasks(); return; }
+  taskMap.set(updated.id, updated);
+  rerenderRow(updated.id);
+});
 
 // app-pager
 pager.addEventListener('page-change', e => {
@@ -250,6 +260,7 @@ async function main() {
   }
 
   currentUserId = me.user?.id ?? null;
+  taskDrawer.setCurrentUser(currentUserId);
 
   const user = Auth.getUser();
   const displayName = user?.name || user?.preferred_username || '';
@@ -279,6 +290,19 @@ async function main() {
 
   updateSortCarets();
   await loadTasks();
+
+  // Auto-open drawer based on URL path (direct URL / page reload with task URL)
+  const path = location.pathname;
+  const newMatch    = /\/tasks\/new\/?$/.exec(path);
+  const editMatch   = /\/tasks\/(\d+)\/edit\/?$/.exec(path);
+  const detailMatch = /\/tasks\/(\d+)\/?$/.exec(path);
+  if (newMatch) {
+    taskDrawer.openNew();
+  } else if (editMatch) {
+    await taskDrawer.openEdit(Number(editMatch[1]));
+  } else if (detailMatch) {
+    await taskDrawer.openDetail(Number(detailMatch[1]));
+  }
 }
 
 main();
