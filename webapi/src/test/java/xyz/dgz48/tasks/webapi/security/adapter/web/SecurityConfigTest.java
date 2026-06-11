@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -235,6 +236,51 @@ class SecurityConfigTest {
         .andExpect(jsonPath("$.status").value(401))
         .andExpect(jsonPath("$.code").value("E_UNAUTHORIZED"))
         .andExpect(jsonPath("$.message").value("認証が必要です"));
+  }
+
+  @Test
+  void securityHeadersCspIsSet() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(
+            header()
+                .string(
+                    "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"));
+  }
+
+  @Test
+  void securityHeadersXContentTypeOptionsIsNosniff() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"));
+  }
+
+  @Test
+  void securityHeadersXFrameOptionsIsDeny() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(header().string("X-Frame-Options", "DENY"));
+  }
+
+  @Test
+  void securityHeadersReferrerPolicyIsNoReferrer() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(header().string("Referrer-Policy", "no-referrer"));
+  }
+
+  @Test
+  void securityHeadersCacheControlIsNoStore() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(header().string("Cache-Control", "no-store"));
+  }
+
+  @Test
+  void securityHeadersHstsIsAbsent() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks"))
+        .andExpect(header().doesNotExist("Strict-Transport-Security"));
   }
 
   private static Jwt buildMockJwt(String sub) {
