@@ -47,3 +47,7 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+
+# web/ npm artifacts (generated; uploaded to S3 at deploy time)
+web/node_modules/
+web/vendor/
