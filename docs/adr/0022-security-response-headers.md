@@ -123,7 +123,7 @@ Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
 - `Cache-Control: no-store`
 - **HSTS writer は無効化**(`httpStrictTransportSecurity().disable()`)。HSTS の SSOT は ALB(§3.1)、`forward-headers-strategy` の有無に依らず二重送出させない。
 
-`csrf.disable()` は据置(ステートレス JWT、設計規約 §5.5)。
+`csrf.disable()` は据置(ステートレス JWT、設計規約 §5.6)。
 
 ### 3.4 導入手順
 

@@ -147,7 +147,7 @@ EOF
 | `OIDC_ISSUER_URI` | `http://localhost:18080/realms/tasks` | Keycloak realm の issuer URI |
 
 > **セキュリティ注意**: `.env.local` は `.gitignore` に追加されている。コミットしないこと。  
-> 本番環境の値は ECS タスク定義の `environment` / Parameter Store SecureString 経由で注入される(詳細は[設計規約 §5.4](../specs/設計規約.md#54-通信データ保護) / [infrastructure-plan §3.4](../architecture/infrastructure-plan.md) 参照)。
+> 本番環境の値は ECS タスク定義の `environment` / Parameter Store SecureString 経由で注入される(詳細は[設計規約 §5.5](../specs/設計規約.md#55-通信データ保護) / [infrastructure-plan §3.4](../architecture/infrastructure-plan.md) 参照)。
 
 ---
 
