@@ -4,262 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>タスク一覧 — Tasks</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css" />
   <link rel="stylesheet" href="css/app.css" />
-  <style>
-    /* ---- App shell (design-system.md §6.7) ---- */
-    body { font-size: 14px; }
-
-    .app-navbar {
-      background: var(--app-surface);
-      border-bottom: 1px solid var(--app-border);
-      height: 56px;
-    }
-    .app-brand {
-      font-weight: 700;
-      letter-spacing: .02em;
-      color: var(--app-ink);
-      text-decoration: none;
-    }
-    .app-brand .bi { color: var(--app-primary); }
-
-    .app-layout { display: flex; min-height: calc(100vh - 56px); }
-
-    .app-sidebar {
-      width: 220px;
-      flex: 0 0 220px;
-      background: var(--app-surface);
-      border-right: 1px solid var(--app-border);
-      padding: 16px 12px;
-    }
-    .app-main { flex: 1 1 auto; min-width: 0; padding: 22px 26px 60px; }
-
-    .nav-group-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .08em;
-      color: #9aa1ad;
-      text-transform: uppercase;
-      padding: 0 12px;
-      margin: 14px 0 6px;
-    }
-    .side-link {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
-      border-radius: 8px;
-      color: #3f4855;
-      text-decoration: none;
-      font-weight: 500;
-      font-size: 13.5px;
-      margin-bottom: 2px;
-    }
-    .side-link .bi { font-size: 16px; color: #7a828f; }
-    .side-link:hover { background: #f2f4f7; }
-    .side-link.active { background: #eef2ff; color: var(--app-primary); }
-    .side-link.active .bi { color: var(--app-primary); }
-
-    .admin-only { display: none; }
-    body.role-admin .admin-only { display: block; }
-
-    /* Adapt tenant-switcher to white navbar */
-    #tenant-switcher-container .btn-outline-light {
-      color: var(--app-ink) !important;
-      border-color: var(--app-border) !important;
-    }
-    #tenant-switcher-container .btn-outline-light:hover {
-      background: #f2f4f7 !important;
-      color: var(--app-ink) !important;
-    }
-    #tenant-switcher-container .badge {
-      background-color: #eef2ff !important;
-      color: #3b4cca !important;
-      opacity: 1 !important;
-    }
-
-    /* ---- Page header ---- */
-    .page-title { font-weight: 700; font-size: 20px; margin: 0; }
-
-    /* ---- Task table section (design-system.md §6.3) ---- */
-    .task-section {
-      background: var(--app-surface);
-      border: 1px solid var(--app-border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .section-head {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 13px 18px;
-      border-bottom: 1px solid var(--app-border);
-    }
-    .section-head h2 { font-size: 15px; font-weight: 700; margin: 0; }
-    .sec-count { font-size: 12px; color: var(--app-muted); font-weight: 500; }
-
-    table.tasks { width: 100%; border-collapse: collapse; }
-    table.tasks th {
-      font-size: 11px;
-      font-weight: 600;
-      color: #9aa1ad;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--app-border);
-      text-align: left;
-      background: #fafbfc;
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
-    }
-    table.tasks th[data-nosort] { cursor: default; }
-    table.tasks th .bi { font-size: 10px; opacity: .6; }
-    table.tasks td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #f1f2f4;
-      vertical-align: middle;
-    }
-    table.tasks tr:last-child td { border-bottom: none; }
-    table.tasks tbody tr { cursor: pointer; }
-    table.tasks tbody tr:hover { background: #f8f9fb; }
-    .task-title { font-weight: 500; color: var(--app-ink); }
-    .task-desc { font-size: 11.5px; color: var(--app-muted); margin-top: 1px; }
-    .due-overdue { color: var(--c-overdue); font-weight: 700; }
-    .due-today   { color: var(--c-today);   font-weight: 700; }
-    .owner-mini {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #eef2ff;
-      color: #3b4cca;
-      display: inline-grid;
-      place-items: center;
-      font-size: 10px;
-      font-weight: 700;
-      margin-right: 6px;
-      flex-shrink: 0;
-    }
-    .empty-row td {
-      text-align: center;
-      color: #9aa1ad;
-      padding: 40px 14px;
-      font-size: 13px;
-    }
-
-    /* ---- Badges (design-system.md §6.4) ---- */
-    .vis-badge {
-      font-size: 11px;
-      font-weight: 500;
-      padding: 4px 8px;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      border: 1px solid transparent;
-    }
-    .vis-TENANT       { background: #e7f5ec; color: #207a3a; border-color: #c3e6cf; }
-    .vis-STAKEHOLDERS { background: #e7f0fb; color: #1f5fb0; border-color: #c2d8f2; }
-    .vis-PRIVATE      { background: #f3eef7; color: #7a4ba8; border-color: #e0d2ee; }
-
-    .pri-badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; }
-    .pri-HIGH   { background: #fdeaea; color: #c92a2a; }
-    .pri-MEDIUM { background: #fff3e2; color: #b8650b; }
-    .pri-LOW    { background: #eef1f6; color: #566173; }
-
-    .st-badge { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 6px; }
-    .st-NOT_STARTED { background: #eef1f6; color: #566173; }
-    .st-IN_PROGRESS { background: #e7f0fb; color: #1f5fb0; }
-    .st-DONE        { background: #e7f5ec; color: #207a3a; }
-    .st-ON_HOLD     { background: #fff3e2; color: #b8650b; }
-
-    /* ---- Pagination ---- */
-    .pager {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      border-top: 1px solid var(--app-border);
-      font-size: 12px;
-      color: var(--app-muted);
-      background: #fafbfc;
-    }
-
-    /* ---- Loading skeleton (design-system.md §6.11) ---- */
-    .skel-row { height: 44px; border-bottom: 1px solid #f1f2f4; padding: 10px 14px; }
-
-    /* ---- Drawer ---- */
-    .offcanvas-end { width: 440px; }
-
-    /* ---- Inline editing (screen-flow.md §5.2) ---- */
-
-    /* Editable cell: subtle hover hint */
-    .edit-cell {
-      cursor: pointer;
-      border-radius: 4px;
-      padding: 2px 4px;
-      margin: -2px -4px;
-      display: inline-block;
-    }
-    .edit-cell:hover {
-      background: #eef2ff;
-      outline: 1px solid #c5cff9;
-    }
-
-    /* Non-editable status/priority badge in readonly rows */
-    .readonly-cell { cursor: default; }
-
-    /* Inline selects for status and priority */
-    .inline-sel {
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 24px 3px 8px;
-      height: auto;
-      border-radius: 6px;
-      min-width: 76px;
-      background-size: 12px;
-    }
-    /* Status select colors per value */
-    .st-sel-NOT_STARTED { background-color: #eef1f6; color: #566173; border-color: #c6cbd5; }
-    .st-sel-IN_PROGRESS { background-color: #e7f0fb; color: #1f5fb0; border-color: #b4cff0; }
-    .st-sel-DONE        { background-color: #e7f5ec; color: #207a3a; border-color: #b2dfc0; }
-    .st-sel-ON_HOLD     { background-color: #fff3e2; color: #b8650b; border-color: #ffd6a0; }
-    /* Priority select colors per value */
-    .pri-sel-HIGH   { background-color: #fdeaea; color: #c92a2a; border-color: #f5c6cb; }
-    .pri-sel-MEDIUM { background-color: #fff3e2; color: #b8650b; border-color: #ffd6a0; }
-    .pri-sel-LOW    { background-color: #eef1f6; color: #566173; border-color: #c6cbd5; }
-
-    /* Inline text/date inputs that replace cell content */
-    td .inline-input {
-      font-size: 13px;
-      padding: 4px 8px;
-      height: auto;
-      width: 100%;
-    }
-
-    /* Description popover overlay */
-    .desc-overlay {
-      position: fixed;
-      z-index: 1055;
-      background: #fff;
-      border: 1px solid var(--app-border);
-      border-radius: 10px;
-      padding: 14px;
-      width: 300px;
-      box-shadow: 0 6px 24px rgba(0,0,0,.14);
-    }
-    .desc-overlay textarea {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    /* Disabled/saving state */
-    .inline-sel:disabled { opacity: .6; cursor: wait; }
-  </style>
 </head>
 <body>
 <a href="#main-content" class="visually-hidden-focusable position-absolute p-2 m-2 bg-primary text-white rounded">
@@ -275,8 +22,7 @@
   <div class="ms-auto d-flex align-items-center gap-3">
     <div class="d-flex align-items-center gap-2">
       <label for="roleSel" class="text-muted small mb-0 d-none d-md-inline">ロール</label>
-      <select id="roleSel" class="form-select form-select-sm" style="width:148px;"
-        onchange="switchRole(this.value)" aria-label="ロール切替">
+      <select id="roleSel" class="form-select form-select-sm w-role-sel" aria-label="ロール切替">
         <option value="member">Member</option>
         <option value="admin">Tenant Admin</option>
       </select>
@@ -284,11 +30,10 @@
     <div class="d-flex align-items-center gap-2">
       <div id="user-avatar"
         class="rounded-circle bg-primary-subtle text-primary d-grid"
-        style="width:30px;height:30px;place-items:center;font-weight:700;font-size:12px;"
         aria-hidden="true">?</div>
       <span id="nav-username" class="small d-none d-lg-inline"></span>
     </div>
-    <button class="btn btn-outline-secondary btn-sm" onclick="handleLogout()">
+    <button id="btn-logout" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>ログアウト
     </button>
   </div>
@@ -328,8 +73,7 @@
         <label for="sortSel" class="text-muted small mb-0">
           <i class="bi bi-sort-down me-1" aria-hidden="true"></i>並び替え
         </label>
-        <select id="sortSel" class="form-select form-select-sm" style="width:172px;"
-          onchange="onSortChange(this.value)" aria-label="並び替え">
+        <select id="sortSel" class="form-select form-select-sm w-sort-sel" aria-label="並び替え">
           <option value="dueDate,asc">期限(昇順)</option>
           <option value="dueDate,desc">期限(降順)</option>
           <option value="priority,desc">優先度(高→低)</option>
@@ -337,7 +81,7 @@
           <option value="createdAt,desc">作成日(新しい順)</option>
           <option value="createdAt,asc">作成日(古い順)</option>
         </select>
-        <button class="btn btn-sm btn-primary" onclick="openNew()" aria-label="新規タスクを作成">
+        <button id="btn-new-task" class="btn btn-sm btn-primary" aria-label="新規タスクを作成">
           <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>新規
         </button>
       </div>
@@ -353,7 +97,7 @@
     <div id="error-banner" class="alert alert-danger d-none d-flex align-items-center gap-2 mb-3" role="alert" aria-live="assertive">
       <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
       <span id="error-message"></span>
-      <button class="btn btn-sm btn-outline-danger ms-auto" onclick="loadTasks()">
+      <button id="btn-retry" class="btn btn-sm btn-outline-danger ms-auto">
         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再試行
       </button>
     </div>
@@ -362,10 +106,10 @@
     <div id="conflict-banner" class="alert alert-warning d-none d-flex align-items-center gap-2 mb-3" role="alert" aria-live="polite">
       <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
       <span>別のユーザーによってタスクが更新されました。最新のデータに更新してください。</span>
-      <button class="btn btn-sm btn-outline-warning ms-auto" onclick="loadTasks(); clearConflict();">
+      <button id="btn-conflict-reload" class="btn btn-sm btn-outline-warning ms-auto">
         <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再読み込み
       </button>
-      <button class="btn-close ms-1" onclick="clearConflict()" aria-label="閉じる"></button>
+      <button id="btn-conflict-close" class="btn-close ms-1" aria-label="閉じる"></button>
     </div>
 
     <!-- Loading skeleton (design-system.md §6.11) -->
@@ -375,11 +119,11 @@
         <span class="placeholder col-1 ms-2"></span>
       </div>
       <div class="p-0">
-        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block" style="border-radius:4px;"></span></div>
-        <div class="skel-row placeholder-glow"><span class="placeholder col-11 h-100 d-block" style="border-radius:4px;"></span></div>
-        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block" style="border-radius:4px;"></span></div>
-        <div class="skel-row placeholder-glow"><span class="placeholder col-10 h-100 d-block" style="border-radius:4px;"></span></div>
-        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block" style="border-radius:4px;"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block skel-placeholder"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-11 h-100 d-block skel-placeholder"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block skel-placeholder"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-10 h-100 d-block skel-placeholder"></span></div>
+        <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block skel-placeholder"></span></div>
       </div>
     </div>
 
@@ -394,17 +138,17 @@
         <table class="tasks" aria-label="タスク一覧">
           <thead>
             <tr>
-              <th scope="col" style="width:110px;" data-nosort>状態</th>
+              <th scope="col" class="col-status" data-nosort>状態</th>
               <th scope="col" data-nosort>タイトル</th>
-              <th scope="col" style="width:104px;" data-nosort>所有者</th>
-              <th scope="col" style="width:116px;" data-nosort>担当者</th>
-              <th scope="col" style="width:96px;" onclick="cycleSort('dueDate')">
+              <th scope="col" class="col-owner" data-nosort>所有者</th>
+              <th scope="col" class="col-assignee" data-nosort>担当者</th>
+              <th id="th-dueDate" scope="col">
                 期限 <i id="sort-caret-dueDate" class="bi bi-caret-up-fill" aria-hidden="true"></i>
               </th>
-              <th scope="col" style="width:80px;" onclick="cycleSort('priority')">
+              <th id="th-priority" scope="col">
                 優先度 <i id="sort-caret-priority" class="bi bi-chevron-expand" aria-hidden="true"></i>
               </th>
-              <th scope="col" style="width:112px;" data-nosort>公開範囲</th>
+              <th scope="col" class="col-visibility" data-nosort>公開範囲</th>
             </tr>
           </thead>
           <tbody id="task-tbody">
@@ -417,12 +161,12 @@
         <span id="pager-info">0 件</span>
         <div class="ms-auto d-flex align-items-center gap-1">
           <button id="btn-prev" class="btn btn-sm btn-outline-secondary py-0 px-2"
-            onclick="goPage(currentPage - 1)" disabled aria-label="前のページ">
+            disabled aria-label="前のページ">
             <i class="bi bi-chevron-left" aria-hidden="true"></i> 前へ
           </button>
           <span id="pager-pages" class="px-2" aria-live="polite">1 / 1</span>
           <button id="btn-next" class="btn btn-sm btn-outline-secondary py-0 px-2"
-            onclick="goPage(currentPage + 1)" disabled aria-label="次のページ">
+            disabled aria-label="次のページ">
             次へ <i class="bi bi-chevron-right" aria-hidden="true"></i>
           </button>
           <span class="ms-2 text-muted">50 件 / ページ</span>
@@ -439,8 +183,8 @@
   <textarea id="desc-overlay-ta" class="form-control form-control-sm" rows="4"
     maxlength="2000" placeholder="説明（最大2000文字）"></textarea>
   <div class="d-flex gap-2 mt-2">
-    <button class="btn btn-sm btn-primary" onclick="saveDescEdit()">保存</button>
-    <button class="btn btn-sm btn-light" onclick="cancelDescEdit()">取消</button>
+    <button id="btn-desc-save" class="btn btn-sm btn-primary">保存</button>
+    <button id="btn-desc-cancel" class="btn btn-sm btn-light">取消</button>
   </div>
 </div>
 
@@ -453,7 +197,7 @@
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
   </div>
   <div class="offcanvas-body">
-    <form id="new-task-form" onsubmit="submitNewTask(event)">
+    <form id="new-task-form">
       <div class="mb-3">
         <label class="form-label small fw-bold" for="newTitle">
           タイトル <span class="text-danger" aria-hidden="true">*</span>
@@ -524,606 +268,11 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-  integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/keycloak-js@24.0.5/dist/keycloak.min.js"
-  integrity="sha384-BgPO16I1RACwKx5rebvaepuOdvkbIHpw6I7ekUJ1tGfSnPOf5V2rUwq89iQkJz1E" crossorigin="anonymous"></script>
+<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="vendor/keycloak-js/keycloak.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
 <script src="js/tenant-switcher.js"></script>
-<script>
-  // ---- Page state ----
-  let currentPage = 0;
-  let currentSort = 'dueDate,asc';
-  let totalPages = 1;
-  let totalElements = 0;
-  const PAGE_SIZE = 50;
-
-  // ---- Inline-edit state ----
-  let taskMap      = new Map(); // taskId(number) → Task object
-  let currentUserId = null;     // logged-in user's id
-  let tenantUsers  = [];        // TenantUser[]  — for assignee dropdown
-  let currentEdit  = null;      // { td, taskId, field, originalHTML } | null
-  let descEditTaskId = null;    // taskId being edited in the description overlay
-
-  // ---- Meta helpers (design-system.md §6.4) ----
-  function statusMeta(s) {
-    return {
-      NOT_STARTED: ['未着手', 'st-NOT_STARTED'],
-      IN_PROGRESS:  ['進行中', 'st-IN_PROGRESS'],
-      DONE:         ['完了',   'st-DONE'],
-      ON_HOLD:      ['保留',   'st-ON_HOLD'],
-    }[s] || [s, 'st-NOT_STARTED'];
-  }
-
-  function priMeta(p) {
-    return {
-      HIGH:   ['高', 'pri-HIGH'],
-      MEDIUM: ['中', 'pri-MEDIUM'],
-      LOW:    ['低', 'pri-LOW'],
-    }[p] || [p, 'pri-LOW'];
-  }
-
-  function visMeta(v) {
-    return {
-      TENANT:       ['テナント', 'vis-TENANT',       'bi-globe2'],
-      STAKEHOLDERS: ['関係者',   'vis-STAKEHOLDERS', 'bi-people-fill'],
-      PRIVATE:      ['非公開',   'vis-PRIVATE',      'bi-lock-fill'],
-    }[v] || [v, 'vis-TENANT', 'bi-globe2'];
-  }
-
-  // Derive option lists from the badge helpers so labels stay in sync (fix: no duplicate strings)
-  const STATUS_OPTIONS   = ['NOT_STARTED', 'IN_PROGRESS', 'DONE', 'ON_HOLD']
-    .map(v => ({ v, l: statusMeta(v)[0] }));
-  const PRIORITY_OPTIONS = ['HIGH', 'MEDIUM', 'LOW']
-    .map(v => ({ v, l: priMeta(v)[0] }));
-
-  function escHtml(s) {
-    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function dueLabelHtml(dueDate) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const due   = new Date(dueDate + 'T00:00:00');
-    const diff  = Math.round((due - today) / 86400000);
-    const md    = dueDate.slice(5).replace('-', '/');
-    if (diff < 0)  return `<span class="due-overdue">${md}(${diff}日)</span>`;
-    if (diff === 0) return `<span class="due-today">今日</span>`;
-    if (diff === 1) return `明日 ${md}`;
-    return md;
-  }
-
-  // ETag format per ADR-0012: W/"<version>"
-  function buildEtag(task) {
-    return `W/"${task.version}"`;
-  }
-
-  // ---- Row HTML generation ----
-  function rowHTML(task) {
-    const [vl, vc, vi] = visMeta(task.visibility);
-    const ownerIni   = (task.owner?.fullName || '?').slice(0, 1);
-    const ownerName  = task.owner?.fullName ?? '—';
-    const assigneeName = task.assignee?.fullName ?? '—';
-
-    // Authorization flags (screen-flow.md §5.2, ADR-0005)
-    const canEdit         = task.editable; // owner only
-    const canChangeStatus = task.editable || task.assignee?.id === currentUserId;
-
-    // -- Status cell --
-    let statusCell;
-    if (canChangeStatus) {
-      const opts = STATUS_OPTIONS.map(o =>
-        `<option value="${o.v}"${task.status === o.v ? ' selected' : ''}>${o.l}</option>`
-      ).join('');
-      statusCell = `<td onclick="event.stopPropagation()">
-        <select class="inline-sel st-sel-${escHtml(task.status)}"
-          aria-label="ステータス"
-          onchange="onStatusChange(event,${task.id})">${opts}</select>
-      </td>`;
-    } else {
-      const [sl, sc] = statusMeta(task.status);
-      statusCell = `<td><span class="st-badge ${sc}" title="編集権限がありません">${sl}</span></td>`;
-    }
-
-    // -- Title + description cell --
-    const descText = task.description
-      ? escHtml(task.description.slice(0, 80)) + (task.description.length > 80 ? '…' : '')
-      : '';
-    let titleCell;
-    if (canEdit) {
-      const descPart = task.description
-        ? `<div class="task-desc edit-cell" onclick="openDescEdit(event,${task.id})" title="クリックして説明を編集">${descText}</div>`
-        : `<div class="task-desc text-muted fst-italic edit-cell" style="font-size:11px;" onclick="openDescEdit(event,${task.id})" title="説明を追加">説明を追加...</div>`;
-      titleCell = `<td onclick="event.stopPropagation()">
-        <div class="task-title edit-cell" onclick="activateCellEdit(event,${task.id},'title')" title="クリックしてタイトルを編集">${escHtml(task.title)}</div>
-        ${descPart}
-      </td>`;
-    } else {
-      const descPart = task.description ? `<div class="task-desc">${descText}</div>` : '';
-      titleCell = `<td>
-        <div class="task-title">${escHtml(task.title)}</div>${descPart}
-      </td>`;
-    }
-
-    // -- Owner cell (never editable inline) --
-    const ownerCell = `<td>
-      <span class="d-inline-flex align-items-center">
-        <span class="owner-mini" aria-hidden="true">${escHtml(ownerIni)}</span>${escHtml(ownerName)}
-      </span>
-    </td>`;
-
-    // -- Assignee cell --
-    let assigneeCell;
-    if (canEdit) {
-      assigneeCell = `<td onclick="event.stopPropagation()">
-        <span class="edit-cell" onclick="activateCellEdit(event,${task.id},'assigneeId')" title="クリックして担当者を変更">${escHtml(assigneeName)}</span>
-      </td>`;
-    } else {
-      const tooltip = canChangeStatus ? '' : ' title="編集権限がありません"';
-      assigneeCell = `<td><span${tooltip}>${escHtml(assigneeName)}</span></td>`;
-    }
-
-    // -- Due date cell --
-    let dueDateCell;
-    if (canEdit) {
-      dueDateCell = `<td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <span class="edit-cell" onclick="activateCellEdit(event,${task.id},'dueDate')" title="クリックして期限を変更">${dueLabelHtml(task.dueDate)}</span>
-      </td>`;
-    } else {
-      dueDateCell = `<td style="white-space:nowrap">${dueLabelHtml(task.dueDate)}</td>`;
-    }
-
-    // -- Priority cell --
-    let priorityCell;
-    if (canEdit) {
-      const opts = PRIORITY_OPTIONS.map(o =>
-        `<option value="${o.v}"${task.priority === o.v ? ' selected' : ''}>${o.l}</option>`
-      ).join('');
-      priorityCell = `<td onclick="event.stopPropagation()">
-        <select class="inline-sel pri-sel-${escHtml(task.priority)}"
-          aria-label="優先度"
-          onchange="onPriorityChange(event,${task.id})">${opts}</select>
-      </td>`;
-    } else {
-      const [pl, pc] = priMeta(task.priority);
-      priorityCell = `<td><span class="pri-badge ${pc}" title="編集権限がありません">${pl}</span></td>`;
-    }
-
-    // -- Visibility cell (inline edit out of scope, screen-flow.md §5.2) --
-    const visCell = `<td><span class="vis-badge ${vc}"><i class="bi ${vi}" aria-hidden="true"></i>${vl}</span></td>`;
-
-    return `<tr data-task-id="${task.id}" tabindex="0"
-        onclick="onRowClick(${task.id})"
-        onkeydown="if(event.key==='Enter'||event.key===' ')onRowClick(${task.id})">
-      ${statusCell}${titleCell}${ownerCell}${assigneeCell}${dueDateCell}${priorityCell}${visCell}
-    </tr>`;
-  }
-
-  // ---- Re-render a single row in place ----
-  function rerenderRow(taskId) {
-    const task = taskMap.get(taskId);
-    if (!task) return;
-    const tr = document.querySelector(`tr[data-task-id="${taskId}"]`);
-    if (!tr) return;
-    const tmp = document.createElement('tbody');
-    tmp.innerHTML = rowHTML(task);
-    tr.replaceWith(tmp.firstElementChild);
-  }
-
-  // ---- Inline status change (PATCH /api/tasks/{id}/status, no ETag needed) ----
-  async function onStatusChange(event, taskId) {
-    event.stopPropagation();
-    const sel = event.target;
-    const status = sel.value;
-    sel.disabled = true;
-    try {
-      const updated = await Api.changeStatus(taskId, status);
-      taskMap.set(taskId, updated);
-      rerenderRow(taskId);
-    } catch (err) {
-      rerenderRow(taskId); // revert to server state
-      // PATCH /api/tasks/{id}/status は ADR-0012 の If-Match 対象外のため 412 は理論上返らない。API 契約変更に備えた防御的ガードとして残す。
-      if (err.status === 412) showConflictBanner();
-      else showError('ステータスの更新に失敗しました: ' + (err.message || ''));
-    }
-  }
-
-  // ---- Inline priority change (PATCH /api/tasks/{id} with ETag) ----
-  async function onPriorityChange(event, taskId) {
-    event.stopPropagation();
-    const sel = event.target;
-    const priority = sel.value;
-    const task = taskMap.get(taskId);
-    if (!task) return;
-    sel.disabled = true;
-    try {
-      const updated = await Api.patchTask(taskId, buildEtag(task), { priority });
-      taskMap.set(taskId, updated);
-      rerenderRow(taskId);
-    } catch (err) {
-      rerenderRow(taskId);
-      if (err.status === 412) showConflictBanner();
-      else showError('優先度の更新に失敗しました: ' + (err.message || ''));
-    }
-  }
-
-  // ---- Cancel active cell edit (restore original HTML) ----
-  function cancelCurrentEdit() {
-    if (!currentEdit) return;
-    const { td, originalHTML, abort } = currentEdit;
-    // Set done=true via the closure's own abort handle BEFORE replacing innerHTML,
-    // so the blur event fired by removing a focused input doesn't re-enter doCommit.
-    if (abort) abort();
-    td.innerHTML = originalHTML;
-    currentEdit = null;
-  }
-
-  // ---- Commit a field patch (PATCH /api/tasks/{id} with ETag) ----
-  async function commitFieldEdit(taskId, field, value) {
-    const task = taskMap.get(taskId);
-    if (!task) { cancelCurrentEdit(); return; }
-
-    let body;
-    if (field === 'assigneeId') {
-      body = { assigneeId: value ? Number(value) : null };
-    } else if (field === 'dueDate') {
-      body = { dueDate: value };
-    } else if (field === 'title') {
-      body = { title: value };
-    } else if (field === 'description') {
-      body = { description: value || null };
-    }
-    if (!body) { cancelCurrentEdit(); return; }
-
-    currentEdit = null; // cell will be re-rendered on success/error
-
-    try {
-      const updated = await Api.patchTask(taskId, buildEtag(task), body);
-      taskMap.set(taskId, updated);
-      rerenderRow(taskId);
-    } catch (err) {
-      rerenderRow(taskId);
-      if (err.status === 412) showConflictBanner();
-      else showError('更新に失敗しました: ' + (err.message || ''));
-    }
-  }
-
-  // ---- Activate inline editor for title / dueDate / assigneeId ----
-  function activateCellEdit(event, taskId, field) {
-    event.stopPropagation();
-    const task = taskMap.get(taskId);
-    if (!task?.editable) return;
-
-    cancelCurrentEdit();
-    closeDescOverlay();
-
-    const td = event.target.closest('td');
-    const originalHTML = td.innerHTML;
-    let input;
-    let originalValue;
-
-    if (field === 'title') {
-      input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'form-control form-control-sm inline-input';
-      input.value = task.title;
-      input.maxLength = 100;
-      originalValue = task.title;
-    } else if (field === 'dueDate') {
-      input = document.createElement('input');
-      input.type = 'date';
-      input.className = 'form-control form-control-sm inline-input';
-      input.value = task.dueDate;
-      originalValue = task.dueDate;
-    } else if (field === 'assigneeId') {
-      input = document.createElement('select');
-      input.className = 'form-select form-select-sm inline-input';
-      const opts = tenantUsers
-        .map(u => `<option value="${u.userId}"${task.assignee?.id === u.userId ? ' selected' : ''}>${escHtml(u.fullName)}</option>`)
-        .join('');
-      input.innerHTML = `<option value="">未割当</option>${opts}`;
-      input.value = task.assignee?.id != null ? String(task.assignee.id) : '';
-      originalValue = input.value;
-    }
-
-    if (!input) return;
-
-    td.innerHTML = '';
-    td.appendChild(input);
-
-    let done = false;
-    currentEdit = { td, taskId, field, originalHTML, abort: () => { done = true; } };
-
-    input.focus();
-    if (field === 'title') input.select();
-
-    async function doCommit() {
-      if (done) return;
-      done = true;
-      const val = input.value;
-      if (field === 'title' && !val.trim()) { cancelCurrentEdit(); return; }
-      // Empty dueDate → null (allows clearing an existing due date via PATCH dueDate:null)
-      const commitVal = (field === 'dueDate' && !val) ? null : val;
-      if (commitVal === (originalValue || null)) { cancelCurrentEdit(); return; }
-      await commitFieldEdit(taskId, field, commitVal);
-    }
-
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { done = true; cancelCurrentEdit(); }
-      if (e.key === 'Enter')  { e.preventDefault(); doCommit(); }
-    });
-
-    // dueDate and assignee commit on selection change; title commits on blur
-    if (field === 'dueDate' || field === 'assigneeId') {
-      input.addEventListener('change', doCommit);
-    }
-    input.addEventListener('blur', doCommit);
-  }
-
-  // ---- Description overlay (screen-flow.md §5.2: popover型) ----
-  function openDescEdit(event, taskId) {
-    event.stopPropagation();
-    const task = taskMap.get(taskId);
-    if (!task?.editable) return;
-
-    cancelCurrentEdit();
-    descEditTaskId = taskId;
-
-    const overlay = document.getElementById('desc-overlay');
-    const ta      = document.getElementById('desc-overlay-ta');
-    ta.value = task.description || '';
-
-    // Position below the clicked element, keeping inside the viewport
-    const rect = event.target.getBoundingClientRect();
-    let top  = rect.bottom + 8;
-    let left = rect.left;
-    if (left + 310 > window.innerWidth) left = Math.max(8, window.innerWidth - 318);
-    if (top + 190 > window.innerHeight)  top  = rect.top - 198;
-
-    overlay.style.top  = top  + 'px';
-    overlay.style.left = left + 'px';
-    overlay.classList.remove('d-none');
-    ta.focus();
-  }
-
-  function closeDescOverlay() {
-    document.getElementById('desc-overlay').classList.add('d-none');
-    descEditTaskId = null;
-  }
-
-  async function saveDescEdit() {
-    if (descEditTaskId === null) return;
-    const taskId = descEditTaskId;
-    const task   = taskMap.get(taskId);
-    const ta     = document.getElementById('desc-overlay-ta');
-    const value  = ta.value.trim() || null;
-
-    closeDescOverlay();
-    if (!task) return; // task evicted from map (e.g. concurrent loadTasks) — discard silently
-    if (value === (task.description || null)) return; // no change
-
-    try {
-      const updated = await Api.patchTask(taskId, buildEtag(task), { description: value });
-      taskMap.set(taskId, updated);
-      rerenderRow(taskId);
-    } catch (err) {
-      if (err.status === 412) showConflictBanner();
-      else showError('説明の更新に失敗しました: ' + (err.message || ''));
-    }
-  }
-
-  function cancelDescEdit() {
-    closeDescOverlay();
-  }
-
-  // Close desc overlay when clicking outside of it
-  document.addEventListener('mousedown', e => {
-    const overlay = document.getElementById('desc-overlay');
-    if (!overlay.classList.contains('d-none') && !overlay.contains(e.target)) {
-      cancelDescEdit();
-    }
-  });
-
-  // Close desc overlay with Escape (keyboard-only accessibility)
-  document.getElementById('desc-overlay-ta').addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.stopPropagation(); cancelDescEdit(); }
-  });
-
-  // ---- UI state helpers (design-system.md §6.11) ----
-  function showLoading(on) {
-    document.getElementById('loading-skeleton').classList.toggle('d-none', !on);
-    document.getElementById('task-panel').classList.toggle('d-none', on);
-  }
-
-  function showError(msg) {
-    const banner = document.getElementById('error-banner');
-    document.getElementById('error-message').textContent = msg;
-    banner.classList.remove('d-none');
-  }
-
-  function clearError() {
-    document.getElementById('error-banner').classList.add('d-none');
-  }
-
-  function showConflictBanner() {
-    document.getElementById('conflict-banner').classList.remove('d-none');
-  }
-
-  function clearConflict() {
-    document.getElementById('conflict-banner').classList.add('d-none');
-  }
-
-  // ---- Task list (A-1 GET /api/tasks) ----
-  async function loadTasks() {
-    clearError();
-    clearConflict();
-    cancelCurrentEdit();
-    closeDescOverlay();
-    showLoading(true);
-    try {
-      const data = await Api.listTasks({ page: currentPage, size: PAGE_SIZE, sort: currentSort });
-      totalPages    = data.totalPages    || 1;
-      totalElements = data.totalElements || 0;
-      // Rebuild taskMap from the current page (clear stale entries from previous pages)
-      taskMap.clear();
-      if (data.content) {
-        data.content.forEach(t => taskMap.set(t.id, t));
-      }
-      renderTasks(data.content);
-      renderPagination();
-      showLoading(false);
-    } catch (err) {
-      document.getElementById('loading-skeleton').classList.add('d-none');
-      showError(err.message || 'タスクの取得に失敗しました');
-    }
-  }
-
-  function renderTasks(tasks) {
-    document.getElementById('total-count').textContent = `${totalElements} 件`;
-    const tbody = document.getElementById('task-tbody');
-    if (!tasks || tasks.length === 0) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="7"><i class="bi bi-inbox me-2" aria-hidden="true"></i>タスクはありません</td></tr>';
-      return;
-    }
-    tbody.innerHTML = tasks.map(rowHTML).join('');
-  }
-
-  function renderPagination() {
-    const start = totalElements > 0 ? currentPage * PAGE_SIZE + 1 : 0;
-    const end   = Math.min((currentPage + 1) * PAGE_SIZE, totalElements);
-    document.getElementById('pager-info').textContent =
-      totalElements > 0 ? `${totalElements} 件中 ${start}–${end} 件を表示` : '0 件';
-    document.getElementById('pager-pages').textContent =
-      `${currentPage + 1} / ${Math.max(totalPages, 1)}`;
-    document.getElementById('btn-prev').disabled = currentPage <= 0;
-    document.getElementById('btn-next').disabled = currentPage >= totalPages - 1;
-  }
-
-  function goPage(p) {
-    if (p < 0 || p >= totalPages) return;
-    currentPage = p;
-    loadTasks();
-  }
-
-  // ---- Sort ----
-  function onSortChange(value) {
-    currentSort = value;
-    currentPage = 0;
-    updateSortCarets();
-    loadTasks();
-  }
-
-  function cycleSort(field) {
-    const [f, d] = currentSort.split(',');
-    currentSort = f === field
-      ? `${field},${d === 'asc' ? 'desc' : 'asc'}`
-      : `${field},asc`;
-    const sel = document.getElementById('sortSel');
-    const match = [...sel.options].find(o => o.value === currentSort);
-    if (match) sel.value = currentSort;
-    currentPage = 0;
-    updateSortCarets();
-    loadTasks();
-  }
-
-  function updateSortCarets() {
-    const [f, d] = currentSort.split(',');
-    ['dueDate', 'priority'].forEach(field => {
-      const el = document.getElementById(`sort-caret-${field}`);
-      if (!el) return;
-      el.className = f === field
-        ? (d === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill')
-        : 'bi bi-chevron-expand';
-    });
-  }
-
-  // ---- Role switcher ----
-  function switchRole(r) {
-    document.body.classList.toggle('role-admin', r === 'admin');
-  }
-
-  // ---- Row click (S-05 detail — wired in later sprint) ----
-  function onRowClick(id) {
-    // TODO: open detail drawer (S-05, Sprint 3+)
-    console.log('task row clicked:', id);
-  }
-
-  // ---- New task drawer ----
-  function openNew() {
-    document.getElementById('new-task-form').reset();
-    // Populate assignee options from tenantUsers
-    const sel = document.getElementById('newAssignee');
-    sel.innerHTML = '<option value="">未割当</option>' +
-      tenantUsers.map(u => `<option value="${u.userId}">${escHtml(u.fullName)}</option>`).join('');
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('newTaskDrawer')).show();
-  }
-
-  function submitNewTask(event) {
-    event.preventDefault();
-    // TODO: POST /api/tasks (Sprint 3+)
-    bootstrap.Offcanvas.getInstance(document.getElementById('newTaskDrawer'))?.hide();
-  }
-
-  // ---- Logout ----
-  function handleLogout() {
-    Auth.logout();
-  }
-
-  // ---- Init ----
-  async function main() {
-    const authenticated = await Auth.init();
-    if (!authenticated) return;
-
-    let me;
-    try {
-      me = await Api.getMe();
-    } catch (err) {
-      showError('ユーザー情報の取得に失敗しました: ' + err.message);
-      return;
-    }
-
-    // Store current user id for assignee/status auth checks
-    currentUserId = me.user?.id ?? null;
-
-    // Populate navbar user info
-    const user = Auth.getUser();
-    const displayName = user?.name || user?.preferred_username || '';
-    document.getElementById('nav-username').textContent = displayName;
-    document.getElementById('user-avatar').textContent  = displayName.slice(0, 1) || '?';
-
-    // テナント未選択はテナント選択画面へ
-    if (!me.activeTenantId) {
-      window.location.replace('index.html');
-      return;
-    }
-    Api.setTenantId(me.activeTenantId);
-
-    // Tenant switcher in navbar
-    TenantSwitcher.render(
-      document.getElementById('tenant-switcher-container'),
-      me.tenants,
-      me.activeTenantId,
-    );
-
-    // Reflect Tenant Admin role in sidebar
-    const activeTenant = me.tenants?.find(t => t.id === me.activeTenantId);
-    if (activeTenant?.role === 'TENANT_ADMIN') {
-      document.getElementById('roleSel').value = 'admin';
-      switchRole('admin');
-    }
-
-    // Load tenant users for assignee dropdowns (non-fatal if it fails)
-    try {
-      tenantUsers = await Api.listTenantUsers();
-    } catch {
-      tenantUsers = [];
-    }
-
-    updateSortCarets();
-    await loadTasks();
-  }
-
-  main();
-</script>
+<script src="js/tasks.js"></script>
 </body>
 </html>
