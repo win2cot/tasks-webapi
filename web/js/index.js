@@ -27,11 +27,7 @@ async function main() {
     document.getElementById('user-info').textContent =
       'テナントを選択してタスク一覧を開いてください。';
 
-    TenantSwitcher.render(
-      document.getElementById('tenant-switcher-container'),
-      me.tenants,
-      me.activeTenantId,
-    );
+    document.getElementById('tenant-switcher').setData(me.tenants, me.activeTenantId);
   } catch (err) {
     document.getElementById('user-info').textContent = 'API 呼び出しエラー: ' + err.message;
   }

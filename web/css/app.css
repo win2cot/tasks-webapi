@@ -92,15 +92,15 @@ body { font-size: 14px; }
 body.role-admin .admin-only { display: block; }
 
 /* Adapt tenant-switcher to white navbar */
-#tenant-switcher-container .btn-outline-light {
+#tenant-switcher .btn-outline-light {
   color: var(--app-ink) !important;
   border-color: var(--app-border) !important;
 }
-#tenant-switcher-container .btn-outline-light:hover {
+#tenant-switcher .btn-outline-light:hover {
   background: #f2f4f7 !important;
   color: var(--app-ink) !important;
 }
-#tenant-switcher-container .badge {
+#tenant-switcher .badge {
   background-color: #eef2ff !important;
   color: #3b4cca !important;
   opacity: 1 !important;
@@ -284,8 +284,10 @@ td .inline-input {
 /* Disabled/saving state */
 .inline-sel:disabled { opacity: .6; cursor: wait; }
 
+/* app-task-row is transparent to table layout (display:contents = no box generated) */
+app-task-row { display: contents; }
+
 /* ---- Extracted inline styles (ADR-0022: no style= attributes) ---- */
-.w-role-sel  { width: 148px; }
 .w-sort-sel  { width: 172px; }
 
 #user-avatar {
