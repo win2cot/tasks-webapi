@@ -13,6 +13,6 @@
     "copy-vendor": "node scripts/copy-vendor.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   }
 }
