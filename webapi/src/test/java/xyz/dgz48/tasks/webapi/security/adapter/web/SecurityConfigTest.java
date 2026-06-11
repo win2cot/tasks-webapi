@@ -244,8 +244,7 @@ class SecurityConfigTest {
         .perform(get("/api/tasks"))
         .andExpect(
             header()
-                .string(
-                    "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"));
+                .string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"));
   }
 
   @Test
@@ -257,23 +256,17 @@ class SecurityConfigTest {
 
   @Test
   void securityHeadersXFrameOptionsIsDeny() throws Exception {
-    mockMvc
-        .perform(get("/api/tasks"))
-        .andExpect(header().string("X-Frame-Options", "DENY"));
+    mockMvc.perform(get("/api/tasks")).andExpect(header().string("X-Frame-Options", "DENY"));
   }
 
   @Test
   void securityHeadersReferrerPolicyIsNoReferrer() throws Exception {
-    mockMvc
-        .perform(get("/api/tasks"))
-        .andExpect(header().string("Referrer-Policy", "no-referrer"));
+    mockMvc.perform(get("/api/tasks")).andExpect(header().string("Referrer-Policy", "no-referrer"));
   }
 
   @Test
   void securityHeadersCacheControlIsNoStore() throws Exception {
-    mockMvc
-        .perform(get("/api/tasks"))
-        .andExpect(header().string("Cache-Control", "no-store"));
+    mockMvc.perform(get("/api/tasks")).andExpect(header().string("Cache-Control", "no-store"));
   }
 
   @Test
