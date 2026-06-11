@@ -48,8 +48,17 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function todayJST() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  return new Date(parts + 'T00:00:00');
+}
+
 function dueLabelHtml(dueDate) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (!dueDate) return '—';
+  const today = todayJST();
   const due   = new Date(dueDate + 'T00:00:00');
   const diff  = Math.round((due - today) / 86400000);
   const md    = dueDate.slice(5).replace('-', '/');
