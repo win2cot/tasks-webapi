@@ -66,6 +66,23 @@ const Api = (() => {
     return response.text();
   }
 
+  async function _throwFromResponse(response) {
+    const body = await response.text().catch(() => '');
+    const err = new Error(`${response.status} ${response.statusText}: ${body}`);
+    err.status = response.status;
+    throw err;
+  }
+
+  // Returns the raw Response (handles 401 refresh), for callers that need headers.
+  async function requestRaw(path, options = {}) {
+    const response = await _fetch(path, await Auth.getToken(), options);
+    if (response.status === 401) {
+      const newToken = await Auth.refreshToken();
+      return _fetch(path, newToken, options);
+    }
+    return response;
+  }
+
   /**
    * GET /api/auth/me — 認証済みユーザー情報を取得する。
    * @returns {Promise<Object>}
@@ -155,5 +172,90 @@ const Api = (() => {
     return request('/api/tenant/users');
   }
 
-  return { setTenantId, request, getMe, selectTenant, listTasks, patchTask, changeStatus, listTenantUsers };
+  /**
+   * GET /api/tasks/{id} — タスク詳細取得(A-12)。ETag も返す。
+   * @param {number} id
+   * @returns {Promise<{task: TaskDetail, etag: string|null}>}
+   */
+  async function getTask(id) {
+    const resp = await requestRaw(`/api/tasks/${id}`);
+    if (!resp.ok) await _throwFromResponse(resp);
+    return { task: await resp.json(), etag: resp.headers.get('ETag') };
+  }
+
+  /**
+   * POST /api/tasks — タスク作成(A-2)。
+   * @param {Object} body — TaskCreateRequest
+   * @returns {Promise<Task>}
+   */
+  function createTask(body) {
+    return request('/api/tasks', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  /**
+   * DELETE /api/tasks/{id} — タスク論理削除(A-15)。If-Match 必須(ADR-0012)。
+   * @param {number} id
+   * @param {string} etag — W/"<version>"
+   * @returns {Promise<void>}
+   */
+  function deleteTask(id, etag) {
+    return request(`/api/tasks/${id}`, {
+      method: 'DELETE',
+      headers: { 'If-Match': etag },
+    });
+  }
+
+  /**
+   * PATCH /api/tasks/{id}/visibility — 公開範囲変更(A-17)。
+   * @param {number} id
+   * @param {string} visibility — Visibility 値
+   * @param {number[]} [stakeholderUserIds] — visibility=STAKEHOLDERS のとき指定
+   * @returns {Promise<Task>}
+   */
+  function changeVisibility(id, visibility, stakeholderUserIds) {
+    const body = { visibility };
+    if (stakeholderUserIds) body.stakeholderUserIds = stakeholderUserIds;
+    return request(`/api/tasks/${id}/visibility`, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+
+  /**
+   * GET /api/tasks/{id}/stakeholders — 関係者一覧取得。
+   * @param {number} id
+   * @returns {Promise<Stakeholder[]>}
+   */
+  function listStakeholders(id) {
+    return request(`/api/tasks/${id}/stakeholders`);
+  }
+
+  /**
+   * POST /api/tasks/{id}/stakeholders — 関係者追加(A-19)。
+   * @param {number} taskId
+   * @param {number} userId
+   * @returns {Promise<Stakeholder>}
+   */
+  function addStakeholder(taskId, userId) {
+    return request(`/api/tasks/${taskId}/stakeholders`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  }
+
+  /**
+   * DELETE /api/tasks/{taskId}/stakeholders/{userId} — 関係者削除(A-20)。
+   * @param {number} taskId
+   * @param {number} userId
+   * @returns {Promise<void>}
+   */
+  function removeStakeholder(taskId, userId) {
+    return request(`/api/tasks/${taskId}/stakeholders/${userId}`, { method: 'DELETE' });
+  }
+
+  return {
+    setTenantId, request, requestRaw,
+    getMe, selectTenant,
+    listTasks, getTask, createTask, patchTask, deleteTask,
+    changeStatus, changeVisibility,
+    listTenantUsers,
+    listStakeholders, addStakeholder, removeStakeholder,
+  };
 })();

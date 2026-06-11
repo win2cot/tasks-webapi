@@ -311,3 +311,70 @@ app-task-row { display: contents; }
 /* Utility: whitespace and text sizes from rowHTML() */
 .td-nowrap      { white-space: nowrap; }
 .add-desc-hint  { font-size: 11px; }
+
+/* ---- Drawer content (app-task-drawer) ---- */
+.offcanvas-end        { width: 460px; }
+.offcanvas-header     { gap: 8px; flex-wrap: wrap; }
+.offcanvas-title      { font-size: 15px; }
+
+.drawer-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--app-muted);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.drawer-desc-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--app-ink);
+}
+
+/* Meta key-value grid (2-column, label + value) */
+.drawer-meta-grid {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  row-gap: 8px;
+  column-gap: 12px;
+  align-items: baseline;
+}
+.drawer-meta-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.drawer-meta-value { font-size: 13px; }
+
+/* Stakeholder / selected-user chips */
+.drawer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+.drawer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eef2ff;
+  color: #3b4cca;
+  border: 1px solid #c5cff9;
+  border-radius: 20px;
+  padding: 3px 10px 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.drawer-chip-rm {
+  background: none;
+  border: none;
+  padding: 0 0 0 4px;
+  font-size: 14px;
+  line-height: 1;
+  color: #7a82c6;
+  cursor: pointer;
+}
+.drawer-chip-rm:hover { color: #c92a2a; }
