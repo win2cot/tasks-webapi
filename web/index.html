@@ -12,7 +12,7 @@
       <div class="container">
         <a class="navbar-brand" href="#">Tasks</a>
         <div class="ms-auto d-flex align-items-center">
-          <div id="tenant-switcher-container" class="d-none"></div>
+          <app-tenant-switcher id="tenant-switcher" class="d-none"></app-tenant-switcher>
           <span id="nav-username" class="navbar-text text-white me-3 d-none"></span>
           <button id="btn-logout" class="btn btn-outline-light btn-sm d-none">
             ログアウト
@@ -43,7 +43,8 @@
     <script src="vendor/keycloak-js/keycloak.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/tenant-switcher.js"></script>
+    <script src="js/meta.js"></script>
+    <script src="js/components/app-tenant-switcher.js"></script>
     <script src="js/index.js"></script>
   </body>
 </html>

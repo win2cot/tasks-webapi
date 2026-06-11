@@ -18,15 +18,8 @@
   <a class="app-brand d-flex align-items-center gap-2" href="index.html">
     <i class="bi bi-check2-square fs-5" aria-hidden="true"></i><span>Tasks</span>
   </a>
-  <div id="tenant-switcher-container" class="d-none"></div>
+  <app-tenant-switcher id="tenant-switcher" class="d-none"></app-tenant-switcher>
   <div class="ms-auto d-flex align-items-center gap-3">
-    <div class="d-flex align-items-center gap-2">
-      <label for="roleSel" class="text-muted small mb-0 d-none d-md-inline">ロール</label>
-      <select id="roleSel" class="form-select form-select-sm w-role-sel" aria-label="ロール切替">
-        <option value="member">Member</option>
-        <option value="admin">Tenant Admin</option>
-      </select>
-    </div>
     <div class="d-flex align-items-center gap-2">
       <div id="user-avatar"
         class="rounded-circle bg-primary-subtle text-primary d-grid"
@@ -93,24 +86,11 @@
       Tenant Admin に切り替えても<b>業務タスクの操作権限は変わりません</b>(ADR-0005:所有者 / 担当者 / 関係者の3役割で評価)。
     </div>
 
-    <!-- Error banner (design-system.md §6.11) -->
-    <div id="error-banner" class="alert alert-danger d-none d-flex align-items-center gap-2 mb-3" role="alert" aria-live="assertive">
-      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-      <span id="error-message"></span>
-      <button id="btn-retry" class="btn btn-sm btn-outline-danger ms-auto">
-        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再試行
-      </button>
-    </div>
+    <!-- Error banner -->
+    <app-error-banner id="error-banner"></app-error-banner>
 
-    <!-- 412 Conflict banner (ADR-0012) -->
-    <div id="conflict-banner" class="alert alert-warning d-none d-flex align-items-center gap-2 mb-3" role="alert" aria-live="polite">
-      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
-      <span>別のユーザーによってタスクが更新されました。最新のデータに更新してください。</span>
-      <button id="btn-conflict-reload" class="btn btn-sm btn-outline-warning ms-auto">
-        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>再読み込み
-      </button>
-      <button id="btn-conflict-close" class="btn-close ms-1" aria-label="閉じる"></button>
-    </div>
+    <!-- 412 Conflict banner -->
+    <app-conflict-banner id="conflict-banner"></app-conflict-banner>
 
     <!-- Loading skeleton (design-system.md §6.11) -->
     <div id="loading-skeleton" class="task-section" aria-busy="true" aria-label="読み込み中">
@@ -152,127 +132,37 @@
             </tr>
           </thead>
           <tbody id="task-tbody">
-            <!-- filled by JS -->
+            <!-- filled by AppTaskRow CEs -->
           </tbody>
         </table>
       </div>
-      <!-- Pagination (design-system.md §6.3) -->
-      <div class="pager" role="navigation" aria-label="ページング">
-        <span id="pager-info">0 件</span>
-        <div class="ms-auto d-flex align-items-center gap-1">
-          <button id="btn-prev" class="btn btn-sm btn-outline-secondary py-0 px-2"
-            disabled aria-label="前のページ">
-            <i class="bi bi-chevron-left" aria-hidden="true"></i> 前へ
-          </button>
-          <span id="pager-pages" class="px-2" aria-live="polite">1 / 1</span>
-          <button id="btn-next" class="btn btn-sm btn-outline-secondary py-0 px-2"
-            disabled aria-label="次のページ">
-            次へ <i class="bi bi-chevron-right" aria-hidden="true"></i>
-          </button>
-          <span class="ms-2 text-muted">50 件 / ページ</span>
-        </div>
-      </div>
+      <app-pager id="task-pager"></app-pager>
     </div>
 
   </main>
 </div>
 
-<!-- ===== Description edit overlay (screen-flow.md §5.2: popover型) ===== -->
-<div id="desc-overlay" class="desc-overlay d-none" role="dialog" aria-label="説明を編集" aria-modal="false">
-  <label class="form-label small fw-bold mb-1" for="desc-overlay-ta">説明</label>
-  <textarea id="desc-overlay-ta" class="form-control form-control-sm" rows="4"
-    maxlength="2000" placeholder="説明（最大2000文字）"></textarea>
-  <div class="d-flex gap-2 mt-2">
-    <button id="btn-desc-save" class="btn btn-sm btn-primary">保存</button>
-    <button id="btn-desc-cancel" class="btn btn-sm btn-light">取消</button>
-  </div>
-</div>
+<!-- ===== Description edit popover ===== -->
+<app-desc-popover id="desc-popover"></app-desc-popover>
 
-<!-- ===== New task drawer (create wired in later sprint) ===== -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="newTaskDrawer" aria-labelledby="newTaskLabel">
-  <div class="offcanvas-header border-bottom">
-    <h5 class="offcanvas-title" id="newTaskLabel">
-      <i class="bi bi-plus-circle me-2 text-primary" aria-hidden="true"></i>新規タスク
-    </h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
-  </div>
-  <div class="offcanvas-body">
-    <form id="new-task-form">
-      <div class="mb-3">
-        <label class="form-label small fw-bold" for="newTitle">
-          タイトル <span class="text-danger" aria-hidden="true">*</span>
-        </label>
-        <input id="newTitle" class="form-control" maxlength="100"
-          placeholder="例: 設計レビュー" required aria-required="true" />
-      </div>
-      <div class="mb-3">
-        <label class="form-label small fw-bold" for="newDesc">説明</label>
-        <textarea id="newDesc" class="form-control" rows="3"
-          maxlength="2000" placeholder="任意・最大2000文字"></textarea>
-      </div>
-      <div class="row g-3">
-        <div class="col-6">
-          <label class="form-label small fw-bold" for="newDue">
-            期限日 <span class="text-danger" aria-hidden="true">*</span>
-          </label>
-          <input type="date" id="newDue" class="form-control" required aria-required="true" />
-        </div>
-        <div class="col-6">
-          <label class="form-label small fw-bold" for="newAssignee">担当者</label>
-          <select id="newAssignee" class="form-select">
-            <option value="">未割当</option>
-          </select>
-        </div>
-      </div>
-      <div class="mt-3">
-        <fieldset>
-          <legend class="form-label small fw-bold">
-            優先度 <span class="text-danger" aria-hidden="true">*</span>
-          </legend>
-          <div class="btn-group w-100" role="group">
-            <input type="radio" class="btn-check" name="newPri" id="newPri-H" value="HIGH">
-            <label class="btn btn-outline-danger" for="newPri-H">高</label>
-            <input type="radio" class="btn-check" name="newPri" id="newPri-M" value="MEDIUM" checked>
-            <label class="btn btn-outline-warning" for="newPri-M">中</label>
-            <input type="radio" class="btn-check" name="newPri" id="newPri-L" value="LOW">
-            <label class="btn btn-outline-secondary" for="newPri-L">低</label>
-          </div>
-        </fieldset>
-      </div>
-      <div class="mt-3">
-        <fieldset>
-          <legend class="form-label small fw-bold">
-            公開範囲 <span class="text-danger" aria-hidden="true">*</span>
-          </legend>
-          <div class="btn-group w-100" role="group">
-            <input type="radio" class="btn-check" name="newVis" id="newVis-T" value="TENANT" checked>
-            <label class="btn btn-outline-success" for="newVis-T">
-              <i class="bi bi-globe2" aria-hidden="true"></i> テナント
-            </label>
-            <input type="radio" class="btn-check" name="newVis" id="newVis-S" value="STAKEHOLDERS">
-            <label class="btn btn-outline-primary" for="newVis-S">
-              <i class="bi bi-people-fill" aria-hidden="true"></i> 関係者
-            </label>
-            <input type="radio" class="btn-check" name="newVis" id="newVis-P" value="PRIVATE">
-            <label class="btn btn-outline-secondary" for="newVis-P">
-              <i class="bi bi-lock-fill" aria-hidden="true"></i> 非公開
-            </label>
-          </div>
-        </fieldset>
-      </div>
-      <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary flex-grow-1">作成</button>
-        <button type="button" class="btn btn-light" data-bs-dismiss="offcanvas">取消</button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- ===== New task drawer ===== -->
+<app-task-drawer id="task-drawer"></app-task-drawer>
 
 <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="vendor/keycloak-js/keycloak.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
-<script src="js/tenant-switcher.js"></script>
+<script src="js/meta.js"></script>
+<script src="js/components/app-status-badge.js"></script>
+<script src="js/components/app-priority-badge.js"></script>
+<script src="js/components/app-visibility-badge.js"></script>
+<script src="js/components/app-task-row.js"></script>
+<script src="js/components/app-desc-popover.js"></script>
+<script src="js/components/app-error-banner.js"></script>
+<script src="js/components/app-conflict-banner.js"></script>
+<script src="js/components/app-pager.js"></script>
+<script src="js/components/app-task-drawer.js"></script>
+<script src="js/components/app-tenant-switcher.js"></script>
 <script src="js/tasks.js"></script>
 </body>
 </html>
