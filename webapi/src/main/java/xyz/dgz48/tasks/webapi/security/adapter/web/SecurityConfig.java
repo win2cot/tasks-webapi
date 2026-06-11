@@ -8,6 +8,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 @Configuration
 @EnableWebSecurity
@@ -23,6 +25,17 @@ public class SecurityConfig {
       TasksAccessDeniedHandler accessDeniedHandler)
       throws Exception {
     http.csrf(csrf -> csrf.disable())
+        .headers(
+            headers ->
+                headers
+                    .contentSecurityPolicy(
+                        csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                    .frameOptions(frame -> frame.deny())
+                    .contentTypeOptions(contentType -> {})
+                    .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                    .cacheControl(cache -> cache.disable())
+                    .addHeaderWriter(new StaticHeadersWriter("Cache-Control", "no-store"))
+                    .httpStrictTransportSecurity(hsts -> hsts.disable()))
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
