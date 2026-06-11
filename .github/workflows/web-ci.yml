@@ -1,0 +1,121 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'web/**'
+              - '.github/workflows/web-ci.yml'
+
+  check:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: npm ci
+        id: npm-ci
+        run: npm ci
+
+      - name: Copy vendor assets
+        id: copy-vendor
+        run: node scripts/copy-vendor.js
+
+      - name: Verify vendor files
+        id: vendor-check
+        run: |
+          MISSING=()
+          check() {
+            if [ ! -e "$1" ]; then
+              MISSING+=("$1")
+              echo "::error::vendor file missing: $1"
+            fi
+          }
+          check "vendor/bootstrap/css/bootstrap.min.css"
+          check "vendor/bootstrap/js/bootstrap.bundle.min.js"
+          check "vendor/bootstrap-icons/bootstrap-icons.min.css"
+          check "vendor/bootstrap-icons/fonts"
+          check "vendor/keycloak-js/keycloak.min.js"
+          check "vendor/fontsource/noto-sans-jp/400.css"
+          check "vendor/fontsource/noto-sans-jp/500.css"
+          check "vendor/fontsource/noto-sans-jp/700.css"
+          check "vendor/fontsource/noto-sans-jp/files"
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            exit 1
+          fi
+
+      - name: Build CI report
+        id: ci-report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          NPM_CI_OUTCOME: ${{ steps.npm-ci.outcome }}
+          COPY_OUTCOME: ${{ steps.copy-vendor.outcome }}
+          VENDOR_OUTCOME: ${{ steps.vendor-check.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+          icon() { [ "$1" = "success" ] && echo ":white_check_mark:" || echo ":x:"; }
+          {
+            echo 'BODY<<__CI_REPORT_EOF__'
+            echo "### Web CI 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| ステップ | 結果 |"
+            echo "|----------|------|"
+            echo "| npm ci $(icon "$NPM_CI_OUTCOME") | lockfile 整合検証 |"
+            echo "| copy-vendor $(icon "$COPY_OUTCOME") | vendor アセットコピー |"
+            echo "| vendor check $(icon "$VENDOR_OUTCOME") | 主要ファイル存在確認 |"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__CI_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky CI report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.ci-report.outcome == 'success'
+        with:
+          header: web-ci
+          message: ${{ steps.ci-report.outputs.BODY }}
