@@ -9,6 +9,7 @@ env:
   LANG: ja_JP.UTF-8
   TZ: Asia/Tokyo
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 permissions:
   contents: read
@@ -57,6 +58,17 @@ jobs:
         id: fmt
         run: terraform fmt -check -recursive infra/
         continue-on-error: true
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (lint)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-lint-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl', 'infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-lint-
 
       - name: init + lockfile check (tasks/dev)
         id: init_tasks
