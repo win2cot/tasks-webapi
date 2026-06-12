@@ -89,6 +89,10 @@ jobs:
         id: biome
         run: npx biome ci .
 
+      - name: Type check (tsc --noEmit)
+        id: tsc
+        run: npx tsc --noEmit
+
       - name: html-validate (CE metadata + inline guard)
         id: html-validate
         run: npx html-validate index.html tasks.html
@@ -122,6 +126,7 @@ jobs:
           COPY_OUTCOME: ${{ steps.copy-vendor.outcome }}
           VENDOR_OUTCOME: ${{ steps.vendor-check.outcome }}
           BIOME_OUTCOME: ${{ steps.biome.outcome }}
+          TSC_OUTCOME: ${{ steps.tsc.outcome }}
           HTML_VALIDATE_OUTCOME: ${{ steps.html-validate.outcome }}
           VNU_OUTCOME: ${{ steps.vnu.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -141,6 +146,7 @@ jobs:
             echo "| copy-vendor $(icon "$COPY_OUTCOME") | vendor アセットコピー |"
             echo "| vendor check $(icon "$VENDOR_OUTCOME") | 主要ファイル存在確認 |"
             echo "| biome ci $(icon "$BIOME_OUTCOME") | lint / format 検証 |"
+            echo "| tsc --noEmit $(icon "$TSC_OUTCOME") | 型検査(// @ts-check ファイル) |"
             echo "| html-validate $(icon "$HTML_VALIDATE_OUTCOME") | CE メタデータ + inline 退行ガード |"
             echo "| v.Nu $(icon "$VNU_OUTCOME") | Living Standard 準拠検証 |"
             echo ""

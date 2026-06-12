@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Keycloak OIDC 認証モジュール
  *
@@ -15,6 +16,7 @@ const Auth = (() => {
   const REALM = 'tasks';
   const CLIENT_ID = 'tasks-webapi';
 
+  /** @type {InstanceType<typeof Keycloak>|null} */
   let _keycloak = null;
 
   function _createKeycloak() {
@@ -53,8 +55,12 @@ const Auth = (() => {
     if (!_keycloak) {
       throw new Error('Auth が初期化されていません。init() を先に呼んでください。');
     }
-    await _keycloak.updateToken(30);
-    return _keycloak.token;
+    // キャプチャして await 後も型が絞られた状態を保つ
+    const kc = _keycloak;
+    await kc.updateToken(30);
+    const token = kc.token;
+    if (!token) throw new Error('トークンを取得できませんでした。');
+    return token;
   }
 
   /**
@@ -66,13 +72,16 @@ const Auth = (() => {
     if (!_keycloak) {
       throw new Error('Auth が初期化されていません。init() を先に呼んでください。');
     }
+    const kc = _keycloak;
     try {
-      await _keycloak.updateToken(-1);
+      await kc.updateToken(-1);
     } catch {
-      _keycloak.login();
+      kc.login();
       throw new Error('Refresh token が失効しました。再ログインが必要です。');
     }
-    return _keycloak.token;
+    const token = kc.token;
+    if (!token) throw new Error('トークンを取得できませんでした。');
+    return token;
   }
 
   /**
@@ -80,7 +89,7 @@ const Auth = (() => {
    * @returns {Object|null}
    */
   function getUser() {
-    return _keycloak ? _keycloak.idTokenParsed : null;
+    return _keycloak ? (_keycloak.idTokenParsed ?? null) : null;
   }
 
   /**
@@ -94,12 +103,14 @@ const Auth = (() => {
 
   // token の有効期限 60 秒前に自動更新するポーリング(30 秒間隔)
   function _scheduleTokenRefresh() {
+    if (!_keycloak) return;
+    const kc = _keycloak;
     setInterval(async () => {
       try {
-        await _keycloak.updateToken(60);
+        await kc.updateToken(60);
       } catch {
         // 更新失敗(セッション失効等)は再ログインで対応
-        _keycloak.login();
+        kc.login();
       }
     }, 30000);
   }
