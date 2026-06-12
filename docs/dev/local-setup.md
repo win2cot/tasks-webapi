@@ -4,7 +4,7 @@
 >
 > **対象**: Setup 1-1〜1-5 の成果物([docker-compose.local.yml](../../docker-compose.local.yml) / [keycloak/realm-export/](../../keycloak/realm-export/) / Flyway / [application.yml](../../webapi/src/main/resources/application.yml) / [web/](../../web/)) を使った統合環境。
 >
-> **バージョン**: v1.0 (2026-05-24)
+> **バージョン**: v1.1 (2026-06-12)
 
 ---
 
@@ -20,6 +20,7 @@
 8. [動作確認 E2E](#8-動作確認-e2e)
 9. [Native Image ビルド(任意)](#9-native-image-ビルド任意)
 10. [トラブルシューティング](#10-トラブルシューティング)
+11. [VSCode セットアップ(人手コーディング用)](#11-vscode-セットアップ人手コーディング用)
 
 ---
 
@@ -471,6 +472,98 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 # Client が public grant type を許可しているか確認 (Keycloak admin console)
 # Clients → tasks-webapi → Settings → Direct access grants → Enabled
 ```
+
+---
+
+---
+
+## 11. VSCode セットアップ(人手コーディング用)
+
+> **目的**: push 後の CI エラーをエディタ内でも事前検知する。AI が使えない局面での人手コーディング効率化のためのセットアップ。
+
+---
+
+### 11-1. CI 全量の一覧表
+
+> **注意**: 正本は `.github/workflows/` 内の各 YAML ファイル。本表はワークフロー読み解きの入口であり、CI 設定変更時に表が追従しない場合は YAML が優先される。
+
+#### 人手コーディング対象 CI
+
+| ワークフロー名 | 対象 paths | チェック内容 | ローカル再現コマンド | エディタ即時表示 |
+|---|---|---|---|---|
+| Webapi: CI | `webapi/**` `*.gradle*` `gradle/**` `gradlew*` | Spotless(GJF)・NullAway・ErrorProne・JUnit・JaCoCo 80% | `./gradlew :webapi:spotlessApply && ./gradlew :webapi:check` | △ — ErrorProne/NullAway は Build Server for Gradle 経由で保存時ビルドに反映。GJF format on save は ◎ |
+| Webapi: Conventions Lint | `webapi/src/**/*.java` `db/migration/**` | `package-info.java` 存在確認・Flyway 命名規約 | CI スクリプト(`find`/`grep`)を手動実行 | ✕ — エディタ拡張なし |
+| Webapi: Native Build | `webapi/**` `*.gradle*` `gradle/**` `gradlew*` | GraalVM `nativeCompile`(PR 破壊検知) | `./gradlew :webapi:nativeCompile`(10〜15 分) | ✕ |
+| Keycloak: CI | `keycloak/**` `*.gradle*` `gradle/**` `gradlew*` | `package-info.java` 確認・JUnit | `./gradlew :keycloak:check` | △ — redhat.java + vscjava.vscode-gradle |
+| Web: CI | `web/**` | Biome lint/format・`tsc --noEmit`・html-validate・v.Nu | `cd web && npx biome ci . && npx tsc --noEmit && npm run html-validate` | ◎ — Biome(biomejs.biome)・tsc(内蔵)・html-validate(html-validate.vscode-html-validate)。v.Nu は Docker 要のため ✕ |
+| Markdown: Lint | `**/*.md` `.markdownlint.jsonc` | markdownlint-cli2 | `npx --yes markdownlint-cli2 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"` | ◎ — DavidAnson.vscode-markdownlint(`.markdownlint.jsonc` 自動参照) |
+| OpenAPI: Lint | `api/**` | Spectral lint(`api/openapi.yaml`) | `npx --yes @stoplight/spectral-cli@6 lint api/openapi.yaml --format github-actions` | ◎ — stoplight.spectral |
+| Terraform: Lint | `infra/**/*.tf` `*.hcl` `*.tfvars` | `terraform fmt -check -recursive`・init・validate・IAM wildcard ゲート | `terraform fmt -check -recursive infra/` その後 `terraform -chdir=infra/environments/dev init -backend=false && terraform -chdir=infra/environments/dev validate` | ◎ — hashicorp.terraform(fmt/validate) |
+| Terraform: Plan | `infra/**/*.tf` `*.hcl` `*.tfvars` | `terraform plan`(AWS 認証・OIDC 要) | AWS 認証が必要のためローカル再現不可 | ✕ |
+| Terraform: Security Scan | `infra/**/*.tf` `*.hcl` `*.tfvars` `.trivyignore` | Trivy config scan(SARIF) | Docker + Trivy CLI で実行可能(任意) | ✕ |
+
+#### 自動化系(人手コーディングでは対象外)
+
+| ワークフロー名 | 役割 |
+|---|---|
+| Bot: Claude Impl | Issue `claude:ready` 受信時に Claude が実装 |
+| Bot: Claude Impl Fix | レビュー返信時に Claude が修正 |
+| Bot: Claude Review | PR オープン時に Claude がコードレビュー |
+| Bot: Claude Notify Human | Claude 完了時に人へ通知 |
+| Bot: Claude Auto Merge | 自動マージ条件が揃ったときに PR をマージ |
+| Bot: Renovate Approve | Renovate PR を自動承認 |
+| Terraform: Apply | `workflow_dispatch` のみ — インフラ適用(手動トリガー) |
+
+---
+
+### 11-2. 前提
+
+- **WSL 2 ext4 側にリポジトリをクローン**していること(Windows NTFS ファイルシステム上に置くと Gradle のファイル監視と Java ビルドが著しく遅くなる)。
+- **VSCode Remote-WSL 拡張**でリポジトリを開くこと。`code .` を WSL ターミナル内から実行する。
+
+---
+
+### 11-3. 推奨拡張のセットアップ
+
+リポジトリには `.vscode/extensions.json` が同梱されている。clone 後に VSCode で開くと推奨拡張の一括インストール提案が自動表示される。
+
+| 拡張 ID | 対応 CI | 備考 |
+|---|---|---|
+| `biomejs.biome` | Web: CI — Biome lint/format | v3 系。`web/` が workspace root と別の場合は後述の `settings.json` で `biome.lsp.bin` を指定 |
+| `html-validate.vscode-html-validate` | Web: CI — html-validate | `web/node_modules` の版を使うため CI と完全一致 |
+| `DavidAnson.vscode-markdownlint` | Markdown: Lint | リポジトリルートの `.markdownlint.jsonc` を自動参照するため CI と完全一致 |
+| `stoplight.spectral` | OpenAPI: Lint | `.spectral.yaml` / `ruleset` を自動参照 |
+| `hashicorp.terraform` | Terraform: Lint — fmt/validate | `terraform fmt` on save を有効化することで fmt -check の違反をゼロにできる |
+| `redhat.java` | Webapi: CI — コンパイル | Language Server for Java。Build Server for Gradle と組み合わせることで ErrorProne/NullAway を保存時ビルドに反映 |
+| `vscjava.vscode-gradle` | Webapi: CI — コンパイル | Build Server for Gradle を有効化すると Gradle タスクがコンパイルに使われる。有効化: コマンドパレット → `Java: Enable Build Server for Gradle` |
+| `JoseVSeb.google-java-format-for-vs-code` | Webapi: CI — Spotless(GJF) | `java.format.settings.google.version` を `1.34.0` に pin(`build.gradle` と同期) |
+| `ritwickdey.LiveServer` | — | `web/index.html` 等の静的 HTML をワンクリックで配信(開発サーバー代替) |
+
+> **注意 — エディタで出ないチェック**:
+>
+> - **ErrorProne / NullAway**: タイプ時のリアルタイム解析は不可。Build Server for Gradle を有効化した上で `./gradlew --continuous :webapi:compileJava` を別ターミナルで走らせるか、保存時に自動ビルドする設定を入れることで対応する。
+> - **v.Nu (Nu Html Checker)**: Docker コンテナを起動して HTTP で検証するため、ローカルでエディタに統合するのは困難。CI でのみ実行される。
+> - **Flyway 命名規約 / package-info.java**: shell スクリプトによる検証のため、エディタ拡張での即時表示は不可。
+
+---
+
+### 11-4. push 前の推奨実行セット
+
+変更内容に合わせて下表から必要なコマンドを選択して実行する。
+
+| 変更した内容 | 実行コマンド |
+|---|---|
+| `webapi/` の Java | `./gradlew :webapi:spotlessApply && ./gradlew :webapi:check` |
+| `web/` の JS / HTML / CSS / JSON | `cd web && npx biome check --write . && npx tsc --noEmit && npm run html-validate` |
+| `**/*.md` | `npx --yes markdownlint-cli2 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"` |
+| `api/openapi.yaml` | `npx --yes @stoplight/spectral-cli@6 lint api/openapi.yaml` |
+| `infra/**/*.tf` | `terraform fmt -recursive infra/ && terraform -chdir=infra/environments/dev validate` |
+
+---
+
+### 11-5. pre-push hook 見送りの経緯と再検討トリガ
+
+pre-push hook は採用していない。理由: 現在は Claude による実装が主体であり、hook のメンテナンスコストが費用対効果に合わない。人手コーディングが常態化した時点(概ね月 10 PR 以上が人手による場合)に再検討する。
 
 ---
 
