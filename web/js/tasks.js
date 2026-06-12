@@ -1,3 +1,4 @@
+// @ts-check
 // ---- Page state ----
 let currentPage = 0;
 let currentSort = 'dueDate,asc';
@@ -8,25 +9,32 @@ const PAGE_SIZE = 50;
 // ---- Task / user state ----
 const taskMap = new Map(); // taskId(number) → Task object
 const rowMap = new Map(); // taskId(number) → app-task-row element
+/** @type {number | null} */
 let currentUserId = null;
+/** @type {TenantUser[]} */
 let tenantUsers = [];
 
 // ---- CE references ----
-const errorBanner = document.getElementById('error-banner');
-const conflictBanner = document.getElementById('conflict-banner');
-const descPopover = document.getElementById('desc-popover');
-const taskDrawer = document.getElementById('task-drawer');
-const pager = document.getElementById('task-pager');
-const tbody = document.getElementById('task-tbody');
+const errorBanner = /** @type {AppErrorBannerElement} */ (mustQuery(document, '#error-banner'));
+const conflictBanner = /** @type {AppConflictBannerElement} */ (
+  mustQuery(document, '#conflict-banner')
+);
+const descPopover = /** @type {AppDescPopoverElement} */ (mustQuery(document, '#desc-popover'));
+const taskDrawer = /** @type {AppTaskDrawerElement} */ (mustQuery(document, '#task-drawer'));
+const pager = /** @type {AppPagerElement} */ (mustQuery(document, '#task-pager'));
+const tbody = /** @type {HTMLElement} */ (mustQuery(document, '#task-tbody'));
 
 // ETag format per ADR-0012: W/"<version>"
+/** @param {{ version: number }} task */
 function buildEtag(task) {
   return `W/"${task.version}"`;
 }
 
 // ---- Render task list from API response ----
+/** @param {Task[]} tasks */
 function renderTasks(tasks) {
-  document.getElementById('total-count').textContent = `${totalElements} 件`;
+  /** @type {HTMLElement} */ (mustQuery(document, '#total-count')).textContent =
+    `${totalElements} 件`;
   rowMap.clear();
 
   if (!tasks || tasks.length === 0) {
@@ -45,7 +53,7 @@ function renderTasks(tasks) {
   }
 
   const rows = tasks.map((task) => {
-    const row = document.createElement('app-task-row');
+    const row = /** @type {AppTaskRowElement} */ (document.createElement('app-task-row'));
     row.setTask(task, currentUserId, tenantUsers);
     rowMap.set(task.id, row);
     return row;
@@ -54,6 +62,7 @@ function renderTasks(tasks) {
 }
 
 // ---- Re-render a single row after a successful PATCH ----
+/** @param {number} taskId */
 function rerenderRow(taskId) {
   const task = taskMap.get(taskId);
   const row = rowMap.get(taskId);
@@ -62,6 +71,11 @@ function rerenderRow(taskId) {
 }
 
 // ---- Inline status change (PATCH /api/tasks/{id}/status) ----
+/**
+ * @param {number} taskId
+ * @param {string} status
+ * @param {HTMLSelectElement} selectEl
+ */
 async function onStatusChange(taskId, status, selectEl) {
   selectEl.disabled = true;
   try {
@@ -71,12 +85,18 @@ async function onStatusChange(taskId, status, selectEl) {
   } catch (err) {
     rerenderRow(taskId); // revert
     // PATCH /api/tasks/{id}/status は ADR-0012 の If-Match 対象外のため 412 は理論上返らない
-    if (err.status === 412) conflictBanner.show();
-    else errorBanner.show(`ステータスの更新に失敗しました: ${err.message || ''}`);
+    if (/** @type {any} */ (err).status === 412) conflictBanner.show();
+    else
+      errorBanner.show(`ステータスの更新に失敗しました: ${/** @type {any} */ (err).message || ''}`);
   }
 }
 
 // ---- Inline priority change (PATCH /api/tasks/{id} with ETag) ----
+/**
+ * @param {number} taskId
+ * @param {string} priority
+ * @param {HTMLSelectElement} selectEl
+ */
 async function onPriorityChange(taskId, priority, selectEl) {
   const task = taskMap.get(taskId);
   if (!task) return;
@@ -87,16 +107,22 @@ async function onPriorityChange(taskId, priority, selectEl) {
     rerenderRow(taskId);
   } catch (err) {
     rerenderRow(taskId);
-    if (err.status === 412) conflictBanner.show();
-    else errorBanner.show(`優先度の更新に失敗しました: ${err.message || ''}`);
+    if (/** @type {any} */ (err).status === 412) conflictBanner.show();
+    else errorBanner.show(`優先度の更新に失敗しました: ${/** @type {any} */ (err).message || ''}`);
   }
 }
 
 // ---- Field commit (title / dueDate / assigneeId via app-task-row) ----
+/**
+ * @param {number} taskId
+ * @param {string} field
+ * @param {string | null} value
+ */
 async function onFieldCommit(taskId, field, value) {
   const task = taskMap.get(taskId);
   if (!task) return;
 
+  /** @type {Record<string, unknown> | undefined} */
   let body;
   if (field === 'assigneeId') body = { assigneeId: value ? Number(value) : null };
   else if (field === 'dueDate') body = { dueDate: value };
@@ -109,12 +135,16 @@ async function onFieldCommit(taskId, field, value) {
     rerenderRow(taskId);
   } catch (err) {
     rerenderRow(taskId);
-    if (err.status === 412) conflictBanner.show();
-    else errorBanner.show(`更新に失敗しました: ${err.message || ''}`);
+    if (/** @type {any} */ (err).status === 412) conflictBanner.show();
+    else errorBanner.show(`更新に失敗しました: ${/** @type {any} */ (err).message || ''}`);
   }
 }
 
 // ---- Description save (from app-desc-popover) ----
+/**
+ * @param {number} taskId
+ * @param {string | null} value
+ */
 async function onDescCommit(taskId, value) {
   const task = taskMap.get(taskId);
   if (!task) return;
@@ -124,8 +154,8 @@ async function onDescCommit(taskId, value) {
     taskMap.set(taskId, updated);
     rerenderRow(taskId);
   } catch (err) {
-    if (err.status === 412) conflictBanner.show();
-    else errorBanner.show(`説明の更新に失敗しました: ${err.message || ''}`);
+    if (/** @type {any} */ (err).status === 412) conflictBanner.show();
+    else errorBanner.show(`説明の更新に失敗しました: ${/** @type {any} */ (err).message || ''}`);
   }
 }
 
@@ -136,9 +166,13 @@ function cancelAllEdits() {
 }
 
 // ---- UI state helpers (design-system.md §6.11) ----
+/** @param {boolean} on */
 function showLoading(on) {
-  document.getElementById('loading-skeleton').classList.toggle('d-none', !on);
-  document.getElementById('task-panel').classList.toggle('d-none', on);
+  /** @type {HTMLElement} */ (mustQuery(document, '#loading-skeleton')).classList.toggle(
+    'd-none',
+    !on,
+  );
+  /** @type {HTMLElement} */ (mustQuery(document, '#task-panel')).classList.toggle('d-none', on);
 }
 
 // ---- Task list (GET /api/tasks) ----
@@ -160,12 +194,13 @@ async function loadTasks() {
     pager.update({ currentPage, totalPages, totalElements, pageSize: PAGE_SIZE });
     showLoading(false);
   } catch (err) {
-    document.getElementById('loading-skeleton').classList.add('d-none');
-    errorBanner.show(err.message || 'タスクの取得に失敗しました');
+    /** @type {HTMLElement} */ (mustQuery(document, '#loading-skeleton')).classList.add('d-none');
+    errorBanner.show(/** @type {any} */ (err).message || 'タスクの取得に失敗しました');
   }
 }
 
 // ---- Sort ----
+/** @param {string} value */
 function onSortChange(value) {
   currentSort = value;
   currentPage = 0;
@@ -173,11 +208,12 @@ function onSortChange(value) {
   loadTasks();
 }
 
+/** @param {string} field */
 function cycleSort(field) {
   const [f, d] = currentSort.split(',');
   currentSort = f === field ? `${field},${d === 'asc' ? 'desc' : 'asc'}` : `${field},asc`;
-  const sel = document.getElementById('sortSel');
-  const match = [...sel.options].find((o) => o.value === currentSort);
+  const sel = /** @type {HTMLSelectElement} */ (mustQuery(document, '#sortSel'));
+  const match = Array.from(sel.options).find((o) => o.value === currentSort);
   if (match) sel.value = currentSort;
   currentPage = 0;
   updateSortCarets();
@@ -199,6 +235,7 @@ function updateSortCarets() {
 }
 
 // ---- Row click → open detail drawer (S-05) ----
+/** @param {number} id */
 function onRowClick(id) {
   taskDrawer.openDetail(id);
 }
@@ -206,24 +243,33 @@ function onRowClick(id) {
 // ---- Event listeners on CEs ----
 
 // app-task-row events (bubble up through tbody)
-tbody.addEventListener('task-status-change', (e) =>
-  onStatusChange(e.detail.taskId, e.detail.status, e.detail.selectEl),
+tbody.addEventListener('task-status-change', (e) => {
+  const { taskId, status, selectEl } = /** @type {CustomEvent} */ (e).detail;
+  onStatusChange(taskId, status, selectEl);
+});
+tbody.addEventListener('task-priority-change', (e) => {
+  const { taskId, priority, selectEl } = /** @type {CustomEvent} */ (e).detail;
+  onPriorityChange(taskId, priority, selectEl);
+});
+tbody.addEventListener('task-field-commit', (e) => {
+  const { taskId, field, value } = /** @type {CustomEvent} */ (e).detail;
+  onFieldCommit(taskId, field, value);
+});
+tbody.addEventListener('task-row-click', (e) =>
+  onRowClick(/** @type {CustomEvent} */ (e).detail.taskId),
 );
-tbody.addEventListener('task-priority-change', (e) =>
-  onPriorityChange(e.detail.taskId, e.detail.priority, e.detail.selectEl),
-);
-tbody.addEventListener('task-field-commit', (e) =>
-  onFieldCommit(e.detail.taskId, e.detail.field, e.detail.value),
-);
-tbody.addEventListener('task-row-click', (e) => onRowClick(e.detail.taskId));
 tbody.addEventListener('task-desc-open', (e) => {
-  const task = taskMap.get(e.detail.taskId);
+  const { taskId, triggerEl } = /** @type {CustomEvent} */ (e).detail;
+  const task = taskMap.get(taskId);
   if (!task?.editable) return;
-  descPopover.open(e.detail.taskId, e.detail.triggerEl, task.description);
+  descPopover.open(taskId, triggerEl, task.description);
 });
 
 // app-desc-popover events
-descPopover.addEventListener('desc-commit', (e) => onDescCommit(e.detail.taskId, e.detail.value));
+descPopover.addEventListener('desc-commit', (e) => {
+  const { taskId, value } = /** @type {CustomEvent} */ (e).detail;
+  onDescCommit(taskId, value);
+});
 
 // app-error-banner retry
 errorBanner.addEventListener('error-retry', loadTasks);
@@ -238,7 +284,7 @@ conflictBanner.addEventListener('conflict-reload', () => {
 taskDrawer.addEventListener('drawer-task-created', () => loadTasks());
 taskDrawer.addEventListener('drawer-task-deleted', () => loadTasks());
 taskDrawer.addEventListener('drawer-task-updated', (e) => {
-  const updated = e.detail?.task;
+  const updated = /** @type {CustomEvent} */ (e).detail?.task;
   if (!updated) {
     loadTasks();
     return;
@@ -249,29 +295,40 @@ taskDrawer.addEventListener('drawer-task-updated', (e) => {
 
 // app-pager
 pager.addEventListener('page-change', (e) => {
-  const p = e.detail.page;
+  const p = /** @type {CustomEvent} */ (e).detail.page;
   if (p < 0 || p >= totalPages) return;
   currentPage = p;
   loadTasks();
 });
 
 // Static controls
-document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
-document.getElementById('sortSel').addEventListener('change', (e) => onSortChange(e.target.value));
-document.getElementById('btn-new-task').addEventListener('click', () => taskDrawer.open());
-document.getElementById('th-dueDate').addEventListener('click', () => cycleSort('dueDate'));
-document.getElementById('th-priority').addEventListener('click', () => cycleSort('priority'));
+/** @type {HTMLElement} */ (mustQuery(document, '#btn-logout')).addEventListener('click', () =>
+  Auth.logout(),
+);
+/** @type {HTMLElement} */ (mustQuery(document, '#sortSel')).addEventListener('change', (e) =>
+  onSortChange(/** @type {HTMLSelectElement} */ (e.target).value),
+);
+/** @type {HTMLElement} */ (mustQuery(document, '#btn-new-task')).addEventListener('click', () =>
+  taskDrawer.open(),
+);
+/** @type {HTMLElement} */ (mustQuery(document, '#th-dueDate')).addEventListener('click', () =>
+  cycleSort('dueDate'),
+);
+/** @type {HTMLElement} */ (mustQuery(document, '#th-priority')).addEventListener('click', () =>
+  cycleSort('priority'),
+);
 
 // ---- Init ----
 async function main() {
   const authenticated = await Auth.init();
   if (!authenticated) return;
 
+  /** @type {MeResponse} */
   let me;
   try {
     me = await Api.getMe();
   } catch (err) {
-    errorBanner.show(`ユーザー情報の取得に失敗しました: ${err.message}`);
+    errorBanner.show(`ユーザー情報の取得に失敗しました: ${/** @type {any} */ (err).message}`);
     return;
   }
 
@@ -280,16 +337,20 @@ async function main() {
 
   const user = Auth.getUser();
   const displayName = user?.name || user?.preferred_username || '';
-  document.getElementById('nav-username').textContent = displayName;
-  document.getElementById('user-avatar').textContent = displayName.slice(0, 1) || '?';
+  /** @type {HTMLElement} */ (mustQuery(document, '#nav-username')).textContent = displayName;
+  /** @type {HTMLElement} */ (mustQuery(document, '#user-avatar')).textContent =
+    displayName.slice(0, 1) || '?';
 
   if (!me.activeTenantId) {
     window.location.replace('index.html');
     return;
   }
-  Api.setTenantId(me.activeTenantId);
+  Api.setTenantId(String(me.activeTenantId));
 
-  document.getElementById('tenant-switcher').setData(me.tenants, me.activeTenantId);
+  /** @type {AppTenantSwitcherElement} */ (mustQuery(document, '#tenant-switcher')).setData(
+    me.tenants,
+    me.activeTenantId,
+  );
 
   // Reflect Tenant Admin role in sidebar
   const activeTenant = me.tenants?.find((t) => t.id === me.activeTenantId);

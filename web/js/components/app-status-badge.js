@@ -1,3 +1,4 @@
+// @ts-check
 // <app-status-badge status="NOT_STARTED" [editable] [task-id="1"]>
 // editable=true → inline select; false → read-only badge
 const _stBadgeTpl = document.createElement('template');
@@ -26,7 +27,9 @@ class AppStatusBadge extends HTMLElement {
     const [label, cls] = TaskMeta.status(status);
 
     if (editable) {
-      const sel = _stSelTpl.content.cloneNode(true).firstElementChild;
+      const sel = /** @type {HTMLSelectElement} */ (
+        /** @type {DocumentFragment} */ (_stSelTpl.content.cloneNode(true)).firstElementChild
+      );
       sel.className = `inline-sel st-sel-${status}`;
       sel.dataset.taskId = taskId;
       TaskMeta.STATUS_OPTIONS.forEach(({ v, l }) => {
@@ -38,7 +41,9 @@ class AppStatusBadge extends HTMLElement {
       });
       this.replaceChildren(sel);
     } else {
-      const span = _stBadgeTpl.content.cloneNode(true).firstElementChild;
+      const span = /** @type {HTMLElement} */ (
+        /** @type {DocumentFragment} */ (_stBadgeTpl.content.cloneNode(true)).firstElementChild
+      );
       span.className = `st-badge ${cls}`;
       span.textContent = label;
       this.replaceChildren(span);

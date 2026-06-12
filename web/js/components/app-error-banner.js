@@ -1,3 +1,4 @@
+// @ts-check
 // <app-error-banner> — dismissible error banner.
 // Methods: show(message), hide()
 // Fires: error-retry (bubbling)
@@ -13,19 +14,25 @@ _errTpl.innerHTML = `
 </div>`;
 
 class AppErrorBanner extends HTMLElement {
+  /** @type {Element | null} */
   #alert = null;
 
   connectedCallback() {
     this.replaceChildren(_errTpl.content.cloneNode(true));
     this.#alert = this.firstElementChild;
-    this.#alert.querySelector('.btn-retry').addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('error-retry', { bubbles: true }));
-    });
+    if (!this.#alert) return;
+    /** @type {HTMLButtonElement} */ (this.#alert.querySelector('.btn-retry')).addEventListener(
+      'click',
+      () => {
+        this.dispatchEvent(new CustomEvent('error-retry', { bubbles: true }));
+      },
+    );
   }
 
+  /** @param {string} message */
   show(message) {
     if (!this.#alert) return;
-    this.#alert.querySelector('.err-message').textContent = message;
+    /** @type {HTMLElement} */ (this.#alert.querySelector('.err-message')).textContent = message;
     this.#alert.classList.remove('d-none');
   }
 

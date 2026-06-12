@@ -1,3 +1,4 @@
+// @ts-check
 // <app-pager> — pagination bar for the task table.
 // Method: update({ currentPage, totalPages, totalElements, pageSize })
 // Fires: page-change { page } (bubbling)
@@ -22,38 +23,49 @@ _pagerTpl.innerHTML = `
 class AppPager extends HTMLElement {
   connectedCallback() {
     this.replaceChildren(_pagerTpl.content.cloneNode(true));
-    this.querySelector('.btn-prev').addEventListener('click', () => {
-      this.dispatchEvent(
-        new CustomEvent('page-change', {
-          bubbles: true,
-          detail: { page: this.#currentPage - 1 },
-        }),
-      );
-    });
-    this.querySelector('.btn-next').addEventListener('click', () => {
-      this.dispatchEvent(
-        new CustomEvent('page-change', {
-          bubbles: true,
-          detail: { page: this.#currentPage + 1 },
-        }),
-      );
-    });
+    /** @type {HTMLButtonElement} */ (this.querySelector('.btn-prev')).addEventListener(
+      'click',
+      () => {
+        this.dispatchEvent(
+          new CustomEvent('page-change', {
+            bubbles: true,
+            detail: { page: this.#currentPage - 1 },
+          }),
+        );
+      },
+    );
+    /** @type {HTMLButtonElement} */ (this.querySelector('.btn-next')).addEventListener(
+      'click',
+      () => {
+        this.dispatchEvent(
+          new CustomEvent('page-change', {
+            bubbles: true,
+            detail: { page: this.#currentPage + 1 },
+          }),
+        );
+      },
+    );
   }
 
   #currentPage = 0;
 
+  /**
+   * @param {{ currentPage: number, totalPages: number, totalElements: number, pageSize: number }} opts
+   */
   update({ currentPage, totalPages, totalElements, pageSize }) {
     this.#currentPage = currentPage;
     const start = totalElements > 0 ? currentPage * pageSize + 1 : 0;
     const end = Math.min((currentPage + 1) * pageSize, totalElements);
 
-    this.querySelector('.pager-info').textContent =
+    /** @type {HTMLElement} */ (this.querySelector('.pager-info')).textContent =
       totalElements > 0 ? `${totalElements} 件中 ${start}–${end} 件を表示` : '0 件';
-    this.querySelector('.pager-pages').textContent =
+    /** @type {HTMLElement} */ (this.querySelector('.pager-pages')).textContent =
       `${currentPage + 1} / ${Math.max(totalPages, 1)}`;
-    this.querySelector('.btn-prev').disabled = currentPage <= 0;
-    this.querySelector('.btn-next').disabled = currentPage >= totalPages - 1;
-    this.querySelector('.pager-size').textContent = `${pageSize} 件 / ページ`;
+    /** @type {HTMLButtonElement} */ (this.querySelector('.btn-prev')).disabled = currentPage <= 0;
+    /** @type {HTMLButtonElement} */ (this.querySelector('.btn-next')).disabled =
+      currentPage >= totalPages - 1;
+    /** @type {HTMLElement} */ (this.querySelector('.pager-size')).textContent =
+      `${pageSize} 件 / ページ`;
   }
 }
 customElements.define('app-pager', AppPager);

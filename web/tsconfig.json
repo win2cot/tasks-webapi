@@ -6,7 +6,8 @@
     "allowJs": true,
     "checkJs": false,
     "strict": true,
-    "noEmit": true
+    "noEmit": true,
+    "skipLibCheck": true
   },
   "include": ["js/**/*.js", "scripts/**/*.js", "types/**/*.d.ts"]
 }
