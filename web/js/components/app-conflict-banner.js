@@ -28,7 +28,11 @@ class AppConflictBanner extends HTMLElement {
     });
   }
 
-  show() { this.#alert?.classList.remove('d-none'); }
-  hide() { this.#alert?.classList.add('d-none'); }
+  show() {
+    this.#alert?.classList.remove('d-none');
+  }
+  hide() {
+    this.#alert?.classList.add('d-none');
+  }
 }
 customElements.define('app-conflict-banner', AppConflictBanner);

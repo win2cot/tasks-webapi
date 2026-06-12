@@ -1,13 +1,18 @@
 // <app-visibility-badge visibility="TENANT">
 const _visBadgeTpl = document.createElement('template');
-_visBadgeTpl.innerHTML =
-  '<span class="vis-badge"><i aria-hidden="true"></i></span>';
+_visBadgeTpl.innerHTML = '<span class="vis-badge"><i aria-hidden="true"></i></span>';
 
 class AppVisibilityBadge extends HTMLElement {
-  static get observedAttributes() { return ['visibility']; }
+  static get observedAttributes() {
+    return ['visibility'];
+  }
 
-  connectedCallback() { this.#render(); }
-  attributeChangedCallback() { if (this.isConnected) this.#render(); }
+  connectedCallback() {
+    this.#render();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.#render();
+  }
 
   #render() {
     const vis = this.getAttribute('visibility') || 'TENANT';

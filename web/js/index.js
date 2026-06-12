@@ -29,7 +29,7 @@ async function main() {
 
     document.getElementById('tenant-switcher').setData(me.tenants, me.activeTenantId);
   } catch (err) {
-    document.getElementById('user-info').textContent = 'API 呼び出しエラー: ' + err.message;
+    document.getElementById('user-info').textContent = `API 呼び出しエラー: ${err.message}`;
   }
 }
 

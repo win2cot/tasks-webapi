@@ -41,6 +41,21 @@ This repository is a Gradle multi-project (monorepo). Run subproject-targeted ta
 ./gradlew :webapi:spotlessCheck
 ```
 
+### web/ (Biome — JS/CSS/JSON lint + format)
+
+Run from `web/` directory (or prefix with `cd web &&`).
+
+```bash
+# Check lint + format (CI mode — no writes, exits non-zero on violations)
+npx biome ci .
+
+# Apply safe fixes (format + safe lint fixes)
+npx biome check --write .
+
+# Apply all fixes including unsafe (template literals, node: protocol, etc.)
+npx biome check --write --unsafe .
+```
+
 ## Code Quality Toolchain
 
 | Tool | Role | Notes |
