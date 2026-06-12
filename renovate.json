@@ -7,8 +7,9 @@
     {
       "customType": "regex",
       "fileMatch": ["^\\.github/workflows/web-ci\\.yml$"],
-      "matchStrings": ["ghcr\\.io/validator/validator:(?<currentValue>[^\\s]+)"],
+      "matchStrings": ["ghcr\\.io/validator/validator:latest@sha256:(?<currentDigest>[a-f0-9]+)"],
       "depNameTemplate": "ghcr.io/validator/validator",
+      "currentValueTemplate": "latest",
       "datasourceTemplate": "docker"
     },
     {

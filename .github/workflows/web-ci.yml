@@ -100,7 +100,7 @@ jobs:
       - name: Nu Html Checker (v.Nu — Living Standard 準拠)
         id: vnu
         run: |
-          docker run -d --rm --name vnu-server -p 8888:8888 ghcr.io/validator/validator:20.6.30
+          docker run -d --rm --name vnu-server -p 8888:8888 ghcr.io/validator/validator:latest@sha256:1e02132147c89c4d7e9c612a6cefcab35edb3dbc08fd19bab077dbabbb6fbce5
           timeout 30 bash -c 'until curl -sf http://localhost:8888/ >/dev/null 2>&1; do sleep 1; done'
           errors=0
           for f in index.html tasks.html; do
