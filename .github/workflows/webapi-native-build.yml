@@ -4,7 +4,7 @@
 # Estimated duration: 5–15 min (with -Ob quick build mode).
 # ADR references: ADR-0018 (bootBuildImage 役割分担), ADR-0021 (JDK 25 baseline).
 
-name: Native Build
+name: "Webapi: Native Build"
 
 on:
   pull_request:
@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  webapi-native-build-changes:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,11 +43,11 @@ jobs:
               - 'gradle/**'
               - 'gradlew'
               - 'gradlew.bat'
-              - '.github/workflows/native-build.yml'
+              - '.github/workflows/webapi-native-build.yml'
 
-  nativeCompile:
-    needs: changes
-    if: needs.changes.outputs.native == 'true' || github.event_name == 'workflow_dispatch'
+  webapi-native-build:
+    needs: webapi-native-build-changes
+    if: needs.webapi-native-build-changes.outputs.native == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read

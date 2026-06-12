@@ -2,7 +2,7 @@
 # レビュワ Claude approve で auto-merge を有効化。
 # 本体は win2cot/claude-automation の reusable-auto-merge.yml@v1。
 
-name: Claude Auto Merge
+name: "Claude: Auto Merge"
 
 on:
   pull_request_review:

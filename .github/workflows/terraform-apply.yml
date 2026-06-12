@@ -1,4 +1,4 @@
-name: Terraform Apply
+name: "Terraform: Apply"
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  platform-apply:
+  terraform-apply-platform:
     runs-on: ubuntu-latest
     environment: platform-apply
 
@@ -44,8 +44,8 @@ jobs:
         working-directory: infra/shared/environments/dev
         run: terraform apply -auto-approve -no-color
 
-  tasks-apply:
-    needs: platform-apply
+  terraform-apply-tasks:
+    needs: terraform-apply-platform
     runs-on: ubuntu-latest
     environment: tasks-apply
 

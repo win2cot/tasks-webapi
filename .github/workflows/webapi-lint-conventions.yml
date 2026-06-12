@@ -1,4 +1,4 @@
-name: Code Quality
+name: "Webapi: Conventions Lint"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  webapi-lint-conventions-changes:
     runs-on: ubuntu-latest
     outputs:
       quality: ${{ steps.filter.outputs.quality }}
@@ -35,11 +35,11 @@ jobs:
             quality:
               - 'webapi/src/**/*.java'
               - 'webapi/src/main/resources/db/migration/**'
-              - '.github/workflows/code-quality.yml'
+              - '.github/workflows/webapi-lint-conventions.yml'
 
-  check:
-    needs: changes
-    if: needs.changes.outputs.quality == 'true'
+  webapi-lint-conventions:
+    needs: webapi-lint-conventions-changes
+    if: needs.webapi-lint-conventions-changes.outputs.quality == 'true'
     runs-on: ubuntu-latest
 
     steps:

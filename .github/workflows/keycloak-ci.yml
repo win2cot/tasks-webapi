@@ -1,4 +1,4 @@
-name: Keycloak CI
+name: "Keycloak: CI"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  keycloak-ci-changes:
     runs-on: ubuntu-latest
     outputs:
       keycloak: ${{ steps.filter.outputs.keycloak }}
@@ -41,9 +41,9 @@ jobs:
               - 'gradlew.bat'
               - '.github/workflows/keycloak-ci.yml'
 
-  check:
-    needs: changes
-    if: needs.changes.outputs.keycloak == 'true'
+  keycloak-ci:
+    needs: keycloak-ci-changes
+    if: needs.keycloak-ci-changes.outputs.keycloak == 'true'
     runs-on: ubuntu-latest
 
     steps:

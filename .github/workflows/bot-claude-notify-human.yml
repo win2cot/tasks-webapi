@@ -2,7 +2,7 @@
 # needs-human-decision ラベル付与で @win2cot メンション + auto-merge 保険無効化。
 # 本体は win2cot/claude-automation の reusable-notify-human.yml@v1。
 
-name: Claude Notify Human
+name: "Claude: Notify Human"
 
 on:
   issues:

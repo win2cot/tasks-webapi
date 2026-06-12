@@ -1,4 +1,4 @@
-name: Web CI
+name: "Web: CI"
 
 on:
   push:
@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  web-ci-changes:
     runs-on: ubuntu-latest
     outputs:
       web: ${{ steps.filter.outputs.web }}
@@ -35,9 +35,9 @@ jobs:
               - 'web/**'
               - '.github/workflows/web-ci.yml'
 
-  check:
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
+  web-ci:
+    needs: web-ci-changes
+    if: needs.web-ci-changes.outputs.web == 'true'
     runs-on: ubuntu-latest
 
     defaults:

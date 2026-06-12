@@ -1,4 +1,4 @@
-name: IaC Security Scan
+name: "Terraform: Security Scan"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  terraform-security-scan-changes:
     runs-on: ubuntu-latest
     outputs:
       tf: ${{ steps.filter.outputs.tf }}
@@ -37,11 +37,11 @@ jobs:
               - 'infra/**/*.hcl'
               - 'infra/**/*.tfvars'
               - '.trivyignore'
-              - '.github/workflows/iac-security-scan.yml'
+              - '.github/workflows/terraform-security-scan.yml'
 
-  scan:
-    needs: changes
-    if: needs.changes.outputs.tf == 'true'
+  terraform-security-scan:
+    needs: terraform-security-scan-changes
+    if: needs.terraform-security-scan-changes.outputs.tf == 'true'
     runs-on: ubuntu-latest
 
     steps:

@@ -2,7 +2,7 @@
 # claude:ready ラベル付与で実装 Claude を起動。
 # 本体は win2cot/claude-automation の reusable-impl.yml@v1。
 
-name: Claude Impl
+name: "Claude: Impl"
 
 on:
   issues:

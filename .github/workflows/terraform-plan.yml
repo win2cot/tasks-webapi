@@ -1,4 +1,4 @@
-name: Terraform Plan
+name: "Terraform: Plan"
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  terraform-plan-changes:
     runs-on: ubuntu-latest
     outputs:
       tf: ${{ steps.filter.outputs.tf }}
@@ -33,9 +33,9 @@ jobs:
               - 'infra/**/*.tfvars'
               - '.github/workflows/terraform-plan.yml'
 
-  platform-plan:
-    needs: changes
-    if: needs.changes.outputs.tf == 'true'
+  terraform-plan-platform:
+    needs: terraform-plan-changes
+    if: needs.terraform-plan-changes.outputs.tf == 'true'
     runs-on: ubuntu-latest
     environment: platform-plan
 
@@ -125,9 +125,9 @@ jobs:
         if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
         run: exit 1
 
-  tasks-plan:
-    needs: changes
-    if: needs.changes.outputs.tf == 'true'
+  terraform-plan-tasks:
+    needs: terraform-plan-changes
+    if: needs.terraform-plan-changes.outputs.tf == 'true'
     runs-on: ubuntu-latest
     environment: tasks-plan
 

@@ -1,4 +1,4 @@
-name: Markdown Lint
+name: "Markdown: Lint"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  markdown-lint-changes:
     runs-on: ubuntu-latest
     outputs:
       md: ${{ steps.filter.outputs.md }}
@@ -37,9 +37,9 @@ jobs:
               - '.markdownlint.jsonc'
               - '.github/workflows/markdown-lint.yml'
 
-  lint:
-    needs: changes
-    if: needs.changes.outputs.md == 'true'
+  markdown-lint:
+    needs: markdown-lint-changes
+    if: needs.markdown-lint-changes.outputs.md == 'true'
     runs-on: ubuntu-latest
 
     steps:

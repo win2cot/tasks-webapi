@@ -1,4 +1,4 @@
-name: OpenAPI Lint
+name: "OpenAPI: Lint"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  openapi-lint-changes:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
@@ -36,9 +36,9 @@ jobs:
               - 'api/**'
               - '.github/workflows/openapi-lint.yml'
 
-  lint:
-    needs: changes
-    if: needs.changes.outputs.api == 'true'
+  openapi-lint:
+    needs: openapi-lint-changes
+    if: needs.openapi-lint-changes.outputs.api == 'true'
     runs-on: ubuntu-latest
 
     steps:

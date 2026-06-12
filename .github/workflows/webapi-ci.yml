@@ -1,4 +1,4 @@
-name: CI
+name: "Webapi: CI"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  webapi-ci-changes:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
@@ -39,11 +39,11 @@ jobs:
               - 'gradle/**'
               - 'gradlew'
               - 'gradlew.bat'
-              - '.github/workflows/cicd.yml'
+              - '.github/workflows/webapi-ci.yml'
 
-  test:
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
+  webapi-ci:
+    needs: webapi-ci-changes
+    if: needs.webapi-ci-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:

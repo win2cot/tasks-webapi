@@ -1,4 +1,4 @@
-name: Terraform Lint
+name: "Terraform: Lint"
 
 on:
   push:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  terraform-lint-changes:
     runs-on: ubuntu-latest
     outputs:
       tf: ${{ steps.filter.outputs.tf }}
@@ -39,9 +39,9 @@ jobs:
               - '.github/workflows/terraform-lint.yml'
               - '.github/scripts/check-iam-wildcards.py'
 
-  lint:
-    needs: changes
-    if: needs.changes.outputs.tf == 'true'
+  terraform-lint:
+    needs: terraform-lint-changes
+    if: needs.terraform-lint-changes.outputs.tf == 'true'
     runs-on: ubuntu-latest
 
     steps:

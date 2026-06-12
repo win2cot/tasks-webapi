@@ -11,7 +11,7 @@
 #
 # 受入条件詳細: win2cot/claude-automation docs/automation/renovate-approve.md
 
-name: Renovate Auto Approve
+name: "Renovate: Auto Approve"
 
 on:
   pull_request:

@@ -2,7 +2,7 @@
 # PR open(ready)・draft → ready 切替・対応完了レポートコメントでレビュワ Claude を起動。
 # 本体は win2cot/claude-automation の reusable-review.yml@v1。
 
-name: Claude Review
+name: "Claude: Review"
 
 on:
   pull_request:
