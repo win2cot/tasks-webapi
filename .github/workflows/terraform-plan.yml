@@ -7,6 +7,7 @@ env:
   LANG: ja_JP.UTF-8
   TZ: Asia/Tokyo
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 permissions:
   id-token: write
@@ -53,6 +54,17 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::138285070797:role/platform-dev-plan
           aws-region: ap-northeast-1
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (shared/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-shared-dev-
 
       - name: terraform init (platform/dev)
         id: init
@@ -145,6 +157,17 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::138285070797:role/tasks-dev-plan
           aws-region: ap-northeast-1
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (tasks/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-tasks-dev-
 
       - name: terraform init (tasks/dev)
         id: init
