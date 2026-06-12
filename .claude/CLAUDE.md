@@ -57,6 +57,9 @@ npx biome check --write --unsafe .
 
 # html-validate — HTML Living Standard 準拠 + CE メタデータ検証
 npm run html-validate
+
+# TypeScript 型検査 (// @ts-check 付きファイルのみ検査、js/**/*.js がプログラムに含まれる)
+npx tsc --noEmit
 ```
 
 ## Code Quality Toolchain

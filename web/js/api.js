@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * tasks-webapi 呼び出しラッパー
  *
@@ -5,9 +6,82 @@
  * X-Tenant-Id は setTenantId() で設定する(未設定時は省略 — /api/auth/me 等のテナント不要 API 向け)。
  */
 
+// --- API response type definitions (aligned with api/openapi.yaml) ---
+
+/**
+ * @typedef {'NOT_STARTED'|'IN_PROGRESS'|'DONE'|'ON_HOLD'} TaskStatus
+ * @typedef {'HIGH'|'MEDIUM'|'LOW'} Priority
+ * @typedef {'TENANT'|'STAKEHOLDERS'|'PRIVATE'} Visibility
+ * @typedef {'TENANT_ADMIN'|'MEMBER'} Role
+ */
+
+/**
+ * @typedef {object} UserSummary
+ * @property {number} id
+ * @property {string} fullName
+ */
+
+/**
+ * @typedef {object} Task
+ * @property {number} id
+ * @property {number} version
+ * @property {string} title
+ * @property {string|null} description
+ * @property {TaskStatus} status
+ * @property {Priority} priority
+ * @property {Visibility} visibility
+ * @property {UserSummary} owner
+ * @property {UserSummary|null} assignee
+ * @property {string} dueDate
+ * @property {string|null} completedAt
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ * @property {boolean} editable
+ * @property {boolean} deletable
+ */
+
+/**
+ * @typedef {Task & {tenantId: number}} TaskDetail
+ */
+
+/**
+ * @typedef {object} TaskPage
+ * @property {Task[]} content
+ * @property {number} totalElements
+ * @property {number} totalPages
+ * @property {number} number
+ * @property {number} size
+ * @property {number} overdueCount
+ */
+
+/**
+ * @typedef {object} TenantUser
+ * @property {number} userId
+ * @property {string} email
+ * @property {string} fullName
+ * @property {string|null} [departmentName]
+ * @property {Role} role
+ * @property {'ACTIVE'|'INVITED'|'DISABLED'} status
+ * @property {string} joinedAt
+ */
+
+/**
+ * @typedef {object} Stakeholder
+ * @property {number} userId
+ * @property {string} fullName
+ * @property {string} email
+ * @property {UserSummary} addedBy
+ * @property {string} addedAt
+ */
+
+/**
+ * @typedef {Error & {status: number}} ApiError
+ */
+
 const Api = (() => {
   const BASE_URL = 'http://localhost:8080';
 
+  /** @type {string|null} */
   let _tenantId = null;
 
   /**
@@ -37,11 +111,19 @@ const Api = (() => {
     return _parseResponse(response);
   }
 
+  /**
+   * @param {string} path
+   * @param {string} token
+   * @param {RequestInit} options
+   * @returns {Promise<Response>}
+   */
   async function _fetch(path, token, options) {
+    // options.headers は呼び出し元が常にプレーンオブジェクトを渡すためキャストが安全
+    /** @type {Record<string, string>} */
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      ...options.headers,
+      .../** @type {Record<string, string>} */ (options.headers ?? {}),
     };
 
     if (_tenantId !== null) {
@@ -51,10 +133,16 @@ const Api = (() => {
     return fetch(`${BASE_URL}${path}`, { ...options, headers });
   }
 
+  /**
+   * @param {Response} response
+   * @returns {Promise<any>}
+   */
   async function _parseResponse(response) {
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      const err = new Error(`${response.status} ${response.statusText}: ${body}`);
+      const err = /** @type {ApiError} */ (
+        new Error(`${response.status} ${response.statusText}: ${body}`)
+      );
       err.status = response.status;
       throw err;
     }
@@ -66,14 +154,25 @@ const Api = (() => {
     return response.text();
   }
 
+  /**
+   * @param {Response} response
+   * @returns {Promise<never>}
+   */
   async function _throwFromResponse(response) {
     const body = await response.text().catch(() => '');
-    const err = new Error(`${response.status} ${response.statusText}: ${body}`);
+    const err = /** @type {ApiError} */ (
+      new Error(`${response.status} ${response.statusText}: ${body}`)
+    );
     err.status = response.status;
     throw err;
   }
 
-  // Returns the raw Response (handles 401 refresh), for callers that need headers.
+  /**
+   * Returns the raw Response (handles 401 refresh), for callers that need headers.
+   * @param {string} path
+   * @param {RequestInit} [options]
+   * @returns {Promise<Response>}
+   */
   async function requestRaw(path, options = {}) {
     const response = await _fetch(path, await Auth.getToken(), options);
     if (response.status === 401) {
@@ -208,10 +307,11 @@ const Api = (() => {
    * PATCH /api/tasks/{id}/visibility — 公開範囲変更(A-17)。
    * @param {number} id
    * @param {string} visibility — Visibility 値
-   * @param {number[]} [stakeholderUserIds] — visibility=STAKEHOLDERS のとき指定
+   * @param {number[]} [stakeholderUserIds] visibility=STAKEHOLDERS のとき指定
    * @returns {Promise<Task>}
    */
   function changeVisibility(id, visibility, stakeholderUserIds) {
+    /** @type {{visibility: string, stakeholderUserIds?: number[]}} */
     const body = { visibility };
     if (stakeholderUserIds) body.stakeholderUserIds = stakeholderUserIds;
     return request(`/api/tasks/${id}/visibility`, { method: 'PATCH', body: JSON.stringify(body) });
