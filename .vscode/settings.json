@@ -1,0 +1,31 @@
+{
+  "editor.formatOnSave": true,
+  "[java]": {
+    "editor.defaultFormatter": "JoseVSeb.google-java-format-for-vs-code"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "biome.lsp.bin": "${workspaceFolder}/web/node_modules/@biomejs/biome/bin/biome",
+  "java.format.settings.google.version": "1.34.0",
+  "[terraform]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSave": true
+  },
+  "[terraform-vars]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSave": true
+  }
+}

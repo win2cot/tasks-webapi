@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "html-validate.vscode-html-validate",
+    "DavidAnson.vscode-markdownlint",
+    "stoplight.spectral",
+    "hashicorp.terraform",
+    "redhat.java",
+    "vscjava.vscode-gradle",
+    "JoseVSeb.google-java-format-for-vs-code",
+    "ritwickdey.LiveServer"
+  ]
+}
