@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>タスク一覧 — Tasks</title>
-  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css" />
-  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <a href="#main-content" class="visually-hidden-focusable position-absolute p-2 m-2 bg-primary text-white rounded">
@@ -26,7 +26,7 @@
         aria-hidden="true">?</div>
       <span id="nav-username" class="small d-none d-lg-inline"></span>
     </div>
-    <button id="btn-logout" class="btn btn-outline-secondary btn-sm">
+    <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>ログアウト
     </button>
   </div>
@@ -66,7 +66,7 @@
         <label for="sortSel" class="text-muted small mb-0">
           <i class="bi bi-sort-down me-1" aria-hidden="true"></i>並び替え
         </label>
-        <select id="sortSel" class="form-select form-select-sm w-sort-sel" aria-label="並び替え">
+        <select id="sortSel" class="form-select form-select-sm w-sort-sel">
           <option value="dueDate,asc">期限(昇順)</option>
           <option value="dueDate,desc">期限(降順)</option>
           <option value="priority,desc">優先度(高→低)</option>
@@ -74,7 +74,7 @@
           <option value="createdAt,desc">作成日(新しい順)</option>
           <option value="createdAt,asc">作成日(古い順)</option>
         </select>
-        <button id="btn-new-task" class="btn btn-sm btn-primary" aria-label="新規タスクを作成">
+        <button id="btn-new-task" type="button" class="btn btn-sm btn-primary" aria-label="新規タスクを作成">
           <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>新規
         </button>
       </div>
@@ -93,7 +93,7 @@
     <app-conflict-banner id="conflict-banner"></app-conflict-banner>
 
     <!-- Loading skeleton (design-system.md §6.11) -->
-    <div id="loading-skeleton" class="task-section" aria-busy="true" aria-label="読み込み中">
+    <section id="loading-skeleton" class="task-section" aria-busy="true" aria-label="読み込み中">
       <div class="section-head placeholder-glow">
         <span class="placeholder col-2"></span>
         <span class="placeholder col-1 ms-2"></span>
@@ -105,7 +105,7 @@
         <div class="skel-row placeholder-glow"><span class="placeholder col-10 h-100 d-block skel-placeholder"></span></div>
         <div class="skel-row placeholder-glow"><span class="placeholder col-12 h-100 d-block skel-placeholder"></span></div>
       </div>
-    </div>
+    </section>
 
     <!-- Task table panel -->
     <div id="task-panel" class="task-section d-none">

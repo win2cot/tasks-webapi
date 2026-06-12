@@ -89,6 +89,20 @@ jobs:
         id: biome
         run: npx biome ci .
 
+      - name: html-validate (CE metadata + inline guard)
+        id: html-validate
+        run: npx html-validate index.html tasks.html
+
+      - name: Nu Html Checker (v.Nu — Living Standard 準拠)
+        id: vnu
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/web:/workdir:ro" \
+            ghcr.io/validator/validator:latest \
+            --skip-non-html \
+            /workdir/index.html \
+            /workdir/tasks.html
+
       - name: Build CI report
         id: ci-report
         if: always() && github.event_name == 'pull_request'
@@ -97,6 +111,8 @@ jobs:
           COPY_OUTCOME: ${{ steps.copy-vendor.outcome }}
           VENDOR_OUTCOME: ${{ steps.vendor-check.outcome }}
           BIOME_OUTCOME: ${{ steps.biome.outcome }}
+          HTML_VALIDATE_OUTCOME: ${{ steps.html-validate.outcome }}
+          VNU_OUTCOME: ${{ steps.vnu.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_NUM: ${{ github.run_number }}
           GH_SHA: ${{ github.sha }}
@@ -114,6 +130,8 @@ jobs:
             echo "| copy-vendor $(icon "$COPY_OUTCOME") | vendor アセットコピー |"
             echo "| vendor check $(icon "$VENDOR_OUTCOME") | 主要ファイル存在確認 |"
             echo "| biome ci $(icon "$BIOME_OUTCOME") | lint / format 検証 |"
+            echo "| html-validate $(icon "$HTML_VALIDATE_OUTCOME") | CE メタデータ + inline 退行ガード |"
+            echo "| v.Nu $(icon "$VNU_OUTCOME") | Living Standard 準拠検証 |"
             echo ""
             echo "_最終更新: ${NOW}_"
             echo '__CI_REPORT_EOF__'

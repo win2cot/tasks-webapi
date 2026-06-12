@@ -1,0 +1,171 @@
+{
+  "$schema": "https://html-validate.org/schemas/config.json",
+  "extends": ["html-validate:recommended"],
+  "elements": [
+    "html5",
+    {
+      "*": {
+        "attributes": {
+          "onclick": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022: CSP script-src 'self')"
+          },
+          "ondblclick": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "oncontextmenu": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmousedown": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmouseup": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmousemove": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmouseover": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmouseout": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmouseenter": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onmouseleave": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onwheel": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onkeydown": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onkeyup": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onkeypress": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onfocus": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onblur": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onchange": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "oninput": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onsubmit": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onreset": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "oninvalid": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "oncopy": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "oncut": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onpaste": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondrag": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondragend": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondragenter": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondragleave": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondragover": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondragstart": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ondrop": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onload": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onerror": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onscroll": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onresize": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "ontoggle": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          },
+          "onclose": {
+            "deprecated": "インラインイベントハンドラは禁止です。addEventListener を使用してください(ADR-0022)"
+          }
+        }
+      },
+      "app-conflict-banner": {
+        "flow": true
+      },
+      "app-desc-popover": {
+        "flow": true
+      },
+      "app-error-banner": {
+        "flow": true
+      },
+      "app-pager": {
+        "flow": true
+      },
+      "app-priority-badge": {
+        "flow": true,
+        "phrasing": true,
+        "attributes": {
+          "priority": {},
+          "editable": { "boolean": true },
+          "task-id": {}
+        }
+      },
+      "app-status-badge": {
+        "flow": true,
+        "phrasing": true,
+        "attributes": {
+          "status": {},
+          "editable": { "boolean": true },
+          "task-id": {}
+        }
+      },
+      "app-task-drawer": {
+        "flow": true
+      },
+      "app-task-row": {
+        "flow": true
+      },
+      "app-tenant-switcher": {
+        "flow": true,
+        "phrasing": true
+      },
+      "app-visibility-badge": {
+        "flow": true,
+        "phrasing": true,
+        "attributes": {
+          "visibility": {}
+        }
+      }
+    }
+  ]
+}
