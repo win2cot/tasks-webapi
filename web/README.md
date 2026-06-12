@@ -39,6 +39,7 @@ npm run html-validate
 ```
 
 確認事項:
+
 1. `observedAttributes` に列挙した属性はすべて `attributes` に追記する
 2. ページ HTML (`index.html` / `tasks.html`) に要素を追記したら `npm run html-validate` で green を確認
 

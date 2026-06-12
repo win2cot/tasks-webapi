@@ -54,6 +54,9 @@ npx biome check --write .
 
 # Apply all fixes including unsafe (template literals, node: protocol, etc.)
 npx biome check --write --unsafe .
+
+# html-validate — HTML Living Standard 準拠 + CE メタデータ検証
+npm run html-validate
 ```
 
 ## Code Quality Toolchain
