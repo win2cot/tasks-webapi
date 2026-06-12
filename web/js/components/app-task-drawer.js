@@ -14,30 +14,28 @@
 //   drawer-closed                        — offcanvas fully hidden
 
 const PRI_LABEL = { HIGH: '高', MEDIUM: '中', LOW: '低' };
-const ST_LABEL  = { NOT_STARTED: '未着手', IN_PROGRESS: '進行中', DONE: '完了', ON_HOLD: '保留' };
+const ST_LABEL = { NOT_STARTED: '未着手', IN_PROGRESS: '進行中', DONE: '完了', ON_HOLD: '保留' };
 const VIS_LABEL = { TENANT: 'テナント', STAKEHOLDERS: '関係者', PRIVATE: '非公開' };
-const VIS_ICON  = { TENANT: 'bi-globe2', STAKEHOLDERS: 'bi-people-fill', PRIVATE: 'bi-lock-fill' };
+const VIS_ICON = { TENANT: 'bi-globe2', STAKEHOLDERS: 'bi-people-fill', PRIVATE: 'bi-lock-fill' };
 
 class AppTaskDrawer extends HTMLElement {
-  #oc          = null;
-  #mode        = null;  // 'new' | 'detail' | 'edit'
-  #task        = null;
-  #etag        = null;
+  #oc = null;
+  #task = null;
+  #etag = null;
   #tenantUsers = [];
   #currentUserId = null;
-  #stakeholders  = [];
-  #selectedSH    = [];  // [{userId, fullName}] for new-mode stakeholder picker
-  #prevPath      = null;
-  #skipHideUrl   = false;
-  #popHandler    = null;
+  #stakeholders = [];
+  #selectedSH = []; // [{userId, fullName}] for new-mode stakeholder picker
+  #prevPath = null;
+  #skipHideUrl = false;
+  #popHandler = null;
 
   connectedCallback() {
     const el = document.createElement('div');
     el.className = 'offcanvas offcanvas-end';
     el.setAttribute('tabindex', '-1');
     el.innerHTML =
-      '<div class="offcanvas-header border-bottom"></div>' +
-      '<div class="offcanvas-body"></div>';
+      '<div class="offcanvas-header border-bottom"></div>' + '<div class="offcanvas-body"></div>';
     this.appendChild(el);
 
     this.#oc = bootstrap.Offcanvas.getOrCreateInstance(el);
@@ -53,21 +51,26 @@ class AppTaskDrawer extends HTMLElement {
 
   // ---- Public API ----
 
-  setUsers(users)        { this.#tenantUsers = users || []; }
-  setCurrentUser(userId) { this.#currentUserId = userId; }
+  setUsers(users) {
+    this.#tenantUsers = users || [];
+  }
+  setCurrentUser(userId) {
+    this.#currentUserId = userId;
+  }
 
-  open() { this.openNew(); }
+  open() {
+    this.openNew();
+  }
 
   // List URL to restore when closing after a direct-URL auto-open
   static #LIST_URL = '/tasks.html';
 
   openNew(opts = {}) {
     this.#prevPath = this.#safeListUrl('/tasks/new');
-    this.#mode     = 'new';
-    this.#task     = null;
-    this.#etag     = null;
+    this.#task = null;
+    this.#etag = null;
     this.#stakeholders = [];
-    this.#selectedSH   = [];
+    this.#selectedSH = [];
     this.#renderNew(opts);
     this.#pushUrl('/tasks/new');
     this.#oc.show();
@@ -75,7 +78,6 @@ class AppTaskDrawer extends HTMLElement {
 
   async openDetail(taskId) {
     this.#prevPath = this.#safeListUrl(`/tasks/${taskId}`);
-    this.#mode = 'detail';
     this.#renderLoading();
     this.#pushUrl(`/tasks/${taskId}`);
     this.#oc.show();
@@ -90,7 +92,6 @@ class AppTaskDrawer extends HTMLElement {
     if (!this.#task || this.#task.id !== taskId) {
       await this.#loadTaskData(taskId);
     }
-    this.#mode = 'edit';
     if (this.#task) this.#renderEdit();
   }
 
@@ -102,17 +103,21 @@ class AppTaskDrawer extends HTMLElement {
 
   // ---- Private helpers ----
 
-  get #hdr() { return this.firstElementChild?.querySelector('.offcanvas-header'); }
-  get #bdy() { return this.firstElementChild?.querySelector('.offcanvas-body'); }
+  get #hdr() {
+    return this.firstElementChild?.querySelector('.offcanvas-header');
+  }
+  get #bdy() {
+    return this.firstElementChild?.querySelector('.offcanvas-body');
+  }
 
   #can(type) {
     const t = this.#task;
     if (!t) return false;
-    if (type === 'edit')        return !!t.editable;
-    if (type === 'delete')      return !!t.deletable;
-    if (type === 'status')      return t.editable || t.assignee?.id === this.#currentUserId;
+    if (type === 'edit') return !!t.editable;
+    if (type === 'delete') return !!t.deletable;
+    if (type === 'status') return t.editable || t.assignee?.id === this.#currentUserId;
     if (type === 'stakeholder') return t.editable || t.assignee?.id === this.#currentUserId;
-    if (type === 'visibility')  return !!t.editable;
+    if (type === 'visibility') return !!t.editable;
     return false;
   }
 
@@ -122,8 +127,8 @@ class AppTaskDrawer extends HTMLElement {
         Api.getTask(taskId),
         Api.listStakeholders(taskId).catch(() => []),
       ]);
-      this.#task         = task;
-      this.#etag         = etag;
+      this.#task = task;
+      this.#etag = etag;
       this.#stakeholders = stakeholders;
     } catch (err) {
       this.#renderError(err);
@@ -134,20 +139,22 @@ class AppTaskDrawer extends HTMLElement {
   async #loadAndRenderDetail(taskId) {
     await this.#loadTaskData(taskId);
     if (this.#task) {
-      this.#mode = 'detail';
       this.#renderDetail();
     }
   }
 
-  #pushUrl(url) { history.pushState({ drawer: true }, '', url); }
-  #replaceUrl(url) { history.replaceState({ drawer: true }, '', url); }
+  #pushUrl(url) {
+    history.pushState({ drawer: true }, '', url);
+  }
+  #replaceUrl(url) {
+    history.replaceState({ drawer: true }, '', url);
+  }
 
   #onHidden() {
     if (!this.#skipHideUrl && this.#prevPath) {
       history.replaceState(null, '', this.#prevPath);
     }
     this.#skipHideUrl = false;
-    this.#mode = null;
     this.dispatchEvent(new CustomEvent('drawer-closed', { bubbles: true }));
   }
 
@@ -183,8 +190,12 @@ class AppTaskDrawer extends HTMLElement {
     d.className = 'text-center py-5';
     d.innerHTML =
       '<div class="spinner-border text-primary" role="status">' +
-      '<span class="visually-hidden">' + label + '</span></div>' +
-      '<p class="mt-2 small text-muted">' + label + '</p>';
+      '<span class="visually-hidden">' +
+      label +
+      '</span></div>' +
+      '<p class="mt-2 small text-muted">' +
+      label +
+      '</p>';
     return d;
   }
 
@@ -207,7 +218,7 @@ class AppTaskDrawer extends HTMLElement {
       this.#makeErrorMsg(
         err.status === 404
           ? 'このタスクは表示できません(存在しないか参照権限がありません)'
-          : 'タスクの取得に失敗しました: ' + (err.message || ''),
+          : `タスクの取得に失敗しました: ${err.message || ''}`,
       ),
     );
   }
@@ -219,7 +230,8 @@ class AppTaskDrawer extends HTMLElement {
     hdr.replaceChildren();
     const title = document.createElement('h5');
     title.className = 'offcanvas-title';
-    title.innerHTML = '<i class="bi bi-plus-circle me-2 text-primary" aria-hidden="true"></i>新規タスク';
+    title.innerHTML =
+      '<i class="bi bi-plus-circle me-2 text-primary" aria-hidden="true"></i>新規タスク';
     hdr.append(title, this.#makeCloseBtn());
 
     const form = this.#buildNewForm(opts);
@@ -240,8 +252,10 @@ class AppTaskDrawer extends HTMLElement {
     // Title
     const titleGrp = this.#fieldGroup('newTitle', 'タイトル', true);
     const titleInput = document.createElement('input');
-    titleInput.id = 'newTitle'; titleInput.className = 'form-control';
-    titleInput.maxLength = 100; titleInput.required = true;
+    titleInput.id = 'newTitle';
+    titleInput.className = 'form-control';
+    titleInput.maxLength = 100;
+    titleInput.required = true;
     titleInput.placeholder = '例: 設計レビュー';
     titleInput.setAttribute('aria-required', 'true');
     titleGrp.appendChild(titleInput);
@@ -250,8 +264,10 @@ class AppTaskDrawer extends HTMLElement {
     // Description
     const descGrp = this.#fieldGroup('newDesc', '説明', false);
     const descTa = document.createElement('textarea');
-    descTa.id = 'newDesc'; descTa.className = 'form-control';
-    descTa.rows = 3; descTa.maxLength = 2000;
+    descTa.id = 'newDesc';
+    descTa.className = 'form-control';
+    descTa.rows = 3;
+    descTa.maxLength = 2000;
     descTa.placeholder = '任意・最大2000文字';
     descGrp.appendChild(descTa);
     form.appendChild(descGrp);
@@ -264,8 +280,10 @@ class AppTaskDrawer extends HTMLElement {
     dueCol.className = 'col-6';
     const dueGrp = this.#fieldGroup('newDue', '期限日', true);
     const dueInput = document.createElement('input');
-    dueInput.type = 'date'; dueInput.id = 'newDue';
-    dueInput.className = 'form-control'; dueInput.required = true;
+    dueInput.type = 'date';
+    dueInput.id = 'newDue';
+    dueInput.className = 'form-control';
+    dueInput.required = true;
     if (opts.dueDate) dueInput.value = opts.dueDate;
     dueGrp.appendChild(dueInput);
     dueCol.appendChild(dueGrp);
@@ -274,13 +292,16 @@ class AppTaskDrawer extends HTMLElement {
     assCol.className = 'col-6';
     const assGrp = this.#fieldGroup('newAssignee', '担当者', false);
     const assSel = document.createElement('select');
-    assSel.id = 'newAssignee'; assSel.className = 'form-select new-assignee-sel';
+    assSel.id = 'newAssignee';
+    assSel.className = 'form-select new-assignee-sel';
     const emptyOpt = document.createElement('option');
-    emptyOpt.value = ''; emptyOpt.textContent = '未割当';
+    emptyOpt.value = '';
+    emptyOpt.textContent = '未割当';
     assSel.appendChild(emptyOpt);
-    this.#tenantUsers.forEach(u => {
+    this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId; opt.textContent = u.fullName;
+      opt.value = u.userId;
+      opt.textContent = u.fullName;
       assSel.appendChild(opt);
     });
     assGrp.appendChild(assSel);
@@ -296,14 +317,23 @@ class AppTaskDrawer extends HTMLElement {
     priLeg.className = 'form-label small fw-bold';
     priLeg.innerHTML = '優先度 <span class="text-danger" aria-hidden="true">*</span>';
     const priBtnGrp = document.createElement('div');
-    priBtnGrp.className = 'btn-group w-100'; priBtnGrp.setAttribute('role', 'group');
-    [['HIGH','btn-outline-danger','高'],['MEDIUM','btn-outline-warning','中'],['LOW','btn-outline-secondary','低']].forEach(([val, cls, lbl], i) => {
+    priBtnGrp.className = 'btn-group w-100';
+    priBtnGrp.setAttribute('role', 'group');
+    [
+      ['HIGH', 'btn-outline-danger', '高'],
+      ['MEDIUM', 'btn-outline-warning', '中'],
+      ['LOW', 'btn-outline-secondary', '低'],
+    ].forEach(([val, cls, lbl], i) => {
       const inp = document.createElement('input');
-      inp.type = 'radio'; inp.className = 'btn-check';
-      inp.name = 'newPri'; inp.id = `newPri-${val}`; inp.value = val;
+      inp.type = 'radio';
+      inp.className = 'btn-check';
+      inp.name = 'newPri';
+      inp.id = `newPri-${val}`;
+      inp.value = val;
       if (i === 1) inp.checked = true;
       const lab = document.createElement('label');
-      lab.className = `btn ${cls}`; lab.htmlFor = `newPri-${val}`;
+      lab.className = `btn ${cls}`;
+      lab.htmlFor = `newPri-${val}`;
       lab.textContent = lbl;
       priBtnGrp.append(inp, lab);
     });
@@ -319,14 +349,23 @@ class AppTaskDrawer extends HTMLElement {
     visLeg.className = 'form-label small fw-bold';
     visLeg.innerHTML = '公開範囲 <span class="text-danger" aria-hidden="true">*</span>';
     const visBtnGrp = document.createElement('div');
-    visBtnGrp.className = 'btn-group w-100'; visBtnGrp.setAttribute('role', 'group');
-    [['TENANT','btn-outline-success','bi-globe2','テナント'],['STAKEHOLDERS','btn-outline-primary','bi-people-fill','関係者'],['PRIVATE','btn-outline-secondary','bi-lock-fill','非公開']].forEach(([val, cls, icon, lbl], i) => {
+    visBtnGrp.className = 'btn-group w-100';
+    visBtnGrp.setAttribute('role', 'group');
+    [
+      ['TENANT', 'btn-outline-success', 'bi-globe2', 'テナント'],
+      ['STAKEHOLDERS', 'btn-outline-primary', 'bi-people-fill', '関係者'],
+      ['PRIVATE', 'btn-outline-secondary', 'bi-lock-fill', '非公開'],
+    ].forEach(([val, cls, icon, lbl], i) => {
       const inp = document.createElement('input');
-      inp.type = 'radio'; inp.className = 'btn-check';
-      inp.name = 'newVis'; inp.id = `newVis-${val}`; inp.value = val;
+      inp.type = 'radio';
+      inp.className = 'btn-check';
+      inp.name = 'newVis';
+      inp.id = `newVis-${val}`;
+      inp.value = val;
       if (i === 0) inp.checked = true;
       const lab = document.createElement('label');
-      lab.className = `btn ${cls}`; lab.htmlFor = `newVis-${val}`;
+      lab.className = `btn ${cls}`;
+      lab.htmlFor = `newVis-${val}`;
       lab.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i> ${lbl}`;
       visBtnGrp.append(inp, lab);
     });
@@ -336,25 +375,32 @@ class AppTaskDrawer extends HTMLElement {
 
     // Stakeholder picker (shown only when STAKEHOLDERS is selected)
     const shSection = document.createElement('div');
-    shSection.id = 'new-sh-section'; shSection.className = 'd-none mt-3';
+    shSection.id = 'new-sh-section';
+    shSection.className = 'd-none mt-3';
     const shLabel = document.createElement('div');
-    shLabel.className = 'form-label small fw-bold'; shLabel.textContent = '関係者';
+    shLabel.className = 'form-label small fw-bold';
+    shLabel.textContent = '関係者';
     const shChips = document.createElement('div');
-    shChips.id = 'new-sh-chips'; shChips.className = 'drawer-chips mb-2';
+    shChips.id = 'new-sh-chips';
+    shChips.className = 'drawer-chips mb-2';
     const shRow = document.createElement('div');
     shRow.className = 'd-flex gap-2';
     const shSel = document.createElement('select');
-    shSel.id = 'new-sh-sel'; shSel.className = 'form-select form-select-sm flex-grow-1';
+    shSel.id = 'new-sh-sel';
+    shSel.className = 'form-select form-select-sm flex-grow-1';
     const shOptBlank = document.createElement('option');
-    shOptBlank.value = ''; shOptBlank.textContent = '追加する...';
+    shOptBlank.value = '';
+    shOptBlank.textContent = '追加する...';
     shSel.appendChild(shOptBlank);
-    this.#tenantUsers.forEach(u => {
+    this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId; opt.textContent = u.fullName;
+      opt.value = u.userId;
+      opt.textContent = u.fullName;
       shSel.appendChild(opt);
     });
     const shAddBtn = document.createElement('button');
-    shAddBtn.type = 'button'; shAddBtn.className = 'btn btn-sm btn-outline-secondary';
+    shAddBtn.type = 'button';
+    shAddBtn.className = 'btn btn-sm btn-outline-secondary';
     shAddBtn.textContent = '追加';
     shRow.append(shSel, shAddBtn);
     shSection.append(shLabel, shChips, shRow);
@@ -370,8 +416,8 @@ class AppTaskDrawer extends HTMLElement {
     shAddBtn.addEventListener('click', () => {
       const uid = Number(shSel.value);
       if (!uid) return;
-      const user = this.#tenantUsers.find(u => u.userId === uid);
-      if (!user || this.#selectedSH.some(s => s.userId === uid)) return;
+      const user = this.#tenantUsers.find((u) => u.userId === uid);
+      if (!user || this.#selectedSH.some((s) => s.userId === uid)) return;
       this.#selectedSH.push({ userId: uid, fullName: user.fullName });
       this.#renderNewShChips(shChips, shSel);
     });
@@ -380,21 +426,27 @@ class AppTaskDrawer extends HTMLElement {
     const footer = document.createElement('div');
     footer.className = 'd-flex gap-2 mt-4';
     const submitBtn = document.createElement('button');
-    submitBtn.type = 'submit'; submitBtn.className = 'btn btn-primary flex-grow-1';
+    submitBtn.type = 'submit';
+    submitBtn.className = 'btn btn-primary flex-grow-1';
     submitBtn.textContent = '作成';
     const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-light';
-    cancelBtn.setAttribute('data-bs-dismiss', 'offcanvas'); cancelBtn.textContent = '取消';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-light';
+    cancelBtn.setAttribute('data-bs-dismiss', 'offcanvas');
+    cancelBtn.textContent = '取消';
     footer.append(submitBtn, cancelBtn);
     form.appendChild(footer);
 
-    form.addEventListener('submit', e => { e.preventDefault(); this.#submitNew(form); });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.#submitNew(form);
+    });
     return form;
   }
 
   #syncNewShPickerOpts(sel, chipsEl) {
-    const currentIds = new Set(this.#selectedSH.map(s => s.userId));
-    [...sel.options].forEach(o => {
+    const currentIds = new Set(this.#selectedSH.map((s) => s.userId));
+    [...sel.options].forEach((o) => {
       if (o.value === '') return;
       o.hidden = currentIds.has(Number(o.value));
     });
@@ -403,9 +455,9 @@ class AppTaskDrawer extends HTMLElement {
 
   #renderNewShChips(chipsEl, sel) {
     chipsEl.replaceChildren();
-    this.#selectedSH.forEach(sh => {
+    this.#selectedSH.forEach((sh) => {
       const chip = this.#makeChip(sh.fullName, () => {
-        this.#selectedSH = this.#selectedSH.filter(s => s.userId !== sh.userId);
+        this.#selectedSH = this.#selectedSH.filter((s) => s.userId !== sh.userId);
         this.#syncNewShPickerOpts(sel, chipsEl);
       });
       chipsEl.appendChild(chip);
@@ -429,28 +481,31 @@ class AppTaskDrawer extends HTMLElement {
       errDiv.className = 'alert alert-danger py-2 small mb-3';
       return;
     }
-    const priority   = form.querySelector('input[name="newPri"]:checked')?.value || 'MEDIUM';
+    const priority = form.querySelector('input[name="newPri"]:checked')?.value || 'MEDIUM';
     const visibility = form.querySelector('input[name="newVis"]:checked')?.value || 'TENANT';
     const assigneeId = form.querySelector('#newAssignee').value
-      ? Number(form.querySelector('#newAssignee').value) : null;
+      ? Number(form.querySelector('#newAssignee').value)
+      : null;
     const desc = form.querySelector('#newDesc').value.trim() || null;
 
     const body = { title, dueDate, priority, visibility };
-    if (desc)       body.description = desc;
-    if (assigneeId) body.assigneeId  = assigneeId;
+    if (desc) body.description = desc;
+    if (assigneeId) body.assigneeId = assigneeId;
     if (visibility === 'STAKEHOLDERS' && this.#selectedSH.length)
-      body.stakeholderUserIds = this.#selectedSH.map(s => s.userId);
+      body.stakeholderUserIds = this.#selectedSH.map((s) => s.userId);
 
     submitBtn.disabled = true;
     submitBtn.textContent = '作成中...';
     try {
       const task = await Api.createTask(body);
       this.#oc.hide();
-      this.dispatchEvent(new CustomEvent('drawer-task-created', { bubbles: true, detail: { task } }));
+      this.dispatchEvent(
+        new CustomEvent('drawer-task-created', { bubbles: true, detail: { task } }),
+      );
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = '作成';
-      errDiv.textContent = '作成に失敗しました: ' + (err.message || '');
+      errDiv.textContent = `作成に失敗しました: ${err.message || ''}`;
       errDiv.className = 'alert alert-danger py-2 small mb-3';
     }
   }
@@ -488,21 +543,25 @@ class AppTaskDrawer extends HTMLElement {
     const statusRow = document.createElement('div');
     statusRow.className = 'mb-3';
     const statusLabel = document.createElement('div');
-    statusLabel.className = 'drawer-field-label'; statusLabel.textContent = 'ステータス';
+    statusLabel.className = 'drawer-field-label';
+    statusLabel.textContent = 'ステータス';
     statusRow.appendChild(statusLabel);
     if (this.#can('status')) {
       const sel = document.createElement('select');
       sel.className = `form-select form-select-sm d-inline-block w-auto inline-sel st-sel-${task.status}`;
-      ['NOT_STARTED','IN_PROGRESS','DONE','ON_HOLD'].forEach(s => {
+      ['NOT_STARTED', 'IN_PROGRESS', 'DONE', 'ON_HOLD'].forEach((s) => {
         const opt = document.createElement('option');
-        opt.value = s; opt.textContent = ST_LABEL[s]; opt.selected = s === task.status;
+        opt.value = s;
+        opt.textContent = ST_LABEL[s];
+        opt.selected = s === task.status;
         sel.appendChild(opt);
       });
       sel.addEventListener('change', () => this.#changeStatus(sel));
       statusRow.appendChild(sel);
     } else {
       const badge = document.createElement('span');
-      badge.className = `st-badge st-${task.status}`; badge.textContent = ST_LABEL[task.status];
+      badge.className = `st-badge st-${task.status}`;
+      badge.textContent = ST_LABEL[task.status];
       statusRow.appendChild(badge);
     }
     bdy.appendChild(statusRow);
@@ -512,9 +571,11 @@ class AppTaskDrawer extends HTMLElement {
       const descRow = document.createElement('div');
       descRow.className = 'mb-3';
       const descLabel = document.createElement('div');
-      descLabel.className = 'drawer-field-label'; descLabel.textContent = '説明';
+      descLabel.className = 'drawer-field-label';
+      descLabel.textContent = '説明';
       const descText = document.createElement('p');
-      descText.className = 'mb-0 small drawer-desc-text'; descText.textContent = task.description;
+      descText.className = 'mb-0 small drawer-desc-text';
+      descText.textContent = task.description;
       descRow.append(descLabel, descText);
       bdy.appendChild(descRow);
     }
@@ -523,21 +584,23 @@ class AppTaskDrawer extends HTMLElement {
     const meta = document.createElement('div');
     meta.className = 'drawer-meta-grid mb-3';
     const metaFields = [
-      ['優先度',   this.#makePriBadge(task.priority)],
-      ['期限',     this.#dueDateEl(task.dueDate)],
-      ['担当者',   document.createTextNode(task.assignee?.fullName ?? '—')],
-      ['所有者',   document.createTextNode(task.owner?.fullName ?? '—')],
-      ['作成日',   document.createTextNode(this.#fmtDate(task.createdAt))],
-      ['更新日',   document.createTextNode(this.#fmtDate(task.updatedAt))],
+      ['優先度', this.#makePriBadge(task.priority)],
+      ['期限', this.#dueDateEl(task.dueDate)],
+      ['担当者', document.createTextNode(task.assignee?.fullName ?? '—')],
+      ['所有者', document.createTextNode(task.owner?.fullName ?? '—')],
+      ['作成日', document.createTextNode(this.#fmtDate(task.createdAt))],
+      ['更新日', document.createTextNode(this.#fmtDate(task.updatedAt))],
     ];
     if (task.completedAt) {
       metaFields.push(['完了日時', document.createTextNode(this.#fmtDateTime(task.completedAt))]);
     }
     metaFields.forEach(([lbl, valNode]) => {
       const lblEl = document.createElement('span');
-      lblEl.className = 'drawer-meta-label'; lblEl.textContent = lbl;
+      lblEl.className = 'drawer-meta-label';
+      lblEl.textContent = lbl;
       const valEl = document.createElement('span');
-      valEl.className = 'drawer-meta-value'; valEl.appendChild(valNode);
+      valEl.className = 'drawer-meta-value';
+      valEl.appendChild(valNode);
       meta.append(lblEl, valEl);
     });
     bdy.appendChild(meta);
@@ -548,7 +611,8 @@ class AppTaskDrawer extends HTMLElement {
     const visRow = document.createElement('div');
     visRow.className = 'mb-3';
     const visLabel = document.createElement('div');
-    visLabel.className = 'drawer-field-label'; visLabel.textContent = '公開範囲';
+    visLabel.className = 'drawer-field-label';
+    visLabel.textContent = '公開範囲';
     visRow.appendChild(visLabel);
     const visBadge2 = document.createElement('span');
     visBadge2.className = `vis-badge vis-${task.visibility}`;
@@ -574,14 +638,16 @@ class AppTaskDrawer extends HTMLElement {
     actions.className = 'd-flex gap-2 flex-wrap';
     if (this.#can('edit')) {
       const editBtn = document.createElement('button');
-      editBtn.type = 'button'; editBtn.className = 'btn btn-primary btn-sm';
+      editBtn.type = 'button';
+      editBtn.className = 'btn btn-primary btn-sm';
       editBtn.innerHTML = '<i class="bi bi-pencil me-1" aria-hidden="true"></i>編集';
       editBtn.addEventListener('click', () => this.#switchToEdit());
       actions.appendChild(editBtn);
     }
     if (this.#can('delete')) {
       const delBtn = document.createElement('button');
-      delBtn.type = 'button'; delBtn.className = 'btn btn-outline-danger btn-sm';
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-outline-danger btn-sm';
       delBtn.innerHTML = '<i class="bi bi-trash me-1" aria-hidden="true"></i>削除';
       delBtn.addEventListener('click', () => this.#showDeleteConfirm(actions));
       actions.appendChild(delBtn);
@@ -593,20 +659,20 @@ class AppTaskDrawer extends HTMLElement {
     const section = document.createElement('div');
     section.className = 'mb-3';
     const label = document.createElement('div');
-    label.className = 'drawer-field-label'; label.textContent = '関係者';
+    label.className = 'drawer-field-label';
+    label.textContent = '関係者';
     section.appendChild(label);
 
     const chips = document.createElement('div');
     chips.className = 'drawer-chips';
     if (this.#stakeholders.length === 0) {
       const empty = document.createElement('span');
-      empty.className = 'text-muted small'; empty.textContent = 'なし';
+      empty.className = 'text-muted small';
+      empty.textContent = 'なし';
       chips.appendChild(empty);
     } else {
-      this.#stakeholders.forEach(sh => {
-        const rmFn = this.#can('stakeholder')
-          ? () => this.#removeStakeholder(sh.userId)
-          : null;
+      this.#stakeholders.forEach((sh) => {
+        const rmFn = this.#can('stakeholder') ? () => this.#removeStakeholder(sh.userId) : null;
         chips.appendChild(this.#makeChip(sh.fullName, rmFn));
       });
     }
@@ -618,17 +684,20 @@ class AppTaskDrawer extends HTMLElement {
       const sel = document.createElement('select');
       sel.className = 'form-select form-select-sm flex-grow-1';
       const blankOpt = document.createElement('option');
-      blankOpt.value = ''; blankOpt.textContent = '関係者を追加...';
+      blankOpt.value = '';
+      blankOpt.textContent = '関係者を追加...';
       sel.appendChild(blankOpt);
-      const existIds = new Set(this.#stakeholders.map(s => s.userId));
-      this.#tenantUsers.forEach(u => {
+      const existIds = new Set(this.#stakeholders.map((s) => s.userId));
+      this.#tenantUsers.forEach((u) => {
         if (existIds.has(u.userId)) return;
         const opt = document.createElement('option');
-        opt.value = u.userId; opt.textContent = u.fullName;
+        opt.value = u.userId;
+        opt.textContent = u.fullName;
         sel.appendChild(opt);
       });
       const addBtn = document.createElement('button');
-      addBtn.type = 'button'; addBtn.className = 'btn btn-sm btn-outline-secondary';
+      addBtn.type = 'button';
+      addBtn.className = 'btn btn-sm btn-outline-secondary';
       addBtn.textContent = '追加';
       addBtn.addEventListener('click', () => this.#addStakeholder(Number(sel.value)));
       addRow.append(sel, addBtn);
@@ -642,12 +711,15 @@ class AppTaskDrawer extends HTMLElement {
     const task = this.#task;
     visRow.replaceChildren();
     const lbl = document.createElement('div');
-    lbl.className = 'drawer-field-label'; lbl.textContent = '公開範囲';
+    lbl.className = 'drawer-field-label';
+    lbl.textContent = '公開範囲';
     const sel = document.createElement('select');
     sel.className = 'form-select form-select-sm d-inline-block w-auto me-2';
     Object.entries(VIS_LABEL).forEach(([val, name]) => {
       const opt = document.createElement('option');
-      opt.value = val; opt.textContent = name; opt.selected = val === task.visibility;
+      opt.value = val;
+      opt.textContent = name;
+      opt.selected = val === task.visibility;
       sel.appendChild(opt);
     });
 
@@ -657,12 +729,14 @@ class AppTaskDrawer extends HTMLElement {
     const shSel = document.createElement('select');
     shSel.className = 'form-select form-select-sm flex-grow-1';
     const shOptBlank = document.createElement('option');
-    shOptBlank.value = ''; shOptBlank.textContent = '関係者を選択...';
+    shOptBlank.value = '';
+    shOptBlank.textContent = '関係者を選択...';
     shSel.appendChild(shOptBlank);
-    this.#tenantUsers.forEach(u => {
+    this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId; opt.textContent = u.fullName;
-      opt.selected = this.#stakeholders.some(s => s.userId === u.userId);
+      opt.value = u.userId;
+      opt.textContent = u.fullName;
+      opt.selected = this.#stakeholders.some((s) => s.userId === u.userId);
       shSel.appendChild(opt);
     });
     shSel.multiple = true;
@@ -674,29 +748,34 @@ class AppTaskDrawer extends HTMLElement {
     if (task.visibility === 'STAKEHOLDERS') shSection.classList.remove('d-none');
 
     const saveBtn = document.createElement('button');
-    saveBtn.type = 'button'; saveBtn.className = 'btn btn-sm btn-primary me-1';
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn btn-sm btn-primary me-1';
     saveBtn.textContent = '保存';
     const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-sm btn-light';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-sm btn-light';
     cancelBtn.textContent = '取消';
 
     saveBtn.addEventListener('click', async () => {
       const newVis = sel.value;
       let shIds;
       if (newVis === 'STAKEHOLDERS') {
-        shIds = [...shSel.selectedOptions].map(o => Number(o.value)).filter(Boolean);
+        shIds = [...shSel.selectedOptions].map((o) => Number(o.value)).filter(Boolean);
       }
-      saveBtn.disabled = true; saveBtn.textContent = '保存中...';
+      saveBtn.disabled = true;
+      saveBtn.textContent = '保存中...';
       try {
         await Api.changeVisibility(task.id, newVis, shIds);
         // Reload task + stakeholders and re-render
         await this.#loadAndRenderDetail(task.id);
-        this.dispatchEvent(new CustomEvent('drawer-task-updated', {
-          bubbles: true,
-          detail: { task: this.#task },
-        }));
+        this.dispatchEvent(
+          new CustomEvent('drawer-task-updated', {
+            bubbles: true,
+            detail: { task: this.#task },
+          }),
+        );
       } catch (err) {
-        this.#showDetailError('公開範囲の変更に失敗しました: ' + (err.message || ''));
+        this.#showDetailError(`公開範囲の変更に失敗しました: ${err.message || ''}`);
         this.#renderDetail();
       }
     });
@@ -704,7 +783,8 @@ class AppTaskDrawer extends HTMLElement {
     cancelBtn.addEventListener('click', () => this.#renderDetail());
 
     const btnRow = document.createElement('div');
-    btnRow.className = 'mt-2'; btnRow.append(saveBtn, cancelBtn);
+    btnRow.className = 'mt-2';
+    btnRow.append(saveBtn, cancelBtn);
     visRow.append(lbl, sel, shSection, btnRow);
   }
 
@@ -714,27 +794,34 @@ class AppTaskDrawer extends HTMLElement {
     msg.className = 'small text-danger me-2 align-self-center';
     msg.textContent = `「${this.#task.title}」を削除しますか？`;
     const doBtn = document.createElement('button');
-    doBtn.type = 'button'; doBtn.className = 'btn btn-danger btn-sm';
+    doBtn.type = 'button';
+    doBtn.className = 'btn btn-danger btn-sm';
     doBtn.textContent = '削除する';
     const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-light btn-sm';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-light btn-sm';
     cancelBtn.textContent = '取消';
 
     doBtn.addEventListener('click', async () => {
-      doBtn.disabled = true; doBtn.textContent = '削除中...';
+      doBtn.disabled = true;
+      doBtn.textContent = '削除中...';
       try {
         await Api.deleteTask(this.#task.id, this.#etag);
         const taskId = this.#task.id;
         this.#oc.hide();
-        this.dispatchEvent(new CustomEvent('drawer-task-deleted', {
-          bubbles: true,
-          detail: { taskId },
-        }));
+        this.dispatchEvent(
+          new CustomEvent('drawer-task-deleted', {
+            bubbles: true,
+            detail: { taskId },
+          }),
+        );
       } catch (err) {
         if (err.status === 412) {
-          this.#showDetailError('他のユーザーがこのタスクを編集しました。ページを再読み込みしてください。');
+          this.#showDetailError(
+            '他のユーザーがこのタスクを編集しました。ページを再読み込みしてください。',
+          );
         } else {
-          this.#showDetailError('削除に失敗しました: ' + (err.message || ''));
+          this.#showDetailError(`削除に失敗しました: ${err.message || ''}`);
         }
         this.#renderDetail();
       }
@@ -759,15 +846,17 @@ class AppTaskDrawer extends HTMLElement {
       const updated = await Api.changeStatus(task.id, sel.value);
       this.#task = updated;
       if (updated.version != null) this.#etag = `W/"${updated.version}"`;
-      this.dispatchEvent(new CustomEvent('drawer-task-updated', {
-        bubbles: true,
-        detail: { task: updated },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('drawer-task-updated', {
+          bubbles: true,
+          detail: { task: updated },
+        }),
+      );
       this.#renderDetail();
     } catch (err) {
       sel.value = prev;
       sel.disabled = false;
-      this.#showDetailError('ステータスの更新に失敗しました: ' + (err.message || ''));
+      this.#showDetailError(`ステータスの更新に失敗しました: ${err.message || ''}`);
     }
   }
 
@@ -781,7 +870,7 @@ class AppTaskDrawer extends HTMLElement {
       this.#showDetailError(
         err.status === 409
           ? 'このユーザーはすでに関係者です'
-          : '関係者の追加に失敗しました: ' + (err.message || ''),
+          : `関係者の追加に失敗しました: ${err.message || ''}`,
       );
     }
   }
@@ -789,23 +878,21 @@ class AppTaskDrawer extends HTMLElement {
   async #removeStakeholder(userId) {
     try {
       await Api.removeStakeholder(this.#task.id, userId);
-      this.#stakeholders = this.#stakeholders.filter(s => s.userId !== userId);
+      this.#stakeholders = this.#stakeholders.filter((s) => s.userId !== userId);
       this.#renderDetail();
     } catch (err) {
-      this.#showDetailError('関係者の削除に失敗しました: ' + (err.message || ''));
+      this.#showDetailError(`関係者の削除に失敗しました: ${err.message || ''}`);
     }
   }
 
   // ---- EDIT MODE ----
 
   #switchToEdit() {
-    this.#mode = 'edit';
     this.#replaceUrl(`/tasks/${this.#task.id}/edit`);
     this.#renderEdit();
   }
 
   #switchToDetail() {
-    this.#mode = 'detail';
     this.#replaceUrl(`/tasks/${this.#task.id}`);
     this.#renderDetail();
   }
@@ -823,7 +910,8 @@ class AppTaskDrawer extends HTMLElement {
     bdy.replaceChildren();
 
     const errDiv = document.createElement('div');
-    errDiv.className = 'd-none'; errDiv.id = 'edit-form-error';
+    errDiv.className = 'd-none';
+    errDiv.id = 'edit-form-error';
     bdy.appendChild(errDiv);
 
     const form = document.createElement('form');
@@ -833,8 +921,10 @@ class AppTaskDrawer extends HTMLElement {
     // Title
     const titleGrp = this.#fieldGroup('editTitle', 'タイトル', true);
     const titleInput = document.createElement('input');
-    titleInput.id = 'editTitle'; titleInput.className = 'form-control';
-    titleInput.maxLength = 100; titleInput.required = true;
+    titleInput.id = 'editTitle';
+    titleInput.className = 'form-control';
+    titleInput.maxLength = 100;
+    titleInput.required = true;
     titleInput.value = task.title;
     titleGrp.appendChild(titleInput);
     form.appendChild(titleGrp);
@@ -842,33 +932,43 @@ class AppTaskDrawer extends HTMLElement {
     // Description
     const descGrp = this.#fieldGroup('editDesc', '説明', false);
     const descTa = document.createElement('textarea');
-    descTa.id = 'editDesc'; descTa.className = 'form-control';
-    descTa.rows = 4; descTa.maxLength = 2000;
+    descTa.id = 'editDesc';
+    descTa.className = 'form-control';
+    descTa.rows = 4;
+    descTa.maxLength = 2000;
     descTa.value = task.description || '';
     descGrp.appendChild(descTa);
     form.appendChild(descGrp);
 
     // Due + Assignee row
-    const row = document.createElement('div'); row.className = 'row g-3';
-    const dueCol = document.createElement('div'); dueCol.className = 'col-6';
+    const row = document.createElement('div');
+    row.className = 'row g-3';
+    const dueCol = document.createElement('div');
+    dueCol.className = 'col-6';
     const dueGrp = this.#fieldGroup('editDue', '期限日', true);
     const dueInput = document.createElement('input');
-    dueInput.type = 'date'; dueInput.id = 'editDue';
-    dueInput.className = 'form-control'; dueInput.required = true;
+    dueInput.type = 'date';
+    dueInput.id = 'editDue';
+    dueInput.className = 'form-control';
+    dueInput.required = true;
     dueInput.value = task.dueDate || '';
     dueGrp.appendChild(dueInput);
     dueCol.appendChild(dueGrp);
 
-    const assCol = document.createElement('div'); assCol.className = 'col-6';
+    const assCol = document.createElement('div');
+    assCol.className = 'col-6';
     const assGrp = this.#fieldGroup('editAssignee', '担当者', false);
     const assSel = document.createElement('select');
-    assSel.id = 'editAssignee'; assSel.className = 'form-select';
+    assSel.id = 'editAssignee';
+    assSel.className = 'form-select';
     const emptyOpt = document.createElement('option');
-    emptyOpt.value = ''; emptyOpt.textContent = '未割当';
+    emptyOpt.value = '';
+    emptyOpt.textContent = '未割当';
     assSel.appendChild(emptyOpt);
-    this.#tenantUsers.forEach(u => {
+    this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId; opt.textContent = u.fullName;
+      opt.value = u.userId;
+      opt.textContent = u.fullName;
       opt.selected = task.assignee?.id === u.userId;
       assSel.appendChild(opt);
     });
@@ -878,20 +978,30 @@ class AppTaskDrawer extends HTMLElement {
     form.appendChild(row);
 
     // Priority
-    const priGrp = document.createElement('div'); priGrp.className = 'mt-3';
+    const priGrp = document.createElement('div');
+    priGrp.className = 'mt-3';
     const priFs = document.createElement('fieldset');
     const priLeg = document.createElement('legend');
     priLeg.className = 'form-label small fw-bold';
     priLeg.innerHTML = '優先度 <span class="text-danger" aria-hidden="true">*</span>';
     const priBtnGrp = document.createElement('div');
-    priBtnGrp.className = 'btn-group w-100'; priBtnGrp.setAttribute('role', 'group');
-    [['HIGH','btn-outline-danger','高'],['MEDIUM','btn-outline-warning','中'],['LOW','btn-outline-secondary','低']].forEach(([val, cls, lbl]) => {
+    priBtnGrp.className = 'btn-group w-100';
+    priBtnGrp.setAttribute('role', 'group');
+    [
+      ['HIGH', 'btn-outline-danger', '高'],
+      ['MEDIUM', 'btn-outline-warning', '中'],
+      ['LOW', 'btn-outline-secondary', '低'],
+    ].forEach(([val, cls, lbl]) => {
       const inp = document.createElement('input');
-      inp.type = 'radio'; inp.className = 'btn-check';
-      inp.name = 'editPri'; inp.id = `editPri-${val}`; inp.value = val;
+      inp.type = 'radio';
+      inp.className = 'btn-check';
+      inp.name = 'editPri';
+      inp.id = `editPri-${val}`;
+      inp.value = val;
       inp.checked = task.priority === val;
       const lab = document.createElement('label');
-      lab.className = `btn ${cls}`; lab.htmlFor = `editPri-${val}`;
+      lab.className = `btn ${cls}`;
+      lab.htmlFor = `editPri-${val}`;
       lab.textContent = lbl;
       priBtnGrp.append(inp, lab);
     });
@@ -903,16 +1013,21 @@ class AppTaskDrawer extends HTMLElement {
     const footer = document.createElement('div');
     footer.className = 'd-flex gap-2 mt-4';
     const saveBtn = document.createElement('button');
-    saveBtn.type = 'submit'; saveBtn.className = 'btn btn-primary flex-grow-1';
+    saveBtn.type = 'submit';
+    saveBtn.className = 'btn btn-primary flex-grow-1';
     saveBtn.textContent = '保存';
     const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-light';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-light';
     cancelBtn.textContent = '取消';
     cancelBtn.addEventListener('click', () => this.#switchToDetail());
     footer.append(saveBtn, cancelBtn);
     form.appendChild(footer);
 
-    form.addEventListener('submit', e => { e.preventDefault(); this.#submitEdit(form); });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.#submitEdit(form);
+    });
   }
 
   async #submitEdit(form) {
@@ -933,15 +1048,16 @@ class AppTaskDrawer extends HTMLElement {
       return;
     }
 
-    const priority   = form.querySelector('input[name="editPri"]:checked')?.value;
+    const priority = form.querySelector('input[name="editPri"]:checked')?.value;
     const assigneeId = form.querySelector('#editAssignee').value
-      ? Number(form.querySelector('#editAssignee').value) : null;
+      ? Number(form.querySelector('#editAssignee').value)
+      : null;
     const desc = form.querySelector('#editDesc').value.trim() || null;
 
     const body = {};
-    if (title    !== this.#task.title)         body.title       = title;
-    if (dueDate  !== this.#task.dueDate)        body.dueDate     = dueDate;
-    if (priority !== this.#task.priority)       body.priority    = priority;
+    if (title !== this.#task.title) body.title = title;
+    if (dueDate !== this.#task.dueDate) body.dueDate = dueDate;
+    if (priority !== this.#task.priority) body.priority = priority;
     // description: null to clear, string to set
     const prevDesc = this.#task.description || null;
     if (desc !== prevDesc) body.description = desc;
@@ -955,25 +1071,30 @@ class AppTaskDrawer extends HTMLElement {
       return;
     }
 
-    saveBtn.disabled = true; saveBtn.textContent = '保存中...';
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
     try {
       const updated = await Api.patchTask(this.#task.id, this.#etag, body);
       this.#task = updated;
       // Re-fetch ETag from updated task (patchTask returns TaskDetail with version)
       this.#etag = updated.version != null ? `W/"${updated.version}"` : this.#etag;
-      this.dispatchEvent(new CustomEvent('drawer-task-updated', {
-        bubbles: true,
-        detail: { task: updated },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('drawer-task-updated', {
+          bubbles: true,
+          detail: { task: updated },
+        }),
+      );
       this.#switchToDetail();
     } catch (err) {
-      saveBtn.disabled = false; saveBtn.textContent = '保存';
+      saveBtn.disabled = false;
+      saveBtn.textContent = '保存';
       if (err.status === 412) {
-        errDiv.textContent = '他のユーザーがこのタスクを編集しました。一旦閉じてから再度開いてください。';
+        errDiv.textContent =
+          '他のユーザーがこのタスクを編集しました。一旦閉じてから再度開いてください。';
       } else if (err.status === 403) {
         errDiv.textContent = '編集権限がありません';
       } else {
-        errDiv.textContent = '保存に失敗しました: ' + (err.message || '');
+        errDiv.textContent = `保存に失敗しました: ${err.message || ''}`;
       }
       errDiv.className = 'alert alert-danger py-2 small mb-3';
     }
@@ -990,7 +1111,8 @@ class AppTaskDrawer extends HTMLElement {
     lbl.textContent = label;
     if (required) {
       const star = document.createElement('span');
-      star.className = 'text-danger ms-1'; star.setAttribute('aria-hidden', 'true');
+      star.className = 'text-danger ms-1';
+      star.setAttribute('aria-hidden', 'true');
       star.textContent = '*';
       lbl.appendChild(star);
     }
@@ -1004,7 +1126,8 @@ class AppTaskDrawer extends HTMLElement {
     chip.textContent = label;
     if (onRemove) {
       const rm = document.createElement('button');
-      rm.type = 'button'; rm.className = 'drawer-chip-rm';
+      rm.type = 'button';
+      rm.className = 'drawer-chip-rm';
       rm.setAttribute('aria-label', `${label}を削除`);
       rm.innerHTML = '&times;';
       rm.addEventListener('click', onRemove);
@@ -1015,26 +1138,29 @@ class AppTaskDrawer extends HTMLElement {
 
   #makePriBadge(priority) {
     const span = document.createElement('span');
-    span.className = `pri-badge pri-${priority}`; span.textContent = PRI_LABEL[priority];
+    span.className = `pri-badge pri-${priority}`;
+    span.textContent = PRI_LABEL[priority];
     return span;
   }
 
   #dueDateEl(dueDate) {
     if (!dueDate) return document.createTextNode('—');
     const today = new Date(
-      new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date()) + 'T00:00:00'
+      `${new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date())}T00:00:00`,
     );
-    const due  = new Date(dueDate + 'T00:00:00');
+    const due = new Date(`${dueDate}T00:00:00`);
     const diff = Math.round((due - today) / 86400000);
-    const md   = dueDate.slice(5).replace('-', '/');
+    const md = dueDate.slice(5).replace('-', '/');
     if (diff < 0) {
       const span = document.createElement('span');
-      span.className = 'due-overdue'; span.textContent = `${dueDate}(${diff}日)`;
+      span.className = 'due-overdue';
+      span.textContent = `${dueDate}(${diff}日)`;
       return span;
     }
     if (diff === 0) {
       const span = document.createElement('span');
-      span.className = 'due-today'; span.textContent = `今日 (${md})`;
+      span.className = 'due-today';
+      span.textContent = `今日 (${md})`;
       return span;
     }
     return document.createTextNode(`${dueDate} (あと${diff}日)`);
@@ -1043,7 +1169,10 @@ class AppTaskDrawer extends HTMLElement {
   #fmtDate(iso) {
     if (!iso) return '—';
     return new Intl.DateTimeFormat('ja-JP', {
-      timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).format(new Date(iso));
   }
 
@@ -1051,8 +1180,11 @@ class AppTaskDrawer extends HTMLElement {
     if (!iso) return '—';
     return new Intl.DateTimeFormat('ja-JP', {
       timeZone: 'Asia/Tokyo',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     }).format(new Date(iso));
   }
 }

@@ -42,17 +42,19 @@ _descEmptyTpl.innerHTML =
 function todayJST() {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Tokyo',
-    year: 'numeric', month: '2-digit', day: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(new Date());
-  return new Date(parts + 'T00:00:00');
+  return new Date(`${parts}T00:00:00`);
 }
 
 function dueLabelNode(dueDate) {
   if (!dueDate) return document.createTextNode('—');
   const today = todayJST();
-  const due   = new Date(dueDate + 'T00:00:00');
-  const diff  = Math.round((due - today) / 86400000);
-  const md    = dueDate.slice(5).replace('-', '/');
+  const due = new Date(`${dueDate}T00:00:00`);
+  const diff = Math.round((due - today) / 86400000);
+  const md = dueDate.slice(5).replace('-', '/');
   if (diff < 0) {
     const span = document.createElement('span');
     span.className = 'due-overdue';
@@ -72,31 +74,31 @@ function dueLabelNode(dueDate) {
 class AppTaskRow extends HTMLElement {
   #task = null;
   #currentUserId = null;
-  #tenantUsers   = [];
-  #editState     = null; // { td, originalNodes, abort }
+  #tenantUsers = [];
+  #editState = null; // { td, originalNodes, abort }
 
   // Bind once so the same reference can be removed in disconnectedCallback
-  #handleClick  = this.#onClick.bind(this);
+  #handleClick = this.#onClick.bind(this);
   #handleChange = this.#onChange.bind(this);
   #handleKeydown = this.#onKeydown.bind(this);
 
   connectedCallback() {
-    this.addEventListener('click',   this.#handleClick);
-    this.addEventListener('change',  this.#handleChange);
+    this.addEventListener('click', this.#handleClick);
+    this.addEventListener('change', this.#handleChange);
     this.addEventListener('keydown', this.#handleKeydown);
     if (this.#task) this.#render();
   }
 
   disconnectedCallback() {
-    this.removeEventListener('click',   this.#handleClick);
-    this.removeEventListener('change',  this.#handleChange);
+    this.removeEventListener('click', this.#handleClick);
+    this.removeEventListener('change', this.#handleChange);
     this.removeEventListener('keydown', this.#handleKeydown);
   }
 
   setTask(task, currentUserId, tenantUsers) {
-    this.#task          = task;
+    this.#task = task;
     this.#currentUserId = currentUserId;
-    this.#tenantUsers   = tenantUsers;
+    this.#tenantUsers = tenantUsers;
     if (this.isConnected) this.#render();
   }
 
@@ -111,7 +113,7 @@ class AppTaskRow extends HTMLElement {
   #render() {
     this.cancelEdit();
     const task = this.#task;
-    const canEdit         = task.editable;
+    const canEdit = task.editable;
     const canChangeStatus = task.editable || task.assignee?.id === this.#currentUserId;
 
     const tr = _rowTpl.content.cloneNode(true).firstElementChild;
@@ -122,7 +124,7 @@ class AppTaskRow extends HTMLElement {
     if (canChangeStatus) {
       statusTd.dataset.noRowClick = '';
       const badge = document.createElement('app-status-badge');
-      badge.setAttribute('status',  task.status);
+      badge.setAttribute('status', task.status);
       badge.setAttribute('task-id', task.id);
       badge.setAttribute('editable', '');
       statusTd.appendChild(badge);
@@ -138,14 +140,13 @@ class AppTaskRow extends HTMLElement {
       titleTd.dataset.noRowClick = '';
       const titleDiv = _titleEditTpl.content.cloneNode(true).firstElementChild;
       titleDiv.dataset.taskId = task.id;
-      titleDiv.textContent    = task.title;
+      titleDiv.textContent = task.title;
       titleTd.appendChild(titleDiv);
 
       if (task.description) {
         const descDiv = _descEditTpl.content.cloneNode(true).firstElementChild;
         descDiv.dataset.taskId = task.id;
-        const preview = task.description.slice(0, 80) +
-          (task.description.length > 80 ? '…' : '');
+        const preview = task.description.slice(0, 80) + (task.description.length > 80 ? '…' : '');
         descDiv.textContent = preview;
         titleTd.appendChild(descDiv);
       } else {
@@ -155,14 +156,13 @@ class AppTaskRow extends HTMLElement {
       }
     } else {
       const titleDiv = document.createElement('div');
-      titleDiv.className   = 'task-title';
+      titleDiv.className = 'task-title';
       titleDiv.textContent = task.title;
       titleTd.appendChild(titleDiv);
       if (task.description) {
         const descDiv = document.createElement('div');
-        descDiv.className   = 'task-desc';
-        const preview = task.description.slice(0, 80) +
-          (task.description.length > 80 ? '…' : '');
+        descDiv.className = 'task-desc';
+        const preview = task.description.slice(0, 80) + (task.description.length > 80 ? '…' : '');
         descDiv.textContent = preview;
         titleTd.appendChild(descDiv);
       }
@@ -170,22 +170,22 @@ class AppTaskRow extends HTMLElement {
 
     // --- Owner cell ---
     const ownerIni = (task.owner?.fullName || '?').slice(0, 1);
-    const ownerTd  = tr.querySelector('.cell-owner');
+    const ownerTd = tr.querySelector('.cell-owner');
     ownerTd.querySelector('.owner-mini').textContent = ownerIni;
     ownerTd.querySelector('.owner-name').textContent = task.owner?.fullName ?? '—';
 
     // --- Assignee cell ---
-    const assigneeTd   = tr.querySelector('.cell-assignee');
+    const assigneeTd = tr.querySelector('.cell-assignee');
     const assigneeName = task.assignee?.fullName ?? '—';
     if (canEdit) {
       assigneeTd.dataset.noRowClick = '';
       const span = document.createElement('span');
-      span.className       = 'edit-cell';
-      span.dataset.action  = 'cell-edit';
-      span.dataset.taskId  = task.id;
-      span.dataset.field   = 'assigneeId';
-      span.title           = 'クリックして担当者を変更';
-      span.textContent     = assigneeName;
+      span.className = 'edit-cell';
+      span.dataset.action = 'cell-edit';
+      span.dataset.taskId = task.id;
+      span.dataset.field = 'assigneeId';
+      span.title = 'クリックして担当者を変更';
+      span.textContent = assigneeName;
       assigneeTd.appendChild(span);
     } else {
       const span = document.createElement('span');
@@ -199,11 +199,11 @@ class AppTaskRow extends HTMLElement {
     if (canEdit) {
       dueTd.dataset.noRowClick = '';
       const span = document.createElement('span');
-      span.className       = 'edit-cell';
-      span.dataset.action  = 'cell-edit';
-      span.dataset.taskId  = task.id;
-      span.dataset.field   = 'dueDate';
-      span.title           = 'クリックして期限を変更';
+      span.className = 'edit-cell';
+      span.dataset.action = 'cell-edit';
+      span.dataset.taskId = task.id;
+      span.dataset.field = 'dueDate';
+      span.title = 'クリックして期限を変更';
       span.appendChild(dueLabelNode(task.dueDate));
       dueTd.appendChild(span);
     } else {
@@ -216,7 +216,7 @@ class AppTaskRow extends HTMLElement {
       priorityTd.dataset.noRowClick = '';
       const badge = document.createElement('app-priority-badge');
       badge.setAttribute('priority', task.priority);
-      badge.setAttribute('task-id',  task.id);
+      badge.setAttribute('task-id', task.id);
       badge.setAttribute('editable', '');
       priorityTd.appendChild(badge);
     } else {
@@ -243,20 +243,20 @@ class AppTaskRow extends HTMLElement {
     this.cancelEdit();
 
     const td = triggerEl.closest('td');
-    const originalNodes = [...td.childNodes].map(n => n.cloneNode(true));
+    const originalNodes = [...td.childNodes].map((n) => n.cloneNode(true));
     let input;
 
     if (field === 'title') {
       input = document.createElement('input');
-      input.type       = 'text';
-      input.className  = 'form-control form-control-sm inline-input';
-      input.value      = task.title;
-      input.maxLength  = 100;
+      input.type = 'text';
+      input.className = 'form-control form-control-sm inline-input';
+      input.value = task.title;
+      input.maxLength = 100;
     } else if (field === 'dueDate') {
       input = document.createElement('input');
-      input.type      = 'date';
+      input.type = 'date';
       input.className = 'form-control form-control-sm inline-input';
-      input.value     = task.dueDate ?? '';
+      input.value = task.dueDate ?? '';
     } else if (field === 'assigneeId') {
       input = document.createElement('select');
       input.className = 'form-select form-select-sm inline-input';
@@ -264,11 +264,11 @@ class AppTaskRow extends HTMLElement {
       emptyOpt.value = '';
       emptyOpt.textContent = '未割当';
       input.appendChild(emptyOpt);
-      this.#tenantUsers.forEach(u => {
+      this.#tenantUsers.forEach((u) => {
         const opt = document.createElement('option');
-        opt.value       = u.userId;
+        opt.value = u.userId;
         opt.textContent = u.fullName;
-        opt.selected    = task.assignee?.id === u.userId;
+        opt.selected = task.assignee?.id === u.userId;
         input.appendChild(opt);
       });
       input.value = task.assignee?.id != null ? String(task.assignee.id) : '';
@@ -281,7 +281,9 @@ class AppTaskRow extends HTMLElement {
     this.#editState = {
       td,
       originalNodes,
-      abort: () => { done = true; },
+      abort: () => {
+        done = true;
+      },
     };
 
     td.replaceChildren(input);
@@ -293,18 +295,33 @@ class AppTaskRow extends HTMLElement {
       done = true;
       this.#editState = null;
       const val = input.value;
-      if (field === 'title' && !val.trim()) { td.replaceChildren(...originalNodes); return; }
-      const commitVal = (field === 'dueDate' && !val) ? null : val;
-      if (commitVal === (originalValue || null)) { td.replaceChildren(...originalNodes); return; }
-      this.dispatchEvent(new CustomEvent('task-field-commit', {
-        bubbles: true,
-        detail: { taskId: task.id, field, value: commitVal },
-      }));
+      if (field === 'title' && !val.trim()) {
+        td.replaceChildren(...originalNodes);
+        return;
+      }
+      const commitVal = field === 'dueDate' && !val ? null : val;
+      if (commitVal === (originalValue || null)) {
+        td.replaceChildren(...originalNodes);
+        return;
+      }
+      this.dispatchEvent(
+        new CustomEvent('task-field-commit', {
+          bubbles: true,
+          detail: { taskId: task.id, field, value: commitVal },
+        }),
+      );
     };
 
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { done = true; td.replaceChildren(...originalNodes); this.#editState = null; }
-      if (e.key === 'Enter')  { e.preventDefault(); doCommit(); }
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        done = true;
+        td.replaceChildren(...originalNodes);
+        this.#editState = null;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doCommit();
+      }
     });
 
     if (field === 'dueDate' || field === 'assigneeId') {
@@ -323,10 +340,12 @@ class AppTaskRow extends HTMLElement {
       if (action === 'cell-edit') {
         this.#activateCellEdit(actionEl, field);
       } else if (action === 'desc-edit') {
-        this.dispatchEvent(new CustomEvent('task-desc-open', {
-          bubbles: true,
-          detail: { taskId: id, triggerEl: actionEl },
-        }));
+        this.dispatchEvent(
+          new CustomEvent('task-desc-open', {
+            bubbles: true,
+            detail: { taskId: id, triggerEl: actionEl },
+          }),
+        );
       }
       return;
     }
@@ -334,10 +353,12 @@ class AppTaskRow extends HTMLElement {
     if (!e.target.closest('[data-no-row-click]')) {
       const tr = e.target.closest('tr[data-task-id]');
       if (tr) {
-        this.dispatchEvent(new CustomEvent('task-row-click', {
-          bubbles: true,
-          detail: { taskId: Number(tr.dataset.taskId) },
-        }));
+        this.dispatchEvent(
+          new CustomEvent('task-row-click', {
+            bubbles: true,
+            detail: { taskId: Number(tr.dataset.taskId) },
+          }),
+        );
       }
     }
   }
@@ -347,15 +368,19 @@ class AppTaskRow extends HTMLElement {
     if (!actionEl) return;
     const taskId = Number(actionEl.dataset.taskId);
     if (actionEl.dataset.action === 'status-change') {
-      this.dispatchEvent(new CustomEvent('task-status-change', {
-        bubbles: true,
-        detail: { taskId, status: actionEl.value, selectEl: actionEl },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('task-status-change', {
+          bubbles: true,
+          detail: { taskId, status: actionEl.value, selectEl: actionEl },
+        }),
+      );
     } else if (actionEl.dataset.action === 'priority-change') {
-      this.dispatchEvent(new CustomEvent('task-priority-change', {
-        bubbles: true,
-        detail: { taskId, priority: actionEl.value, selectEl: actionEl },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('task-priority-change', {
+          bubbles: true,
+          detail: { taskId, priority: actionEl.value, selectEl: actionEl },
+        }),
+      );
     }
   }
 
@@ -364,10 +389,12 @@ class AppTaskRow extends HTMLElement {
     const tr = e.target.closest('tr[data-task-id]');
     if (tr && e.target === tr) {
       e.preventDefault();
-      this.dispatchEvent(new CustomEvent('task-row-click', {
-        bubbles: true,
-        detail: { taskId: Number(tr.dataset.taskId) },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('task-row-click', {
+          bubbles: true,
+          detail: { taskId: Number(tr.dataset.taskId) },
+        }),
+      );
     }
   }
 }

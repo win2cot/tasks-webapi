@@ -1,23 +1,23 @@
 // ---- Page state ----
 let currentPage = 0;
 let currentSort = 'dueDate,asc';
-let totalPages    = 1;
+let totalPages = 1;
 let totalElements = 0;
 const PAGE_SIZE = 50;
 
 // ---- Task / user state ----
-let taskMap      = new Map(); // taskId(number) → Task object
-let rowMap       = new Map(); // taskId(number) → app-task-row element
+const taskMap = new Map(); // taskId(number) → Task object
+const rowMap = new Map(); // taskId(number) → app-task-row element
 let currentUserId = null;
-let tenantUsers   = [];
+let tenantUsers = [];
 
 // ---- CE references ----
-const errorBanner    = document.getElementById('error-banner');
+const errorBanner = document.getElementById('error-banner');
 const conflictBanner = document.getElementById('conflict-banner');
-const descPopover    = document.getElementById('desc-popover');
-const taskDrawer     = document.getElementById('task-drawer');
-const pager          = document.getElementById('task-pager');
-const tbody          = document.getElementById('task-tbody');
+const descPopover = document.getElementById('desc-popover');
+const taskDrawer = document.getElementById('task-drawer');
+const pager = document.getElementById('task-pager');
+const tbody = document.getElementById('task-tbody');
 
 // ETag format per ADR-0012: W/"<version>"
 function buildEtag(task) {
@@ -44,7 +44,7 @@ function renderTasks(tasks) {
     return;
   }
 
-  const rows = tasks.map(task => {
+  const rows = tasks.map((task) => {
     const row = document.createElement('app-task-row');
     row.setTask(task, currentUserId, tenantUsers);
     rowMap.set(task.id, row);
@@ -56,7 +56,7 @@ function renderTasks(tasks) {
 // ---- Re-render a single row after a successful PATCH ----
 function rerenderRow(taskId) {
   const task = taskMap.get(taskId);
-  const row  = rowMap.get(taskId);
+  const row = rowMap.get(taskId);
   if (!task || !row) return;
   row.setTask(task, currentUserId, tenantUsers);
 }
@@ -72,7 +72,7 @@ async function onStatusChange(taskId, status, selectEl) {
     rerenderRow(taskId); // revert
     // PATCH /api/tasks/{id}/status は ADR-0012 の If-Match 対象外のため 412 は理論上返らない
     if (err.status === 412) conflictBanner.show();
-    else errorBanner.show('ステータスの更新に失敗しました: ' + (err.message || ''));
+    else errorBanner.show(`ステータスの更新に失敗しました: ${err.message || ''}`);
   }
 }
 
@@ -88,7 +88,7 @@ async function onPriorityChange(taskId, priority, selectEl) {
   } catch (err) {
     rerenderRow(taskId);
     if (err.status === 412) conflictBanner.show();
-    else errorBanner.show('優先度の更新に失敗しました: ' + (err.message || ''));
+    else errorBanner.show(`優先度の更新に失敗しました: ${err.message || ''}`);
   }
 }
 
@@ -100,7 +100,7 @@ async function onFieldCommit(taskId, field, value) {
   let body;
   if (field === 'assigneeId') body = { assigneeId: value ? Number(value) : null };
   else if (field === 'dueDate') body = { dueDate: value };
-  else if (field === 'title')   body = { title: value };
+  else if (field === 'title') body = { title: value };
   if (!body) return;
 
   try {
@@ -110,7 +110,7 @@ async function onFieldCommit(taskId, field, value) {
   } catch (err) {
     rerenderRow(taskId);
     if (err.status === 412) conflictBanner.show();
-    else errorBanner.show('更新に失敗しました: ' + (err.message || ''));
+    else errorBanner.show(`更新に失敗しました: ${err.message || ''}`);
   }
 }
 
@@ -125,7 +125,7 @@ async function onDescCommit(taskId, value) {
     rerenderRow(taskId);
   } catch (err) {
     if (err.status === 412) conflictBanner.show();
-    else errorBanner.show('説明の更新に失敗しました: ' + (err.message || ''));
+    else errorBanner.show(`説明の更新に失敗しました: ${err.message || ''}`);
   }
 }
 
@@ -149,10 +149,13 @@ async function loadTasks() {
   showLoading(true);
   try {
     const data = await Api.listTasks({ page: currentPage, size: PAGE_SIZE, sort: currentSort });
-    totalPages    = data.totalPages    || 1;
+    totalPages = data.totalPages || 1;
     totalElements = data.totalElements || 0;
     taskMap.clear();
-    if (data.content) data.content.forEach(t => taskMap.set(t.id, t));
+    if (data.content)
+      data.content.forEach((t) => {
+        taskMap.set(t.id, t);
+      });
     renderTasks(data.content);
     pager.update({ currentPage, totalPages, totalElements, pageSize: PAGE_SIZE });
     showLoading(false);
@@ -172,11 +175,9 @@ function onSortChange(value) {
 
 function cycleSort(field) {
   const [f, d] = currentSort.split(',');
-  currentSort = f === field
-    ? `${field},${d === 'asc' ? 'desc' : 'asc'}`
-    : `${field},asc`;
+  currentSort = f === field ? `${field},${d === 'asc' ? 'desc' : 'asc'}` : `${field},asc`;
   const sel = document.getElementById('sortSel');
-  const match = [...sel.options].find(o => o.value === currentSort);
+  const match = [...sel.options].find((o) => o.value === currentSort);
   if (match) sel.value = currentSort;
   currentPage = 0;
   updateSortCarets();
@@ -185,12 +186,15 @@ function cycleSort(field) {
 
 function updateSortCarets() {
   const [f, d] = currentSort.split(',');
-  ['dueDate', 'priority'].forEach(field => {
+  ['dueDate', 'priority'].forEach((field) => {
     const el = document.getElementById(`sort-caret-${field}`);
     if (!el) return;
-    el.className = f === field
-      ? (d === 'asc' ? 'bi bi-caret-up-fill' : 'bi bi-caret-down-fill')
-      : 'bi bi-chevron-expand';
+    el.className =
+      f === field
+        ? d === 'asc'
+          ? 'bi bi-caret-up-fill'
+          : 'bi bi-caret-down-fill'
+        : 'bi bi-chevron-expand';
   });
 }
 
@@ -202,37 +206,49 @@ function onRowClick(id) {
 // ---- Event listeners on CEs ----
 
 // app-task-row events (bubble up through tbody)
-tbody.addEventListener('task-status-change',   e => onStatusChange(e.detail.taskId, e.detail.status, e.detail.selectEl));
-tbody.addEventListener('task-priority-change', e => onPriorityChange(e.detail.taskId, e.detail.priority, e.detail.selectEl));
-tbody.addEventListener('task-field-commit',    e => onFieldCommit(e.detail.taskId, e.detail.field, e.detail.value));
-tbody.addEventListener('task-row-click',       e => onRowClick(e.detail.taskId));
-tbody.addEventListener('task-desc-open', e => {
+tbody.addEventListener('task-status-change', (e) =>
+  onStatusChange(e.detail.taskId, e.detail.status, e.detail.selectEl),
+);
+tbody.addEventListener('task-priority-change', (e) =>
+  onPriorityChange(e.detail.taskId, e.detail.priority, e.detail.selectEl),
+);
+tbody.addEventListener('task-field-commit', (e) =>
+  onFieldCommit(e.detail.taskId, e.detail.field, e.detail.value),
+);
+tbody.addEventListener('task-row-click', (e) => onRowClick(e.detail.taskId));
+tbody.addEventListener('task-desc-open', (e) => {
   const task = taskMap.get(e.detail.taskId);
   if (!task?.editable) return;
   descPopover.open(e.detail.taskId, e.detail.triggerEl, task.description);
 });
 
 // app-desc-popover events
-descPopover.addEventListener('desc-commit', e => onDescCommit(e.detail.taskId, e.detail.value));
+descPopover.addEventListener('desc-commit', (e) => onDescCommit(e.detail.taskId, e.detail.value));
 
 // app-error-banner retry
 errorBanner.addEventListener('error-retry', loadTasks);
 
 // app-conflict-banner
-conflictBanner.addEventListener('conflict-reload', () => { conflictBanner.hide(); loadTasks(); });
+conflictBanner.addEventListener('conflict-reload', () => {
+  conflictBanner.hide();
+  loadTasks();
+});
 
 // app-task-drawer events
 taskDrawer.addEventListener('drawer-task-created', () => loadTasks());
 taskDrawer.addEventListener('drawer-task-deleted', () => loadTasks());
-taskDrawer.addEventListener('drawer-task-updated', e => {
+taskDrawer.addEventListener('drawer-task-updated', (e) => {
   const updated = e.detail?.task;
-  if (!updated) { loadTasks(); return; }
+  if (!updated) {
+    loadTasks();
+    return;
+  }
   taskMap.set(updated.id, updated);
   rerenderRow(updated.id);
 });
 
 // app-pager
-pager.addEventListener('page-change', e => {
+pager.addEventListener('page-change', (e) => {
   const p = e.detail.page;
   if (p < 0 || p >= totalPages) return;
   currentPage = p;
@@ -241,7 +257,7 @@ pager.addEventListener('page-change', e => {
 
 // Static controls
 document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
-document.getElementById('sortSel').addEventListener('change',  e => onSortChange(e.target.value));
+document.getElementById('sortSel').addEventListener('change', (e) => onSortChange(e.target.value));
 document.getElementById('btn-new-task').addEventListener('click', () => taskDrawer.open());
 document.getElementById('th-dueDate').addEventListener('click', () => cycleSort('dueDate'));
 document.getElementById('th-priority').addEventListener('click', () => cycleSort('priority'));
@@ -255,7 +271,7 @@ async function main() {
   try {
     me = await Api.getMe();
   } catch (err) {
-    errorBanner.show('ユーザー情報の取得に失敗しました: ' + err.message);
+    errorBanner.show(`ユーザー情報の取得に失敗しました: ${err.message}`);
     return;
   }
 
@@ -265,7 +281,7 @@ async function main() {
   const user = Auth.getUser();
   const displayName = user?.name || user?.preferred_username || '';
   document.getElementById('nav-username').textContent = displayName;
-  document.getElementById('user-avatar').textContent  = displayName.slice(0, 1) || '?';
+  document.getElementById('user-avatar').textContent = displayName.slice(0, 1) || '?';
 
   if (!me.activeTenantId) {
     window.location.replace('index.html');
@@ -276,7 +292,7 @@ async function main() {
   document.getElementById('tenant-switcher').setData(me.tenants, me.activeTenantId);
 
   // Reflect Tenant Admin role in sidebar
-  const activeTenant = me.tenants?.find(t => t.id === me.activeTenantId);
+  const activeTenant = me.tenants?.find((t) => t.id === me.activeTenantId);
   if (activeTenant?.role === 'TENANT_ADMIN') {
     document.body.classList.add('role-admin');
   }
@@ -293,8 +309,8 @@ async function main() {
 
   // Auto-open drawer based on URL path (direct URL / page reload with task URL)
   const path = location.pathname;
-  const newMatch    = /\/tasks\/new\/?$/.exec(path);
-  const editMatch   = /\/tasks\/(\d+)\/edit\/?$/.exec(path);
+  const newMatch = /\/tasks\/new\/?$/.exec(path);
+  const editMatch = /\/tasks\/(\d+)\/edit\/?$/.exec(path);
   const detailMatch = /\/tasks\/(\d+)\/?$/.exec(path);
   if (newMatch) {
     taskDrawer.openNew();

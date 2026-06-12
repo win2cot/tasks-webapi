@@ -7,21 +7,27 @@ _priSelTpl.innerHTML =
   '<select class="inline-sel" aria-label="優先度" data-action="priority-change"></select>';
 
 class AppPriorityBadge extends HTMLElement {
-  static get observedAttributes() { return ['priority', 'editable', 'task-id']; }
+  static get observedAttributes() {
+    return ['priority', 'editable', 'task-id'];
+  }
 
-  connectedCallback() { this.#render(); }
-  attributeChangedCallback() { if (this.isConnected) this.#render(); }
+  connectedCallback() {
+    this.#render();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.#render();
+  }
 
   #render() {
     const priority = this.getAttribute('priority') || 'MEDIUM';
     const editable = this.hasAttribute('editable');
-    const taskId   = this.getAttribute('task-id') || '';
+    const taskId = this.getAttribute('task-id') || '';
     const [label, cls] = TaskMeta.priority(priority);
 
     if (editable) {
       const sel = _priSelTpl.content.cloneNode(true).firstElementChild;
-      sel.className       = `inline-sel pri-sel-${priority}`;
-      sel.dataset.taskId  = taskId;
+      sel.className = `inline-sel pri-sel-${priority}`;
+      sel.dataset.taskId = taskId;
       TaskMeta.PRIORITY_OPTIONS.forEach(({ v, l }) => {
         const opt = document.createElement('option');
         opt.value = v;
@@ -32,7 +38,7 @@ class AppPriorityBadge extends HTMLElement {
       this.replaceChildren(sel);
     } else {
       const span = _priBadgeTpl.content.cloneNode(true).firstElementChild;
-      span.className   = `pri-badge ${cls}`;
+      span.className = `pri-badge ${cls}`;
       span.textContent = label;
       this.replaceChildren(span);
     }

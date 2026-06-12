@@ -16,15 +16,15 @@ _descPopTpl.innerHTML = `
 class AppDescPopover extends HTMLElement {
   #taskId = null;
   #overlay = null;
-  #ta      = null;
+  #ta = null;
 
   #handleMousedown = this.#onDocMousedown.bind(this);
-  #handleKeydown   = this.#onTaKeydown.bind(this);
+  #handleKeydown = this.#onTaKeydown.bind(this);
 
   connectedCallback() {
     this.replaceChildren(_descPopTpl.content.cloneNode(true));
     this.#overlay = this.firstElementChild;
-    this.#ta      = this.#overlay.querySelector('textarea');
+    this.#ta = this.#overlay.querySelector('textarea');
 
     this.#overlay.querySelector('.btn-save').addEventListener('click', () => this.#commit());
     this.#overlay.querySelector('.btn-cancel').addEventListener('click', () => this.close());
@@ -37,17 +37,17 @@ class AppDescPopover extends HTMLElement {
   }
 
   open(taskId, triggerEl, description) {
-    this.#taskId  = taskId;
+    this.#taskId = taskId;
     this.#ta.value = description || '';
 
     const rect = triggerEl.getBoundingClientRect();
-    let top  = rect.bottom + 8;
+    let top = rect.bottom + 8;
     let left = rect.left;
-    if (left + 310 > window.innerWidth)  left = Math.max(8, window.innerWidth  - 318);
-    if (top  + 190 > window.innerHeight) top  = rect.top - 198;
+    if (left + 310 > window.innerWidth) left = Math.max(8, window.innerWidth - 318);
+    if (top + 190 > window.innerHeight) top = rect.top - 198;
 
-    this.#overlay.style.top  = top  + 'px';
-    this.#overlay.style.left = left + 'px';
+    this.#overlay.style.top = `${top}px`;
+    this.#overlay.style.left = `${left}px`;
     this.#overlay.classList.remove('d-none');
     this.#ta.focus();
   }
@@ -70,10 +70,12 @@ class AppDescPopover extends HTMLElement {
     const value = this.#ta.value.trim() || null;
     this.#overlay.classList.add('d-none');
     this.#taskId = null;
-    this.dispatchEvent(new CustomEvent('desc-commit', {
-      bubbles: true,
-      detail: { taskId, value },
-    }));
+    this.dispatchEvent(
+      new CustomEvent('desc-commit', {
+        bubbles: true,
+        detail: { taskId, value },
+      }),
+    );
   }
 
   #onDocMousedown(e) {
@@ -81,7 +83,10 @@ class AppDescPopover extends HTMLElement {
   }
 
   #onTaKeydown(e) {
-    if (e.key === 'Escape') { e.stopPropagation(); this.close(); }
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      this.close();
+    }
   }
 }
 customElements.define('app-desc-popover', AppDescPopover);

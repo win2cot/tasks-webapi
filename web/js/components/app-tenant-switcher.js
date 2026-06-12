@@ -34,13 +34,14 @@ async function _switchTenant(tenantId) {
     Api.setTenantId(tenantId);
     window.location.reload();
   } catch (err) {
-    _showErrorToast('テナント切替に失敗しました: ' + err.message);
+    _showErrorToast(`テナント切替に失敗しました: ${err.message}`);
   }
 }
 
 function _showErrorToast(message) {
   const toast = document.createElement('div');
-  toast.className = 'toast align-items-center text-white bg-danger border-0 position-fixed top-0 end-0 m-3';
+  toast.className =
+    'toast align-items-center text-white bg-danger border-0 position-fixed top-0 end-0 m-3';
   toast.setAttribute('role', 'alert');
   toast.setAttribute('aria-live', 'assertive');
   toast.style.zIndex = '1100';
@@ -79,14 +80,15 @@ class AppTenantSwitcher extends HTMLElement {
       return;
     }
 
-    const activeTenant = tenants.find(t => t.id === activeTenantId) ?? null;
+    const activeTenant = tenants.find((t) => t.id === activeTenantId) ?? null;
     const wrapper = _tsDropdownTpl.content.cloneNode(true).firstElementChild;
-    wrapper.querySelector('.ts-label').textContent =
-      activeTenant ? activeTenant.name : 'テナントを選択';
+    wrapper.querySelector('.ts-label').textContent = activeTenant
+      ? activeTenant.name
+      : 'テナントを選択';
 
     const menu = wrapper.querySelector('.ts-menu');
-    tenants.forEach(t => {
-      const li  = _tsItemTpl.content.cloneNode(true).firstElementChild;
+    tenants.forEach((t) => {
+      const li = _tsItemTpl.content.cloneNode(true).firstElementChild;
       const btn = li.querySelector('button');
       const isActive = t.id === activeTenantId;
       if (isActive) btn.classList.add('active');

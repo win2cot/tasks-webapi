@@ -8,21 +8,27 @@ _stSelTpl.innerHTML =
   '<select class="inline-sel" aria-label="ステータス" data-action="status-change"></select>';
 
 class AppStatusBadge extends HTMLElement {
-  static get observedAttributes() { return ['status', 'editable', 'task-id']; }
+  static get observedAttributes() {
+    return ['status', 'editable', 'task-id'];
+  }
 
-  connectedCallback() { this.#render(); }
-  attributeChangedCallback() { if (this.isConnected) this.#render(); }
+  connectedCallback() {
+    this.#render();
+  }
+  attributeChangedCallback() {
+    if (this.isConnected) this.#render();
+  }
 
   #render() {
-    const status   = this.getAttribute('status') || 'NOT_STARTED';
+    const status = this.getAttribute('status') || 'NOT_STARTED';
     const editable = this.hasAttribute('editable');
-    const taskId   = this.getAttribute('task-id') || '';
+    const taskId = this.getAttribute('task-id') || '';
     const [label, cls] = TaskMeta.status(status);
 
     if (editable) {
       const sel = _stSelTpl.content.cloneNode(true).firstElementChild;
-      sel.className       = `inline-sel st-sel-${status}`;
-      sel.dataset.taskId  = taskId;
+      sel.className = `inline-sel st-sel-${status}`;
+      sel.dataset.taskId = taskId;
       TaskMeta.STATUS_OPTIONS.forEach(({ v, l }) => {
         const opt = document.createElement('option');
         opt.value = v;
@@ -33,7 +39,7 @@ class AppStatusBadge extends HTMLElement {
       this.replaceChildren(sel);
     } else {
       const span = _stBadgeTpl.content.cloneNode(true).firstElementChild;
-      span.className   = `st-badge ${cls}`;
+      span.className = `st-badge ${cls}`;
       span.textContent = label;
       this.replaceChildren(span);
     }

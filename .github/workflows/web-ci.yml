@@ -85,6 +85,10 @@ jobs:
             exit 1
           fi
 
+      - name: Biome lint / format check
+        id: biome
+        run: npx biome ci .
+
       - name: Build CI report
         id: ci-report
         if: always() && github.event_name == 'pull_request'
@@ -92,6 +96,7 @@ jobs:
           NPM_CI_OUTCOME: ${{ steps.npm-ci.outcome }}
           COPY_OUTCOME: ${{ steps.copy-vendor.outcome }}
           VENDOR_OUTCOME: ${{ steps.vendor-check.outcome }}
+          BIOME_OUTCOME: ${{ steps.biome.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_NUM: ${{ github.run_number }}
           GH_SHA: ${{ github.sha }}
@@ -108,6 +113,7 @@ jobs:
             echo "| npm ci $(icon "$NPM_CI_OUTCOME") | lockfile 整合検証 |"
             echo "| copy-vendor $(icon "$COPY_OUTCOME") | vendor アセットコピー |"
             echo "| vendor check $(icon "$VENDOR_OUTCOME") | 主要ファイル存在確認 |"
+            echo "| biome ci $(icon "$BIOME_OUTCOME") | lint / format 検証 |"
             echo ""
             echo "_最終更新: ${NOW}_"
             echo '__CI_REPORT_EOF__'

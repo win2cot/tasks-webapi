@@ -121,19 +121,18 @@ const Api = (() => {
     const q = new URLSearchParams();
     if (params.targetDate != null && params.targetDate !== '')
       q.set('targetDate', params.targetDate);
-    if (params.includeOverdue !== undefined)
-      q.set('includeOverdue', String(params.includeOverdue));
-    if (params.status)     q.set('status',     params.status);
-    if (params.ownerId)    q.set('ownerId',    String(params.ownerId));
+    if (params.includeOverdue !== undefined) q.set('includeOverdue', String(params.includeOverdue));
+    if (params.status) q.set('status', params.status);
+    if (params.ownerId) q.set('ownerId', String(params.ownerId));
     if (params.assigneeId) q.set('assigneeId', String(params.assigneeId));
-    if (params.priority)   q.set('priority',   params.priority);
+    if (params.priority) q.set('priority', params.priority);
     if (params.visibility) q.set('visibility', params.visibility);
-    if (params.keyword)    q.set('keyword',    params.keyword);
+    if (params.keyword) q.set('keyword', params.keyword);
     if (params.page !== undefined) q.set('page', String(params.page));
     if (params.size !== undefined) q.set('size', String(params.size));
-    if (params.sort)       q.set('sort',       params.sort);
+    if (params.sort) q.set('sort', params.sort);
     const qs = q.toString();
-    return request(`/api/tasks${qs ? '?' + qs : ''}`);
+    return request(`/api/tasks${qs ? `?${qs}` : ''}`);
   }
 
   /**
@@ -251,11 +250,21 @@ const Api = (() => {
   }
 
   return {
-    setTenantId, request, requestRaw,
-    getMe, selectTenant,
-    listTasks, getTask, createTask, patchTask, deleteTask,
-    changeStatus, changeVisibility,
+    setTenantId,
+    request,
+    requestRaw,
+    getMe,
+    selectTenant,
+    listTasks,
+    getTask,
+    createTask,
+    patchTask,
+    deleteTask,
+    changeStatus,
+    changeVisibility,
     listTenantUsers,
-    listStakeholders, addStakeholder, removeStakeholder,
+    listStakeholders,
+    addStakeholder,
+    removeStakeholder,
   };
 })();

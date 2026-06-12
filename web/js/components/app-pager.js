@@ -23,16 +23,20 @@ class AppPager extends HTMLElement {
   connectedCallback() {
     this.replaceChildren(_pagerTpl.content.cloneNode(true));
     this.querySelector('.btn-prev').addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('page-change', {
-        bubbles: true,
-        detail: { page: this.#currentPage - 1 },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('page-change', {
+          bubbles: true,
+          detail: { page: this.#currentPage - 1 },
+        }),
+      );
     });
     this.querySelector('.btn-next').addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('page-change', {
-        bubbles: true,
-        detail: { page: this.#currentPage + 1 },
-      }));
+      this.dispatchEvent(
+        new CustomEvent('page-change', {
+          bubbles: true,
+          detail: { page: this.#currentPage + 1 },
+        }),
+      );
     });
   }
 
@@ -41,7 +45,7 @@ class AppPager extends HTMLElement {
   update({ currentPage, totalPages, totalElements, pageSize }) {
     this.#currentPage = currentPage;
     const start = totalElements > 0 ? currentPage * pageSize + 1 : 0;
-    const end   = Math.min((currentPage + 1) * pageSize, totalElements);
+    const end = Math.min((currentPage + 1) * pageSize, totalElements);
 
     this.querySelector('.pager-info').textContent =
       totalElements > 0 ? `${totalElements} 件中 ${start}–${end} 件を表示` : '0 件';
