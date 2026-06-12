@@ -89,6 +89,31 @@ jobs:
         id: biome
         run: npx biome ci .
 
+      - name: html-validate (CE metadata + inline guard)
+        id: html-validate
+        run: npx html-validate index.html tasks.html
+
+      - name: Nu Html Checker (v.Nu — Living Standard 準拠)
+        id: vnu
+        run: |
+          docker run -d --rm --name vnu-server -p 8888:8888 ghcr.io/validator/validator:latest
+          timeout 30 bash -c 'until curl -sf http://localhost:8888/ >/dev/null 2>&1; do sleep 1; done'
+          errors=0
+          for f in index.html tasks.html; do
+            out=$(curl -s \
+              -H "Content-Type: text/html; charset=utf-8" \
+              --data-binary @"$f" \
+              "http://localhost:8888/?out=gnu")
+            error_lines=$(printf '%s\n' "$out" | grep ': error:' || true)
+            if [ -n "$error_lines" ]; then
+              echo "::error::v.Nu: $f"
+              printf '%s\n' "$error_lines"
+              errors=1
+            fi
+          done
+          docker stop vnu-server || true
+          exit "$errors"
+
       - name: Build CI report
         id: ci-report
         if: always() && github.event_name == 'pull_request'
@@ -97,6 +122,8 @@ jobs:
           COPY_OUTCOME: ${{ steps.copy-vendor.outcome }}
           VENDOR_OUTCOME: ${{ steps.vendor-check.outcome }}
           BIOME_OUTCOME: ${{ steps.biome.outcome }}
+          HTML_VALIDATE_OUTCOME: ${{ steps.html-validate.outcome }}
+          VNU_OUTCOME: ${{ steps.vnu.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           RUN_NUM: ${{ github.run_number }}
           GH_SHA: ${{ github.sha }}
@@ -114,6 +141,8 @@ jobs:
             echo "| copy-vendor $(icon "$COPY_OUTCOME") | vendor アセットコピー |"
             echo "| vendor check $(icon "$VENDOR_OUTCOME") | 主要ファイル存在確認 |"
             echo "| biome ci $(icon "$BIOME_OUTCOME") | lint / format 検証 |"
+            echo "| html-validate $(icon "$HTML_VALIDATE_OUTCOME") | CE メタデータ + inline 退行ガード |"
+            echo "| v.Nu $(icon "$VNU_OUTCOME") | Living Standard 準拠検証 |"
             echo ""
             echo "_最終更新: ${NOW}_"
             echo '__CI_REPORT_EOF__'

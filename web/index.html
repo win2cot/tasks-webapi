@@ -1,11 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tasks</title>
-    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/app.css">
   </head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -14,7 +14,7 @@
         <div class="ms-auto d-flex align-items-center">
           <app-tenant-switcher id="tenant-switcher" class="d-none"></app-tenant-switcher>
           <span id="nav-username" class="navbar-text text-white me-3 d-none"></span>
-          <button id="btn-logout" class="btn btn-outline-light btn-sm d-none">
+          <button id="btn-logout" type="button" class="btn btn-outline-light btn-sm d-none">
             ログアウト
           </button>
         </div>
@@ -32,7 +32,7 @@
       <div id="content-logged-in" class="d-none">
         <div class="card">
           <div class="card-body">
-            <h5 class="card-title">ユーザー情報</h5>
+            <p class="card-title fw-semibold">ユーザー情報</p>
             <pre id="user-info" class="bg-light p-3 rounded small"></pre>
           </div>
         </div>
