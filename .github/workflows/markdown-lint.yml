@@ -48,12 +48,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
 
       # docs/reviews/** は過去のレビュー履歴・起票メモ(凍結された作業スナップショット)のため lint 対象外
       - name: Lint Markdown
         id: mdlint
-        run: npx --yes markdownlint-cli2 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"
+        run: npx --yes markdownlint-cli2@0.22.1 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"
         continue-on-error: true
 
       - name: Build lint report
