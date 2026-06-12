@@ -1,4 +1,3 @@
-// @ts-check
 // <app-priority-badge priority="MEDIUM" [editable] [task-id="1"]>
 const _priBadgeTpl = document.createElement('template');
 _priBadgeTpl.innerHTML = '<span class="pri-badge" title="編集権限がありません"></span>';

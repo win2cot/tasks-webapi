@@ -1,4 +1,3 @@
-// @ts-check
 /** @type {HTMLElement} */ (mustQuery(document, '#btn-logout')).addEventListener('click', () =>
   Auth.logout(),
 );

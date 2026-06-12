@@ -1,4 +1,3 @@
-// @ts-check
 // <app-desc-popover> — singleton page-level description edit popover.
 // Methods: open(taskId, triggerEl, description), close()
 // Fires: desc-commit { taskId, value }, desc-cancel

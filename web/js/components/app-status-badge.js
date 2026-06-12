@@ -1,4 +1,3 @@
-// @ts-check
 // <app-status-badge status="NOT_STARTED" [editable] [task-id="1"]>
 // editable=true → inline select; false → read-only badge
 const _stBadgeTpl = document.createElement('template');

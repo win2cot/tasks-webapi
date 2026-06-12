@@ -1,4 +1,3 @@
-// @ts-check
 // ---- Page state ----
 let currentPage = 0;
 let currentSort = 'dueDate,asc';

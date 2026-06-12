@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * tasks-webapi 呼び出しラッパー
  *

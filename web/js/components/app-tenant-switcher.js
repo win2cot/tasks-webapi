@@ -1,4 +1,3 @@
-// @ts-check
 // <app-tenant-switcher> — dropdown or chip for switching tenants.
 // Method: setData(tenants, activeTenantId)
 // Depends on: Api (Api.selectTenant, Api.setTenantId), Bootstrap 5

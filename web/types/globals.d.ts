@@ -104,7 +104,7 @@ interface AppPagerElement extends HTMLElement {
 
 interface AppTenantSwitcherElement extends HTMLElement {
   setData(
-    tenants: Array<Record<string, unknown>> | null,
+    tenants: Array<TenantRef> | null,
     activeTenantId: number | null,
   ): void;
 }

@@ -1,4 +1,3 @@
-// @ts-check
 // <app-task-row> — renders as display:contents; contains a <tr> for table layout.
 // Usage:
 //   const row = document.createElement('app-task-row');
