@@ -96,12 +96,22 @@ jobs:
       - name: Nu Html Checker (v.Nu — Living Standard 準拠)
         id: vnu
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}/web:/workdir:ro" \
-            ghcr.io/validator/validator:latest \
-            --skip-non-html \
-            /workdir/index.html \
-            /workdir/tasks.html
+          docker run -d --rm --name vnu-server -p 8888:8888 ghcr.io/validator/validator:latest
+          timeout 30 bash -c 'until curl -sf http://localhost:8888/ >/dev/null 2>&1; do sleep 1; done'
+          errors=0
+          for f in index.html tasks.html; do
+            out=$(curl -s \
+              -H "Content-Type: text/html; charset=utf-8" \
+              --data-binary @"$f" \
+              "http://localhost:8888/?out=gnu")
+            if [ -n "$(printf '%s' "$out" | tr -d '[:space:]')" ]; then
+              echo "::error::v.Nu: $f"
+              printf '%s\n' "$out"
+              errors=1
+            fi
+          done
+          docker stop vnu-server || true
+          exit "$errors"
 
       - name: Build CI report
         id: ci-report
