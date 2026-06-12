@@ -104,9 +104,10 @@ jobs:
               -H "Content-Type: text/html; charset=utf-8" \
               --data-binary @"$f" \
               "http://localhost:8888/?out=gnu")
-            if [ -n "$(printf '%s' "$out" | tr -d '[:space:]')" ]; then
+            error_lines=$(printf '%s\n' "$out" | grep ': error:' || true)
+            if [ -n "$error_lines" ]; then
               echo "::error::v.Nu: $f"
-              printf '%s\n' "$out"
+              printf '%s\n' "$error_lines"
               errors=1
             fi
           done
