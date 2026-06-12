@@ -494,7 +494,7 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 | Webapi: CI | `webapi/**` `*.gradle*` `gradle/**` `gradlew*` | Spotless(GJF)・NullAway・ErrorProne・JUnit・JaCoCo 80% | `./gradlew :webapi:spotlessApply && ./gradlew :webapi:check` | △ — ErrorProne/NullAway は Build Server for Gradle 経由で保存時ビルドに反映。GJF format on save は ◎ |
 | Webapi: Conventions Lint | `webapi/src/**/*.java` `db/migration/**` | `package-info.java` 存在確認・Flyway 命名規約 | CI スクリプト(`find`/`grep`)を手動実行 | ✕ — エディタ拡張なし |
 | Webapi: Native Build | `webapi/**` `*.gradle*` `gradle/**` `gradlew*` | GraalVM `nativeCompile`(PR 破壊検知) | `./gradlew :webapi:nativeCompile`(10〜15 分) | ✕ |
-| Keycloak: CI | `keycloak/**` `*.gradle*` `gradle/**` `gradlew*` | `package-info.java` 確認・JUnit | `./gradlew :keycloak:check` | △ — redhat.java + vscjava.vscode-gradle |
+| Keycloak: CI | `keycloak/**` `*.gradle*` `gradle/**` `gradlew*` | Spotless(GJF 1.24.0)・`package-info.java` 確認・JUnit | `./gradlew :keycloak:spotlessApply && ./gradlew :keycloak:check` | △ — redhat.java + vscjava.vscode-gradle。format on save は ◎(ただし後述の注意参照) |
 | Web: CI | `web/**` | Biome lint/format・`tsc --noEmit`・html-validate・v.Nu | `cd web && npx biome ci . && npx tsc --noEmit && npm run html-validate` | ◎ — Biome(biomejs.biome)・tsc(内蔵)・html-validate(html-validate.vscode-html-validate)。v.Nu は Docker 要のため ✕ |
 | Markdown: Lint | `**/*.md` `.markdownlint.jsonc` | markdownlint-cli2 | `npx --yes markdownlint-cli2 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"` | ◎ — DavidAnson.vscode-markdownlint(`.markdownlint.jsonc` 自動参照) |
 | OpenAPI: Lint | `api/**` | Spectral lint(`api/openapi.yaml`) | `npx --yes @stoplight/spectral-cli@6 lint api/openapi.yaml --format github-actions` | ◎ — stoplight.spectral |
@@ -536,7 +536,7 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 | `hashicorp.terraform` | Terraform: Lint — fmt/validate | `terraform fmt` on save を有効化することで fmt -check の違反をゼロにできる |
 | `redhat.java` | Webapi: CI — コンパイル | Language Server for Java。Build Server for Gradle と組み合わせることで ErrorProne/NullAway を保存時ビルドに反映 |
 | `vscjava.vscode-gradle` | Webapi: CI — コンパイル | Build Server for Gradle を有効化すると Gradle タスクがコンパイルに使われる。有効化: コマンドパレット → `Java: Enable Build Server for Gradle` |
-| `JoseVSeb.google-java-format-for-vs-code` | Webapi: CI — Spotless(GJF) | `java.format.settings.google.version` を `1.34.0` に pin(`build.gradle` と同期) |
+| `JoseVSeb.google-java-format-for-vs-code` | Webapi: CI — Spotless(GJF) | `java.format.settings.google.version` を `1.34.0` に pin(webapi `build.gradle` と同期)。keycloak は GJF 1.24.0 を使用(CI が JDK 21 のため 1.34.0 非対応)。keycloak Java 編集後は `./gradlew :keycloak:spotlessApply` で整形差分を解消してからコミット |
 | `ritwickdey.LiveServer` | — | `web/index.html` 等の静的 HTML をワンクリックで配信(開発サーバー代替) |
 
 > **注意 — エディタで出ないチェック**:
