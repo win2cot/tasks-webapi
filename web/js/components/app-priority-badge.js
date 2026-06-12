@@ -1,3 +1,4 @@
+// @ts-check
 // <app-priority-badge priority="MEDIUM" [editable] [task-id="1"]>
 const _priBadgeTpl = document.createElement('template');
 _priBadgeTpl.innerHTML = '<span class="pri-badge" title="編集権限がありません"></span>';
@@ -25,7 +26,9 @@ class AppPriorityBadge extends HTMLElement {
     const [label, cls] = TaskMeta.priority(priority);
 
     if (editable) {
-      const sel = _priSelTpl.content.cloneNode(true).firstElementChild;
+      const sel = /** @type {HTMLSelectElement} */ (
+        /** @type {DocumentFragment} */ (_priSelTpl.content.cloneNode(true)).firstElementChild
+      );
       sel.className = `inline-sel pri-sel-${priority}`;
       sel.dataset.taskId = taskId;
       TaskMeta.PRIORITY_OPTIONS.forEach(({ v, l }) => {
@@ -37,7 +40,9 @@ class AppPriorityBadge extends HTMLElement {
       });
       this.replaceChildren(sel);
     } else {
-      const span = _priBadgeTpl.content.cloneNode(true).firstElementChild;
+      const span = /** @type {HTMLElement} */ (
+        /** @type {DocumentFragment} */ (_priBadgeTpl.content.cloneNode(true)).firstElementChild
+      );
       span.className = `pri-badge ${cls}`;
       span.textContent = label;
       this.replaceChildren(span);

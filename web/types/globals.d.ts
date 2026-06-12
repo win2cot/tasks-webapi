@@ -34,6 +34,83 @@ declare const Keycloak: {
   new (config: KeycloakConfig): KeycloakInstance;
 };
 
+// --- Keycloak ID token payload ---
+interface KeycloakUser {
+  name?: string;
+  preferred_username?: string;
+  sub?: string;
+  [key: string]: unknown;
+}
+
 // --- Bootstrap (vendor/bootstrap/js/bootstrap.bundle.min.js) ---
-// Used in component files (none of which have // @ts-check).
-declare const bootstrap: Record<string, unknown>;
+
+interface BootstrapOffcanvas {
+  show(): void;
+  hide(): void;
+  dispose(): void;
+}
+
+interface BootstrapToast {
+  show(): void;
+  dispose(): void;
+}
+
+declare const bootstrap: {
+  Offcanvas: {
+    new (element: Element, options?: Record<string, unknown>): BootstrapOffcanvas;
+    getInstance(element: Element | null): BootstrapOffcanvas | null;
+    getOrCreateInstance(element: Element): BootstrapOffcanvas;
+  };
+  Toast: {
+    new (element: Element, options?: Record<string, unknown>): BootstrapToast;
+  };
+};
+
+// --- Custom Element consumer interfaces (used by tasks.js / index.js) ---
+
+interface AppErrorBannerElement extends HTMLElement {
+  show(message: string): void;
+  hide(): void;
+}
+
+interface AppConflictBannerElement extends HTMLElement {
+  show(): void;
+  hide(): void;
+}
+
+interface AppDescPopoverElement extends HTMLElement {
+  readonly isOpen: boolean | null;
+  open(taskId: number, triggerEl: Element, description: string | null): void;
+  close(): void;
+}
+
+interface AppTaskDrawerElement extends HTMLElement {
+  setCurrentUser(userId: number | null): void;
+  setUsers(users: TenantUser[]): void;
+  open(): void;
+  openNew(opts?: Record<string, string>): void;
+  openDetail(taskId: number): Promise<void>;
+  openEdit(taskId: number): Promise<void>;
+}
+
+interface AppPagerElement extends HTMLElement {
+  update(opts: {
+    currentPage: number;
+    totalPages: number;
+    totalElements: number;
+    pageSize: number;
+  }): void;
+}
+
+interface AppTenantSwitcherElement extends HTMLElement {
+  setData(
+    tenants: Array<Record<string, unknown>> | null,
+    activeTenantId: number | null,
+  ): void;
+}
+
+interface AppTaskRowElement extends HTMLElement {
+  setTask(task: Task, currentUserId: number | null, tenantUsers: TenantUser[]): void;
+  cancelEdit(): void;
+}
+

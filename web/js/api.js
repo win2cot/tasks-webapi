@@ -78,6 +78,20 @@
  * @typedef {Error & {status: number}} ApiError
  */
 
+/**
+ * @typedef {object} TenantRef
+ * @property {number} id
+ * @property {string} name
+ * @property {Role} role
+ */
+
+/**
+ * @typedef {object} MeResponse
+ * @property {{ id: number, fullName: string }} user
+ * @property {number|null} activeTenantId
+ * @property {TenantRef[]} tenants
+ */
+
 const Api = (() => {
   const BASE_URL = 'http://localhost:8080';
 
@@ -184,7 +198,7 @@ const Api = (() => {
 
   /**
    * GET /api/auth/me — 認証済みユーザー情報を取得する。
-   * @returns {Promise<Object>}
+   * @returns {Promise<MeResponse>}
    */
   function getMe() {
     return request('/api/auth/me');

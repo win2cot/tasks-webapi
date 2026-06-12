@@ -1,3 +1,4 @@
+// @ts-check
 // <app-tenant-switcher> — dropdown or chip for switching tenants.
 // Method: setData(tenants, activeTenantId)
 // Depends on: Api (Api.selectTenant, Api.setTenantId), Bootstrap 5
@@ -24,20 +25,23 @@ _tsItemTpl.innerHTML = `
   </button>
 </li>`;
 
+/** @param {string} role */
 function _roleLabel(role) {
   return role === 'TENANT_ADMIN' ? '管理者' : 'メンバー';
 }
 
+/** @param {number} tenantId */
 async function _switchTenant(tenantId) {
   try {
     await Api.selectTenant(tenantId);
-    Api.setTenantId(tenantId);
+    Api.setTenantId(String(tenantId));
     window.location.reload();
   } catch (err) {
-    _showErrorToast(`テナント切替に失敗しました: ${err.message}`);
+    _showErrorToast(`テナント切替に失敗しました: ${/** @type {any} */ (err).message}`);
   }
 }
 
+/** @param {string} message */
 function _showErrorToast(message) {
   const toast = document.createElement('div');
   toast.className =
@@ -67,13 +71,19 @@ function _showErrorToast(message) {
 }
 
 class AppTenantSwitcher extends HTMLElement {
+  /**
+   * @param {Array<{id: number, name: string, role: string}> | null} tenants
+   * @param {number | null} activeTenantId
+   */
   setData(tenants, activeTenantId) {
     this.replaceChildren();
     if (!tenants || tenants.length === 0) return;
     this.classList.remove('d-none');
 
     if (tenants.length === 1) {
-      const chip = _tsBadgeTpl.content.cloneNode(true).firstElementChild;
+      const chip = /** @type {HTMLElement} */ (
+        /** @type {DocumentFragment} */ (_tsBadgeTpl.content.cloneNode(true)).firstElementChild
+      );
       chip.textContent = tenants[0].name;
       chip.title = _roleLabel(tenants[0].role);
       this.appendChild(chip);
@@ -81,19 +91,23 @@ class AppTenantSwitcher extends HTMLElement {
     }
 
     const activeTenant = tenants.find((t) => t.id === activeTenantId) ?? null;
-    const wrapper = _tsDropdownTpl.content.cloneNode(true).firstElementChild;
-    wrapper.querySelector('.ts-label').textContent = activeTenant
+    const wrapper = /** @type {HTMLElement} */ (
+      /** @type {DocumentFragment} */ (_tsDropdownTpl.content.cloneNode(true)).firstElementChild
+    );
+    /** @type {HTMLElement} */ (wrapper.querySelector('.ts-label')).textContent = activeTenant
       ? activeTenant.name
       : 'テナントを選択';
 
-    const menu = wrapper.querySelector('.ts-menu');
+    const menu = /** @type {HTMLElement} */ (wrapper.querySelector('.ts-menu'));
     tenants.forEach((t) => {
-      const li = _tsItemTpl.content.cloneNode(true).firstElementChild;
-      const btn = li.querySelector('button');
+      const li = /** @type {HTMLElement} */ (
+        /** @type {DocumentFragment} */ (_tsItemTpl.content.cloneNode(true)).firstElementChild
+      );
+      const btn = /** @type {HTMLButtonElement} */ (li.querySelector('button'));
       const isActive = t.id === activeTenantId;
       if (isActive) btn.classList.add('active');
-      li.querySelector('.ts-item-name').textContent = t.name;
-      const roleEl = li.querySelector('.ts-item-role');
+      /** @type {HTMLElement} */ (li.querySelector('.ts-item-name')).textContent = t.name;
+      const roleEl = /** @type {HTMLElement} */ (li.querySelector('.ts-item-role'));
       roleEl.textContent = _roleLabel(t.role);
       if (isActive) {
         roleEl.classList.remove('text-muted');

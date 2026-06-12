@@ -1,3 +1,4 @@
+// @ts-check
 // <app-desc-popover> — singleton page-level description edit popover.
 // Methods: open(taskId, triggerEl, description), close()
 // Fires: desc-commit { taskId, value }, desc-cancel
@@ -14,8 +15,11 @@ _descPopTpl.innerHTML = `
 </div>`;
 
 class AppDescPopover extends HTMLElement {
+  /** @type {number | null} */
   #taskId = null;
+  /** @type {HTMLElement | null} */
   #overlay = null;
+  /** @type {HTMLTextAreaElement | null} */
   #ta = null;
 
   #handleMousedown = this.#onDocMousedown.bind(this);
@@ -23,11 +27,18 @@ class AppDescPopover extends HTMLElement {
 
   connectedCallback() {
     this.replaceChildren(_descPopTpl.content.cloneNode(true));
-    this.#overlay = this.firstElementChild;
-    this.#ta = this.#overlay.querySelector('textarea');
+    this.#overlay = /** @type {HTMLElement} */ (this.firstElementChild);
+    this.#ta = /** @type {HTMLTextAreaElement} */ (this.#overlay.querySelector('textarea'));
+    if (!this.#overlay || !this.#ta) return;
 
-    this.#overlay.querySelector('.btn-save').addEventListener('click', () => this.#commit());
-    this.#overlay.querySelector('.btn-cancel').addEventListener('click', () => this.close());
+    /** @type {HTMLButtonElement} */ (this.#overlay.querySelector('.btn-save')).addEventListener(
+      'click',
+      () => this.#commit(),
+    );
+    /** @type {HTMLButtonElement} */ (this.#overlay.querySelector('.btn-cancel')).addEventListener(
+      'click',
+      () => this.close(),
+    );
     this.#ta.addEventListener('keydown', this.#handleKeydown);
     document.addEventListener('mousedown', this.#handleMousedown);
   }
@@ -36,8 +47,14 @@ class AppDescPopover extends HTMLElement {
     document.removeEventListener('mousedown', this.#handleMousedown);
   }
 
+  /**
+   * @param {number} taskId
+   * @param {Element} triggerEl
+   * @param {string | null} description
+   */
   open(taskId, triggerEl, description) {
     this.#taskId = taskId;
+    if (!this.#ta || !this.#overlay) return;
     this.#ta.value = description || '';
 
     const rect = triggerEl.getBoundingClientRect();
@@ -66,7 +83,7 @@ class AppDescPopover extends HTMLElement {
 
   #commit() {
     const taskId = this.#taskId;
-    if (taskId === null) return;
+    if (taskId === null || !this.#ta || !this.#overlay) return;
     const value = this.#ta.value.trim() || null;
     this.#overlay.classList.add('d-none');
     this.#taskId = null;
@@ -78,10 +95,12 @@ class AppDescPopover extends HTMLElement {
     );
   }
 
+  /** @param {MouseEvent} e */
   #onDocMousedown(e) {
-    if (this.isOpen && !this.#overlay.contains(e.target)) this.close();
+    if (this.isOpen && !this.#overlay?.contains(/** @type {Node} */ (e.target))) this.close();
   }
 
+  /** @param {KeyboardEvent} e */
   #onTaKeydown(e) {
     if (e.key === 'Escape') {
       e.stopPropagation();
