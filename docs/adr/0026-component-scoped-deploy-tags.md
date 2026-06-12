@@ -149,6 +149,12 @@ infra の承認フローを確定する。
 
 ## 6. 実装メモ(Implementation Notes)
 
+> **注記(2026-06-12)**: 本節のうち **ECR イメージ tag** と **stg / prd への昇格**の記述は
+> [ADR-0028](0028-build-once-promote-digest.md) により修正・詳細化された。イメージ build は
+> version につき 1 回(`-dev` tag push 時)のみ、ECR イメージ tag は環境 suffix を含まない
+> `vX.Y.Z`、昇格 tag は再 build せず digest promote(ガード付き fail-closed)とする。
+> 本 ADR の決定(§3 の tag 形式・workflow 振り分け・infra 承認ゲート)は不変。
+
 - workflow トリガ例:
 
   ```yaml
