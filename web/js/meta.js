@@ -1,4 +1,3 @@
-// @ts-check
 // Shared display metadata for task enums (status / priority / visibility).
 // Returns [label, cssClass] for badges, [label, cssClass, iconClass] for visibility.
 const TaskMeta = (() => {

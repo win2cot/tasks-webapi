@@ -1,4 +1,3 @@
-// @ts-check
 // <app-visibility-badge visibility="TENANT">
 const _visBadgeTpl = document.createElement('template');
 _visBadgeTpl.innerHTML = '<span class="vis-badge"><i aria-hidden="true"></i></span>';

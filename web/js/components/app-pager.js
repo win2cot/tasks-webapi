@@ -1,4 +1,3 @@
-// @ts-check
 // <app-pager> — pagination bar for the task table.
 // Method: update({ currentPage, totalPages, totalElements, pageSize })
 // Fires: page-change { page } (bubbling)

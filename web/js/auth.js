@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Keycloak OIDC 認証モジュール
  *

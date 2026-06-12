@@ -1,4 +1,3 @@
-// @ts-check
 // <app-error-banner> — dismissible error banner.
 // Methods: show(message), hide()
 // Fires: error-retry (bubbling)

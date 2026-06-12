@@ -1,4 +1,3 @@
-// @ts-check
 // <app-task-drawer> — Bootstrap Offcanvas drawer for task create / detail / edit.
 //
 // Public API:
@@ -871,10 +870,12 @@ class AppTaskDrawer extends HTMLElement {
     doBtn.addEventListener('click', async () => {
       const t = this.#task;
       if (!t) return;
+      const etag = this.#etag;
+      if (!etag) return;
       doBtn.disabled = true;
       doBtn.textContent = '削除中...';
       try {
-        await Api.deleteTask(t.id, /** @type {string} */ (this.#etag));
+        await Api.deleteTask(t.id, etag);
         const taskId = t.id;
         this.#oc?.hide();
         this.dispatchEvent(
@@ -1120,6 +1121,8 @@ class AppTaskDrawer extends HTMLElement {
   async #submitEdit(form) {
     const task = this.#task;
     if (!task) return;
+    const etag = this.#etag;
+    if (!etag) return;
     const errDiv = /** @type {HTMLElement} */ (this.#bdy.querySelector('#edit-form-error'));
     const saveBtn = /** @type {HTMLButtonElement} */ (form.querySelector('[type=submit]'));
     errDiv.className = 'd-none';
@@ -1167,7 +1170,7 @@ class AppTaskDrawer extends HTMLElement {
     saveBtn.disabled = true;
     saveBtn.textContent = '保存中...';
     try {
-      const updated = await Api.patchTask(task.id, /** @type {string} */ (this.#etag), body);
+      const updated = await Api.patchTask(task.id, etag, body);
       this.#task = updated;
       // Re-fetch ETag from updated task (patchTask returns TaskDetail with version)
       this.#etag = updated.version != null ? `W/"${updated.version}"` : this.#etag;

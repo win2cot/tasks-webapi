@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * deploy 時に node_modules の dist ファイルを vendor/ へコピーするスクリプト。
  * バンドラ不要。S3 アップロード前に実行する。

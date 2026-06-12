@@ -4,7 +4,7 @@
     "lib": ["ES2022", "DOM"],
     "module": "none",
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true

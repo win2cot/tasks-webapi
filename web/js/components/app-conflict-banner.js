@@ -1,4 +1,3 @@
-// @ts-check
 // <app-conflict-banner> — 412-conflict notification banner.
 // Methods: show(), hide()
 // Fires: conflict-reload, conflict-close (both bubbling)
