@@ -1,3 +1,4 @@
+// @ts-check
 // <app-task-drawer> — Bootstrap Offcanvas drawer for task create / detail / edit.
 //
 // Public API:
@@ -13,21 +14,43 @@
 //   drawer-task-deleted  { taskId }      — DELETE succeeded
 //   drawer-closed                        — offcanvas fully hidden
 
-const PRI_LABEL = { HIGH: '高', MEDIUM: '中', LOW: '低' };
-const ST_LABEL = { NOT_STARTED: '未着手', IN_PROGRESS: '進行中', DONE: '完了', ON_HOLD: '保留' };
-const VIS_LABEL = { TENANT: 'テナント', STAKEHOLDERS: '関係者', PRIVATE: '非公開' };
-const VIS_ICON = { TENANT: 'bi-globe2', STAKEHOLDERS: 'bi-people-fill', PRIVATE: 'bi-lock-fill' };
+const PRI_LABEL = /** @type {Record<string, string>} */ ({ HIGH: '高', MEDIUM: '中', LOW: '低' });
+const ST_LABEL = /** @type {Record<string, string>} */ ({
+  NOT_STARTED: '未着手',
+  IN_PROGRESS: '進行中',
+  DONE: '完了',
+  ON_HOLD: '保留',
+});
+const VIS_LABEL = /** @type {Record<string, string>} */ ({
+  TENANT: 'テナント',
+  STAKEHOLDERS: '関係者',
+  PRIVATE: '非公開',
+});
+const VIS_ICON = /** @type {Record<string, string>} */ ({
+  TENANT: 'bi-globe2',
+  STAKEHOLDERS: 'bi-people-fill',
+  PRIVATE: 'bi-lock-fill',
+});
 
 class AppTaskDrawer extends HTMLElement {
+  /** @type {BootstrapOffcanvas | null} */
   #oc = null;
+  /** @type {TaskDetail | null} */
   #task = null;
+  /** @type {string | null} */
   #etag = null;
+  /** @type {TenantUser[]} */
   #tenantUsers = [];
+  /** @type {number | null} */
   #currentUserId = null;
+  /** @type {Stakeholder[]} */
   #stakeholders = [];
-  #selectedSH = []; // [{userId, fullName}] for new-mode stakeholder picker
+  /** @type {Array<{userId: number, fullName: string}>} */
+  #selectedSH = [];
+  /** @type {string | null} */
   #prevPath = null;
   #skipHideUrl = false;
+  /** @type {(() => void) | null} */
   #popHandler = null;
 
   connectedCallback() {
@@ -42,18 +65,20 @@ class AppTaskDrawer extends HTMLElement {
     el.addEventListener('hidden.bs.offcanvas', () => this.#onHidden());
 
     this.#popHandler = () => this.#onPopState();
-    window.addEventListener('popstate', this.#popHandler);
+    window.addEventListener('popstate', /** @type {EventListener} */ (this.#popHandler));
   }
 
   disconnectedCallback() {
-    window.removeEventListener('popstate', this.#popHandler);
+    window.removeEventListener('popstate', /** @type {EventListener} */ (this.#popHandler));
   }
 
   // ---- Public API ----
 
+  /** @param {TenantUser[]} users */
   setUsers(users) {
     this.#tenantUsers = users || [];
   }
+  /** @param {number | null} userId */
   setCurrentUser(userId) {
     this.#currentUserId = userId;
   }
@@ -65,6 +90,7 @@ class AppTaskDrawer extends HTMLElement {
   // List URL to restore when closing after a direct-URL auto-open
   static #LIST_URL = '/tasks.html';
 
+  /** @param {Record<string, string>} [opts] */
   openNew(opts = {}) {
     this.#prevPath = this.#safeListUrl('/tasks/new');
     this.#task = null;
@@ -73,29 +99,31 @@ class AppTaskDrawer extends HTMLElement {
     this.#selectedSH = [];
     this.#renderNew(opts);
     this.#pushUrl('/tasks/new');
-    this.#oc.show();
+    this.#oc?.show();
   }
 
+  /** @param {number} taskId */
   async openDetail(taskId) {
     this.#prevPath = this.#safeListUrl(`/tasks/${taskId}`);
     this.#renderLoading();
     this.#pushUrl(`/tasks/${taskId}`);
-    this.#oc.show();
+    this.#oc?.show();
     await this.#loadAndRenderDetail(taskId);
   }
 
+  /** @param {number} taskId */
   async openEdit(taskId) {
     this.#prevPath = this.#safeListUrl(`/tasks/${taskId}/edit`);
     this.#renderLoading();
     this.#pushUrl(`/tasks/${taskId}/edit`);
-    this.#oc.show();
+    this.#oc?.show();
     if (!this.#task || this.#task.id !== taskId) {
       await this.#loadTaskData(taskId);
     }
     if (this.#task) this.#renderEdit();
   }
 
-  // Return current path unless it matches drawerUrl (direct-URL open), then fall back to list.
+  /** @param {string} drawerUrl */
   #safeListUrl(drawerUrl) {
     const cur = location.pathname + location.search;
     return cur === drawerUrl ? AppTaskDrawer.#LIST_URL : cur;
@@ -104,12 +132,13 @@ class AppTaskDrawer extends HTMLElement {
   // ---- Private helpers ----
 
   get #hdr() {
-    return this.firstElementChild?.querySelector('.offcanvas-header');
+    return /** @type {HTMLElement} */ (this.firstElementChild?.querySelector('.offcanvas-header'));
   }
   get #bdy() {
-    return this.firstElementChild?.querySelector('.offcanvas-body');
+    return /** @type {HTMLElement} */ (this.firstElementChild?.querySelector('.offcanvas-body'));
   }
 
+  /** @param {string} type */
   #can(type) {
     const t = this.#task;
     if (!t) return false;
@@ -121,6 +150,7 @@ class AppTaskDrawer extends HTMLElement {
     return false;
   }
 
+  /** @param {number} taskId */
   async #loadTaskData(taskId) {
     try {
       const [{ task, etag }, stakeholders] = await Promise.all([
@@ -136,6 +166,7 @@ class AppTaskDrawer extends HTMLElement {
     }
   }
 
+  /** @param {number} taskId */
   async #loadAndRenderDetail(taskId) {
     await this.#loadTaskData(taskId);
     if (this.#task) {
@@ -143,9 +174,11 @@ class AppTaskDrawer extends HTMLElement {
     }
   }
 
+  /** @param {string} url */
   #pushUrl(url) {
     history.pushState({ drawer: true }, '', url);
   }
+  /** @param {string} url */
   #replaceUrl(url) {
     history.replaceState({ drawer: true }, '', url);
   }
@@ -177,6 +210,7 @@ class AppTaskDrawer extends HTMLElement {
     return btn;
   }
 
+  /** @param {string} msg */
   #makeErrorMsg(msg) {
     const d = document.createElement('div');
     d.className = 'alert alert-danger py-2 small mb-3';
@@ -185,6 +219,7 @@ class AppTaskDrawer extends HTMLElement {
     return d;
   }
 
+  /** @param {string} [label] */
   #makeSpinner(label = '読み込み中...') {
     const d = document.createElement('div');
     d.className = 'text-center py-5';
@@ -206,6 +241,7 @@ class AppTaskDrawer extends HTMLElement {
     this.#bdy.replaceChildren(this.#makeSpinner());
   }
 
+  /** @param {any} err */
   #renderError(err) {
     const hdr = this.#hdr;
     hdr.replaceChildren();
@@ -225,6 +261,7 @@ class AppTaskDrawer extends HTMLElement {
 
   // ---- NEW MODE ----
 
+  /** @param {Record<string, string>} [opts] */
   #renderNew(opts = {}) {
     const hdr = this.#hdr;
     hdr.replaceChildren();
@@ -238,6 +275,7 @@ class AppTaskDrawer extends HTMLElement {
     this.#bdy.replaceChildren(form);
   }
 
+  /** @param {Record<string, string>} [opts] */
   #buildNewForm(opts = {}) {
     const form = document.createElement('form');
     form.className = 'new-task-form';
@@ -300,7 +338,7 @@ class AppTaskDrawer extends HTMLElement {
     assSel.appendChild(emptyOpt);
     this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId;
+      opt.value = String(u.userId);
       opt.textContent = u.fullName;
       assSel.appendChild(opt);
     });
@@ -394,7 +432,7 @@ class AppTaskDrawer extends HTMLElement {
     shSel.appendChild(shOptBlank);
     this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId;
+      opt.value = String(u.userId);
       opt.textContent = u.fullName;
       shSel.appendChild(opt);
     });
@@ -408,7 +446,9 @@ class AppTaskDrawer extends HTMLElement {
 
     // Toggle stakeholder section on visibility change
     visBtnGrp.addEventListener('change', () => {
-      const val = form.querySelector('input[name="newVis"]:checked')?.value;
+      const val = /** @type {HTMLInputElement | null} */ (
+        form.querySelector('input[name="newVis"]:checked')
+      )?.value;
       shSection.classList.toggle('d-none', val !== 'STAKEHOLDERS');
       this.#syncNewShPickerOpts(shSel, shChips);
     });
@@ -444,15 +484,23 @@ class AppTaskDrawer extends HTMLElement {
     return form;
   }
 
+  /**
+   * @param {HTMLSelectElement} sel
+   * @param {Element} chipsEl
+   */
   #syncNewShPickerOpts(sel, chipsEl) {
     const currentIds = new Set(this.#selectedSH.map((s) => s.userId));
-    [...sel.options].forEach((o) => {
+    Array.from(sel.options).forEach((o) => {
       if (o.value === '') return;
       o.hidden = currentIds.has(Number(o.value));
     });
     this.#renderNewShChips(chipsEl, sel);
   }
 
+  /**
+   * @param {Element} chipsEl
+   * @param {HTMLSelectElement} sel
+   */
   #renderNewShChips(chipsEl, sel) {
     chipsEl.replaceChildren();
     this.#selectedSH.forEach((sh) => {
@@ -464,30 +512,36 @@ class AppTaskDrawer extends HTMLElement {
     });
   }
 
+  /** @param {HTMLFormElement} form */
   async #submitNew(form) {
-    const errDiv = form.querySelector('#new-form-error');
-    const submitBtn = form.querySelector('[type=submit]');
+    const errDiv = /** @type {HTMLElement} */ (form.querySelector('#new-form-error'));
+    const submitBtn = /** @type {HTMLButtonElement} */ (form.querySelector('[type=submit]'));
     errDiv.className = 'd-none';
 
-    const title = form.querySelector('#newTitle').value.trim();
+    const title = /** @type {HTMLInputElement} */ (form.querySelector('#newTitle')).value.trim();
     if (!title) {
       errDiv.textContent = 'タイトルは必須です';
       errDiv.className = 'alert alert-danger py-2 small mb-3';
       return;
     }
-    const dueDate = form.querySelector('#newDue').value;
+    const dueDate = /** @type {HTMLInputElement} */ (form.querySelector('#newDue')).value;
     if (!dueDate) {
       errDiv.textContent = '期限日は必須です';
       errDiv.className = 'alert alert-danger py-2 small mb-3';
       return;
     }
-    const priority = form.querySelector('input[name="newPri"]:checked')?.value || 'MEDIUM';
-    const visibility = form.querySelector('input[name="newVis"]:checked')?.value || 'TENANT';
-    const assigneeId = form.querySelector('#newAssignee').value
-      ? Number(form.querySelector('#newAssignee').value)
-      : null;
-    const desc = form.querySelector('#newDesc').value.trim() || null;
+    const priority =
+      /** @type {HTMLInputElement | null} */ (form.querySelector('input[name="newPri"]:checked'))
+        ?.value || 'MEDIUM';
+    const visibility =
+      /** @type {HTMLInputElement | null} */ (form.querySelector('input[name="newVis"]:checked'))
+        ?.value || 'TENANT';
+    const assigneeRaw = /** @type {HTMLSelectElement} */ (form.querySelector('#newAssignee')).value;
+    const assigneeId = assigneeRaw ? Number(assigneeRaw) : null;
+    const desc =
+      /** @type {HTMLTextAreaElement} */ (form.querySelector('#newDesc')).value.trim() || null;
 
+    /** @type {{ title: string, dueDate: string, priority: string, visibility: string, description?: string | null, assigneeId?: number | null, stakeholderUserIds?: number[] }} */
     const body = { title, dueDate, priority, visibility };
     if (desc) body.description = desc;
     if (assigneeId) body.assigneeId = assigneeId;
@@ -498,14 +552,14 @@ class AppTaskDrawer extends HTMLElement {
     submitBtn.textContent = '作成中...';
     try {
       const task = await Api.createTask(body);
-      this.#oc.hide();
+      this.#oc?.hide();
       this.dispatchEvent(
         new CustomEvent('drawer-task-created', { bubbles: true, detail: { task } }),
       );
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = '作成';
-      errDiv.textContent = `作成に失敗しました: ${err.message || ''}`;
+      errDiv.textContent = `作成に失敗しました: ${/** @type {any} */ (err).message || ''}`;
       errDiv.className = 'alert alert-danger py-2 small mb-3';
     }
   }
@@ -514,6 +568,7 @@ class AppTaskDrawer extends HTMLElement {
 
   #renderDetail() {
     const task = this.#task;
+    if (!task) return;
     const hdr = this.#hdr;
     hdr.replaceChildren();
 
@@ -583,6 +638,7 @@ class AppTaskDrawer extends HTMLElement {
     // Meta fields grid
     const meta = document.createElement('div');
     meta.className = 'drawer-meta-grid mb-3';
+    /** @type {Array<[string, Node]>} */
     const metaFields = [
       ['優先度', this.#makePriBadge(task.priority)],
       ['期限', this.#dueDateEl(task.dueDate)],
@@ -691,7 +747,7 @@ class AppTaskDrawer extends HTMLElement {
       this.#tenantUsers.forEach((u) => {
         if (existIds.has(u.userId)) return;
         const opt = document.createElement('option');
-        opt.value = u.userId;
+        opt.value = String(u.userId);
         opt.textContent = u.fullName;
         sel.appendChild(opt);
       });
@@ -706,9 +762,11 @@ class AppTaskDrawer extends HTMLElement {
     return section;
   }
 
+  /** @param {HTMLElement} visRow */
   #showVisibilityPicker(visRow) {
-    // Replace the row content with an inline selector
     const task = this.#task;
+    if (!task) return;
+    // Replace the row content with an inline selector
     visRow.replaceChildren();
     const lbl = document.createElement('div');
     lbl.className = 'drawer-field-label';
@@ -734,7 +792,7 @@ class AppTaskDrawer extends HTMLElement {
     shSel.appendChild(shOptBlank);
     this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId;
+      opt.value = String(u.userId);
       opt.textContent = u.fullName;
       opt.selected = this.#stakeholders.some((s) => s.userId === u.userId);
       shSel.appendChild(opt);
@@ -758,9 +816,12 @@ class AppTaskDrawer extends HTMLElement {
 
     saveBtn.addEventListener('click', async () => {
       const newVis = sel.value;
+      /** @type {number[] | undefined} */
       let shIds;
       if (newVis === 'STAKEHOLDERS') {
-        shIds = [...shSel.selectedOptions].map((o) => Number(o.value)).filter(Boolean);
+        shIds = Array.from(shSel.selectedOptions)
+          .map((o) => Number(o.value))
+          .filter(Boolean);
       }
       saveBtn.disabled = true;
       saveBtn.textContent = '保存中...';
@@ -775,7 +836,9 @@ class AppTaskDrawer extends HTMLElement {
           }),
         );
       } catch (err) {
-        this.#showDetailError(`公開範囲の変更に失敗しました: ${err.message || ''}`);
+        this.#showDetailError(
+          `公開範囲の変更に失敗しました: ${/** @type {any} */ (err).message || ''}`,
+        );
         this.#renderDetail();
       }
     });
@@ -788,11 +851,14 @@ class AppTaskDrawer extends HTMLElement {
     visRow.append(lbl, sel, shSection, btnRow);
   }
 
+  /** @param {HTMLElement} actionsEl */
   #showDeleteConfirm(actionsEl) {
+    const task = this.#task;
+    if (!task) return;
     actionsEl.replaceChildren();
     const msg = document.createElement('span');
     msg.className = 'small text-danger me-2 align-self-center';
-    msg.textContent = `「${this.#task.title}」を削除しますか？`;
+    msg.textContent = `「${task.title}」を削除しますか？`;
     const doBtn = document.createElement('button');
     doBtn.type = 'button';
     doBtn.className = 'btn btn-danger btn-sm';
@@ -803,12 +869,14 @@ class AppTaskDrawer extends HTMLElement {
     cancelBtn.textContent = '取消';
 
     doBtn.addEventListener('click', async () => {
+      const t = this.#task;
+      if (!t) return;
       doBtn.disabled = true;
       doBtn.textContent = '削除中...';
       try {
-        await Api.deleteTask(this.#task.id, this.#etag);
-        const taskId = this.#task.id;
-        this.#oc.hide();
+        await Api.deleteTask(t.id, /** @type {string} */ (this.#etag));
+        const taskId = t.id;
+        this.#oc?.hide();
         this.dispatchEvent(
           new CustomEvent('drawer-task-deleted', {
             bubbles: true,
@@ -816,12 +884,12 @@ class AppTaskDrawer extends HTMLElement {
           }),
         );
       } catch (err) {
-        if (err.status === 412) {
+        if (/** @type {any} */ (err).status === 412) {
           this.#showDetailError(
             '他のユーザーがこのタスクを編集しました。ページを再読み込みしてください。',
           );
         } else {
-          this.#showDetailError(`削除に失敗しました: ${err.message || ''}`);
+          this.#showDetailError(`削除に失敗しました: ${/** @type {any} */ (err).message || ''}`);
         }
         this.#renderDetail();
       }
@@ -831,6 +899,7 @@ class AppTaskDrawer extends HTMLElement {
     actionsEl.append(msg, doBtn, cancelBtn);
   }
 
+  /** @param {string} msg */
   #showDetailError(msg) {
     const errDiv = this.#bdy.querySelector('#detail-error');
     if (!errDiv) return;
@@ -838,8 +907,10 @@ class AppTaskDrawer extends HTMLElement {
     errDiv.className = 'alert alert-danger py-2 small mb-3';
   }
 
+  /** @param {HTMLSelectElement} sel */
   async #changeStatus(sel) {
     const task = this.#task;
+    if (!task) return;
     const prev = task.status;
     sel.disabled = true;
     try {
@@ -856,49 +927,64 @@ class AppTaskDrawer extends HTMLElement {
     } catch (err) {
       sel.value = prev;
       sel.disabled = false;
-      this.#showDetailError(`ステータスの更新に失敗しました: ${err.message || ''}`);
-    }
-  }
-
-  async #addStakeholder(userId) {
-    if (!userId) return;
-    try {
-      const sh = await Api.addStakeholder(this.#task.id, userId);
-      this.#stakeholders = [...this.#stakeholders, sh];
-      this.#renderDetail();
-    } catch (err) {
       this.#showDetailError(
-        err.status === 409
-          ? 'このユーザーはすでに関係者です'
-          : `関係者の追加に失敗しました: ${err.message || ''}`,
+        `ステータスの更新に失敗しました: ${/** @type {any} */ (err).message || ''}`,
       );
     }
   }
 
-  async #removeStakeholder(userId) {
+  /** @param {number} userId */
+  async #addStakeholder(userId) {
+    if (!userId) return;
+    const task = this.#task;
+    if (!task) return;
     try {
-      await Api.removeStakeholder(this.#task.id, userId);
+      const sh = await Api.addStakeholder(task.id, userId);
+      this.#stakeholders = [...this.#stakeholders, sh];
+      this.#renderDetail();
+    } catch (err) {
+      this.#showDetailError(
+        /** @type {any} */ (err).status === 409
+          ? 'このユーザーはすでに関係者です'
+          : `関係者の追加に失敗しました: ${/** @type {any} */ (err).message || ''}`,
+      );
+    }
+  }
+
+  /** @param {number} userId */
+  async #removeStakeholder(userId) {
+    const task = this.#task;
+    if (!task) return;
+    try {
+      await Api.removeStakeholder(task.id, userId);
       this.#stakeholders = this.#stakeholders.filter((s) => s.userId !== userId);
       this.#renderDetail();
     } catch (err) {
-      this.#showDetailError(`関係者の削除に失敗しました: ${err.message || ''}`);
+      this.#showDetailError(
+        `関係者の削除に失敗しました: ${/** @type {any} */ (err).message || ''}`,
+      );
     }
   }
 
   // ---- EDIT MODE ----
 
   #switchToEdit() {
-    this.#replaceUrl(`/tasks/${this.#task.id}/edit`);
+    const task = this.#task;
+    if (!task) return;
+    this.#replaceUrl(`/tasks/${task.id}/edit`);
     this.#renderEdit();
   }
 
   #switchToDetail() {
-    this.#replaceUrl(`/tasks/${this.#task.id}`);
+    const task = this.#task;
+    if (!task) return;
+    this.#replaceUrl(`/tasks/${task.id}`);
     this.#renderDetail();
   }
 
   #renderEdit() {
     const task = this.#task;
+    if (!task) return;
     const hdr = this.#hdr;
     hdr.replaceChildren();
     const title = document.createElement('h5');
@@ -967,7 +1053,7 @@ class AppTaskDrawer extends HTMLElement {
     assSel.appendChild(emptyOpt);
     this.#tenantUsers.forEach((u) => {
       const opt = document.createElement('option');
-      opt.value = u.userId;
+      opt.value = String(u.userId);
       opt.textContent = u.fullName;
       opt.selected = task.assignee?.id === u.userId;
       assSel.appendChild(opt);
@@ -1030,39 +1116,46 @@ class AppTaskDrawer extends HTMLElement {
     });
   }
 
+  /** @param {HTMLFormElement} form */
   async #submitEdit(form) {
-    const errDiv = this.#bdy.querySelector('#edit-form-error');
-    const saveBtn = form.querySelector('[type=submit]');
+    const task = this.#task;
+    if (!task) return;
+    const errDiv = /** @type {HTMLElement} */ (this.#bdy.querySelector('#edit-form-error'));
+    const saveBtn = /** @type {HTMLButtonElement} */ (form.querySelector('[type=submit]'));
     errDiv.className = 'd-none';
 
-    const title = form.querySelector('#editTitle').value.trim();
+    const title = /** @type {HTMLInputElement} */ (form.querySelector('#editTitle')).value.trim();
     if (!title) {
       errDiv.textContent = 'タイトルは必須です';
       errDiv.className = 'alert alert-danger py-2 small mb-3';
       return;
     }
-    const dueDate = form.querySelector('#editDue').value;
+    const dueDate = /** @type {HTMLInputElement} */ (form.querySelector('#editDue')).value;
     if (!dueDate) {
       errDiv.textContent = '期限日は必須です';
       errDiv.className = 'alert alert-danger py-2 small mb-3';
       return;
     }
 
-    const priority = form.querySelector('input[name="editPri"]:checked')?.value;
-    const assigneeId = form.querySelector('#editAssignee').value
-      ? Number(form.querySelector('#editAssignee').value)
-      : null;
-    const desc = form.querySelector('#editDesc').value.trim() || null;
+    const priority = /** @type {HTMLInputElement | null} */ (
+      form.querySelector('input[name="editPri"]:checked')
+    )?.value;
+    const assigneeRaw = /** @type {HTMLSelectElement} */ (form.querySelector('#editAssignee'))
+      .value;
+    const assigneeId = assigneeRaw ? Number(assigneeRaw) : null;
+    const desc =
+      /** @type {HTMLTextAreaElement} */ (form.querySelector('#editDesc')).value.trim() || null;
 
+    /** @type {Record<string, unknown>} */
     const body = {};
-    if (title !== this.#task.title) body.title = title;
-    if (dueDate !== this.#task.dueDate) body.dueDate = dueDate;
-    if (priority !== this.#task.priority) body.priority = priority;
+    if (title !== task.title) body.title = title;
+    if (dueDate !== task.dueDate) body.dueDate = dueDate;
+    if (priority !== task.priority) body.priority = priority;
     // description: null to clear, string to set
-    const prevDesc = this.#task.description || null;
+    const prevDesc = task.description || null;
     if (desc !== prevDesc) body.description = desc;
     // assigneeId: null to clear
-    const prevAss = this.#task.assignee?.id ?? null;
+    const prevAss = task.assignee?.id ?? null;
     if (assigneeId !== prevAss) body.assigneeId = assigneeId;
 
     if (Object.keys(body).length === 0) {
@@ -1074,7 +1167,7 @@ class AppTaskDrawer extends HTMLElement {
     saveBtn.disabled = true;
     saveBtn.textContent = '保存中...';
     try {
-      const updated = await Api.patchTask(this.#task.id, this.#etag, body);
+      const updated = await Api.patchTask(task.id, /** @type {string} */ (this.#etag), body);
       this.#task = updated;
       // Re-fetch ETag from updated task (patchTask returns TaskDetail with version)
       this.#etag = updated.version != null ? `W/"${updated.version}"` : this.#etag;
@@ -1088,13 +1181,13 @@ class AppTaskDrawer extends HTMLElement {
     } catch (err) {
       saveBtn.disabled = false;
       saveBtn.textContent = '保存';
-      if (err.status === 412) {
+      if (/** @type {any} */ (err).status === 412) {
         errDiv.textContent =
           '他のユーザーがこのタスクを編集しました。一旦閉じてから再度開いてください。';
-      } else if (err.status === 403) {
+      } else if (/** @type {any} */ (err).status === 403) {
         errDiv.textContent = '編集権限がありません';
       } else {
-        errDiv.textContent = `保存に失敗しました: ${err.message || ''}`;
+        errDiv.textContent = `保存に失敗しました: ${/** @type {any} */ (err).message || ''}`;
       }
       errDiv.className = 'alert alert-danger py-2 small mb-3';
     }
@@ -1102,6 +1195,11 @@ class AppTaskDrawer extends HTMLElement {
 
   // ---- Utilities ----
 
+  /**
+   * @param {string} id
+   * @param {string} label
+   * @param {boolean} required
+   */
   #fieldGroup(id, label, required) {
     const grp = document.createElement('div');
     grp.className = 'mb-3';
@@ -1120,6 +1218,10 @@ class AppTaskDrawer extends HTMLElement {
     return grp;
   }
 
+  /**
+   * @param {string} label
+   * @param {(() => void) | null} onRemove
+   */
   #makeChip(label, onRemove) {
     const chip = document.createElement('span');
     chip.className = 'drawer-chip';
@@ -1136,6 +1238,7 @@ class AppTaskDrawer extends HTMLElement {
     return chip;
   }
 
+  /** @param {string} priority */
   #makePriBadge(priority) {
     const span = document.createElement('span');
     span.className = `pri-badge pri-${priority}`;
@@ -1143,13 +1246,14 @@ class AppTaskDrawer extends HTMLElement {
     return span;
   }
 
+  /** @param {string | null} dueDate */
   #dueDateEl(dueDate) {
     if (!dueDate) return document.createTextNode('—');
     const today = new Date(
       `${new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date())}T00:00:00`,
     );
     const due = new Date(`${dueDate}T00:00:00`);
-    const diff = Math.round((due - today) / 86400000);
+    const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
     const md = dueDate.slice(5).replace('-', '/');
     if (diff < 0) {
       const span = document.createElement('span');
@@ -1166,6 +1270,7 @@ class AppTaskDrawer extends HTMLElement {
     return document.createTextNode(`${dueDate} (あと${diff}日)`);
   }
 
+  /** @param {string | null} iso */
   #fmtDate(iso) {
     if (!iso) return '—';
     return new Intl.DateTimeFormat('ja-JP', {
@@ -1176,6 +1281,7 @@ class AppTaskDrawer extends HTMLElement {
     }).format(new Date(iso));
   }
 
+  /** @param {string | null} iso */
   #fmtDateTime(iso) {
     if (!iso) return '—';
     return new Intl.DateTimeFormat('ja-JP', {

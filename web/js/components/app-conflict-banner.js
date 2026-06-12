@@ -1,3 +1,4 @@
+// @ts-check
 // <app-conflict-banner> — 412-conflict notification banner.
 // Methods: show(), hide()
 // Fires: conflict-reload, conflict-close (both bubbling)
@@ -14,18 +15,26 @@ _conflictTpl.innerHTML = `
 </div>`;
 
 class AppConflictBanner extends HTMLElement {
+  /** @type {Element | null} */
   #alert = null;
 
   connectedCallback() {
     this.replaceChildren(_conflictTpl.content.cloneNode(true));
     this.#alert = this.firstElementChild;
-    this.#alert.querySelector('.btn-reload').addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('conflict-reload', { bubbles: true }));
-    });
-    this.#alert.querySelector('.btn-dismiss').addEventListener('click', () => {
-      this.hide();
-      this.dispatchEvent(new CustomEvent('conflict-close', { bubbles: true }));
-    });
+    if (!this.#alert) return;
+    /** @type {HTMLButtonElement} */ (this.#alert.querySelector('.btn-reload')).addEventListener(
+      'click',
+      () => {
+        this.dispatchEvent(new CustomEvent('conflict-reload', { bubbles: true }));
+      },
+    );
+    /** @type {HTMLButtonElement} */ (this.#alert.querySelector('.btn-dismiss')).addEventListener(
+      'click',
+      () => {
+        this.hide();
+        this.dispatchEvent(new CustomEvent('conflict-close', { bubbles: true }));
+      },
+    );
   }
 
   show() {

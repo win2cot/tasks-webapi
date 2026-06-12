@@ -86,10 +86,10 @@ const Auth = (() => {
 
   /**
    * デコード済みの ID token payload を返す。
-   * @returns {Object|null}
+   * @returns {KeycloakUser|null}
    */
   function getUser() {
-    return _keycloak ? (_keycloak.idTokenParsed ?? null) : null;
+    return /** @type {KeycloakUser|null} */ (_keycloak ? (_keycloak.idTokenParsed ?? null) : null);
   }
 
   /**

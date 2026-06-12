@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * deploy 時に node_modules の dist ファイルを vendor/ へコピーするスクリプト。
  * バンドラ不要。S3 アップロード前に実行する。
@@ -10,6 +11,10 @@ const path = require('node:path');
 const nm = path.resolve(__dirname, '../node_modules');
 const dst = path.resolve(__dirname, '../vendor');
 
+/**
+ * @param {string} from
+ * @param {string} to
+ */
 function cp(from, to) {
   const src = path.join(nm, from);
   const out = path.join(dst, to);
