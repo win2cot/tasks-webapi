@@ -1052,6 +1052,8 @@ data "aws_iam_policy_document" "tasks_apply" {
       "logs:UntagLogGroup",
       "logs:TagResource",
       "logs:UntagResource",
+      "logs:ListTagsLogGroup",
+      "logs:ListTagsForResource",
     ]
     resources = [
       "arn:aws:logs:${var.region}:${var.account_id}:log-group:/aws/lambda/tasks-${var.env}-*",
