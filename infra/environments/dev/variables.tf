@@ -73,3 +73,13 @@ variable "tenant_default_id" {
   default     = "1"
   description = "Default tenant ID"
 }
+
+# ---------------------------------------------------------------------------
+# ECS Task Definition — bootstrap image (ADR-0028)
+# ---------------------------------------------------------------------------
+
+variable "bootstrap_image" {
+  type        = string
+  default     = "public.ecr.aws/docker/library/busybox:latest"
+  description = "Placeholder image for initial Task Definition bootstrap. Used only on first apply before CI pushes the real ECR image."
+}

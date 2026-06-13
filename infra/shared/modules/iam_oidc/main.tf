@@ -749,7 +749,7 @@ data "aws_iam_policy_document" "tasks_apply" {
     resources = ["*"]
   }
 
-  # ECS write (ecs_cluster: Cluster / capacity providers。Service / Task Definition は S2Infra-2 で追加)
+  # ECS write (ecs_cluster: Cluster / capacity providers + webapi: Service / Task Definition (S2Infra-2))
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: 一部 action は resource-level permission 非対応(PutClusterCapacityProviders 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
@@ -760,6 +760,11 @@ data "aws_iam_policy_document" "tasks_apply" {
       "ecs:UpdateCluster",
       "ecs:UpdateClusterSettings",
       "ecs:PutClusterCapacityProviders",
+      "ecs:RegisterTaskDefinition",
+      "ecs:DeregisterTaskDefinition",
+      "ecs:CreateService",
+      "ecs:UpdateService",
+      "ecs:DeleteService",
       "ecs:TagResource",
       "ecs:UntagResource",
     ]
