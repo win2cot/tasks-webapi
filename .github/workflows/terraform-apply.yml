@@ -1,23 +1,233 @@
 name: "Terraform: Apply"
 
+# 主トリガー: infra-v* タグ push による 2 段階 plan → approval → apply (ADR-0026)
+# 副トリガー: workflow_dispatch (緊急手動実行用フォールバック)
+#
+# 移行方針: workflow_dispatch は緊急フォールバックとして存続。
+# 通常の infra apply は infra-v* タグ push を使用する。
 on:
+  push:
+    tags:
+      - 'infra-v*'
   workflow_dispatch:
 
 env:
   LANG: ja_JP.UTF-8
   TZ: Asia/Tokyo
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
 permissions:
   id-token: write
   contents: read
 
+# apply は 1 実行のみ許可。cancel-in-progress: false で後続をキューイング(中断 apply 防止)
 concurrency:
-  group: terraform-apply-${{ github.ref }}
+  group: terraform-apply
   cancel-in-progress: false
 
 jobs:
-  terraform-apply-platform:
+  # --------------------------------------------------------------------------
+  # plan-platform / plan-tasks — tfplan を artifact 保存 (並列実行)
+  # plan role (read-only) + -lock=false でロック不要
+  # --------------------------------------------------------------------------
+  plan-platform:
+    runs-on: ubuntu-latest
+    environment: platform-plan
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/platform-dev-plan
+          aws-region: ap-northeast-1
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (shared/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-shared-dev-
+
+      - name: terraform init (platform/dev)
+        id: init
+        working-directory: infra/shared/environments/dev
+        run: terraform init -no-color
+        continue-on-error: true
+
+      - name: terraform plan (platform/dev)
+        id: plan
+        if: steps.init.outcome == 'success'
+        working-directory: infra/shared/environments/dev
+        run: terraform plan -out=tfplan.binary -lock=false -no-color 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      - name: Job summary
+        if: always()
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        run: |
+          {
+            echo "### Terraform Plan — platform/dev (tag: \`${{ github.ref_name }}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            case "$INIT_OUTCOME" in
+              success) echo "| init | :white_check_mark: 成功 |" ;;
+              failure) echo "| init | :x: 失敗 |" ;;
+              *)       echo "| init | :grey_question: ${INIT_OUTCOME} |" ;;
+            esac
+            case "$PLAN_OUTCOME" in
+              success) echo "| plan | :white_check_mark: 成功 |" ;;
+              failure) echo "| plan | :x: 失敗 |" ;;
+              skipped) echo "| plan | :fast_forward: スキップ |" ;;
+              *)       echo "| plan | :grey_question: ${PLAN_OUTCOME} |" ;;
+            esac
+            if [ -f infra/shared/environments/dev/plan.txt ]; then
+              SUMMARY=$(grep -E '^(Plan:|No changes\.|Error:)' infra/shared/environments/dev/plan.txt | head -3 || true)
+              if [ -n "$SUMMARY" ]; then
+                echo ""
+                echo '```'
+                echo "$SUMMARY"
+                echo '```'
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload tfplan artifact (platform)
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-platform-dev
+          path: |
+            infra/shared/environments/dev/tfplan.binary
+            infra/shared/environments/dev/plan.txt
+          retention-days: 7
+
+      - name: Fail on errors
+        if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
+        run: exit 1
+
+  plan-tasks:
+    runs-on: ubuntu-latest
+    environment: tasks-plan
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/tasks-dev-plan
+          aws-region: ap-northeast-1
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (tasks/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-tasks-dev-
+
+      - name: terraform init (tasks/dev)
+        id: init
+        working-directory: infra/environments/dev
+        run: terraform init -no-color
+        continue-on-error: true
+
+      - name: terraform plan (tasks/dev)
+        id: plan
+        if: steps.init.outcome == 'success'
+        working-directory: infra/environments/dev
+        run: terraform plan -out=tfplan.binary -lock=false -no-color 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      # ADR-0028 (iii): plan 時の ECS image を記録。apply 時に変化があれば fail-closed する。
+      - name: Capture ECS baseline image (ADR-0028 iii)
+        if: steps.plan.outcome == 'success'
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition tasks-dev-webapi \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text > baseline_image.txt
+          echo "Baseline image: $(cat baseline_image.txt)"
+
+      - name: Job summary
+        if: always()
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        run: |
+          {
+            echo "### Terraform Plan — tasks/dev (tag: \`${{ github.ref_name }}\`)"
+            echo ""
+            echo "| 項目 | 結果 |"
+            echo "|------|------|"
+            case "$INIT_OUTCOME" in
+              success) echo "| init | :white_check_mark: 成功 |" ;;
+              failure) echo "| init | :x: 失敗 |" ;;
+              *)       echo "| init | :grey_question: ${INIT_OUTCOME} |" ;;
+            esac
+            case "$PLAN_OUTCOME" in
+              success) echo "| plan | :white_check_mark: 成功 |" ;;
+              failure) echo "| plan | :x: 失敗 |" ;;
+              skipped) echo "| plan | :fast_forward: スキップ |" ;;
+              *)       echo "| plan | :grey_question: ${PLAN_OUTCOME} |" ;;
+            esac
+            if [ -f infra/environments/dev/plan.txt ]; then
+              SUMMARY=$(grep -E '^(Plan:|No changes\.|Error:)' infra/environments/dev/plan.txt | head -3 || true)
+              if [ -n "$SUMMARY" ]; then
+                echo ""
+                echo '```'
+                echo "$SUMMARY"
+                echo '```'
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload tfplan artifact (tasks)
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-tasks-dev
+          path: |
+            infra/environments/dev/tfplan.binary
+            infra/environments/dev/plan.txt
+            baseline_image.txt
+          retention-days: 7
+
+      - name: Fail on errors
+        if: steps.init.outcome == 'failure' || steps.plan.outcome == 'failure'
+        run: exit 1
+
+  # --------------------------------------------------------------------------
+  # apply-platform — 承認後に platform tfplan を適用
+  # 両 plan job の成功後に approval gate が開く
+  # --------------------------------------------------------------------------
+  apply-platform:
+    needs: [plan-platform, plan-tasks]
     runs-on: ubuntu-latest
     environment: platform-apply
 
@@ -36,16 +246,37 @@ jobs:
           role-to-assume: arn:aws:iam::138285070797:role/platform-dev-apply
           aws-region: ap-northeast-1
 
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (shared/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-shared-dev-
+
+      - name: Download tfplan artifact (platform)
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-platform-dev
+          path: .
+
       - name: terraform init (platform/dev)
         working-directory: infra/shared/environments/dev
         run: terraform init -no-color
 
       - name: terraform apply (platform/dev)
         working-directory: infra/shared/environments/dev
-        run: terraform apply -auto-approve -no-color
+        run: terraform apply -no-color tfplan.binary
 
-  terraform-apply-tasks:
-    needs: terraform-apply-platform
+  # --------------------------------------------------------------------------
+  # apply-tasks — platform apply 後に tasks tfplan を適用
+  # apply 冒頭で ECS image mismatch をチェックし fail-closed (ADR-0028 iii)
+  # --------------------------------------------------------------------------
+  apply-tasks:
+    needs: apply-platform
     runs-on: ubuntu-latest
     environment: tasks-apply
 
@@ -64,10 +295,46 @@ jobs:
           role-to-assume: arn:aws:iam::138285070797:role/tasks-dev-apply
           aws-region: ap-northeast-1
 
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (tasks/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-tasks-dev-
+
+      - name: Download tfplan artifact (tasks)
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-tasks-dev
+          path: .
+
+      # ADR-0028 (iii): plan 承認待ち中に app deploy が割り込んだ場合を検知して fail-closed。
+      # 不一致なら新しい infra-v* タグを push して再 plan すること。
+      - name: ADR-0028 (iii) apply guard — ECS image mismatch check
+        run: |
+          BASELINE=$(cat baseline_image.txt)
+          CURRENT=$(aws ecs describe-task-definition \
+            --task-definition tasks-dev-webapi \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text)
+          echo "Baseline (plan 時): $BASELINE"
+          echo "Current  (現在):     $CURRENT"
+          if [ "$BASELINE" != "$CURRENT" ]; then
+            echo "::error::ECS image が plan 後に変化しました (ADR-0028 iii)。"
+            echo "::error::承認待ち中に app deploy が割り込んだ可能性があります。"
+            echo "::error::新しい infra-v* タグを push して再 plan してください。"
+            exit 1
+          fi
+          echo "Image guard passed."
+
       - name: terraform init (tasks/dev)
         working-directory: infra/environments/dev
         run: terraform init -no-color
 
       - name: terraform apply (tasks/dev)
         working-directory: infra/environments/dev
-        run: terraform apply -auto-approve -no-color
+        run: terraform apply -no-color tfplan.binary
