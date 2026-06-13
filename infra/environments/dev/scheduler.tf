@@ -40,9 +40,9 @@ resource "aws_iam_role_policy" "ecs_scheduler_lambda" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "CloudWatchLogs"
-        Effect = "Allow"
-        Action = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        Sid      = "CloudWatchLogs"
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/tasks-${var.env}-ecs-scheduler:*"
       },
       {
@@ -55,9 +55,9 @@ resource "aws_iam_role_policy" "ecs_scheduler_lambda" {
         ]
       },
       {
-        Sid    = "RdsStartStop"
-        Effect = "Allow"
-        Action = ["rds:StartDBInstance", "rds:StopDBInstance"]
+        Sid      = "RdsStartStop"
+        Effect   = "Allow"
+        Action   = ["rds:StartDBInstance", "rds:StopDBInstance"]
         Resource = "arn:aws:rds:${var.region}:${data.aws_caller_identity.current.account_id}:db:${module.rds.db_instance_identifier}"
       },
       {
@@ -102,7 +102,7 @@ resource "aws_lambda_function" "ecs_scheduler" {
 
   environment {
     variables = {
-      ECS_TARGETS     = join(",", [
+      ECS_TARGETS = join(",", [
         "tasks-${var.env}-cluster/tasks-${var.env}-webapi",
         "platform-${var.env}-cluster/platform-${var.env}-keycloak",
       ])
