@@ -637,6 +637,20 @@ data "aws_iam_policy_document" "tasks_plan" {
     resources = ["*"]
   }
 
+  # Lambda read (ecs-scheduler function 検査)
+  statement {
+    sid       = "LambdaRead"
+    actions   = ["lambda:Get*", "lambda:List*"]
+    resources = ["*"]
+  }
+
+  # EventBridge Scheduler read (ecs-scheduler cron 検査)
+  statement {
+    sid       = "SchedulerRead"
+    actions   = ["scheduler:Get*", "scheduler:List*"]
+    resources = ["*"]
+  }
+
   # S3 read (frontend: S3 bucket inspection during plan)
   statement {
     sid     = "S3Read"
@@ -725,6 +739,10 @@ data "aws_iam_policy_document" "tasks_apply" {
       "s3:List*",
       "cloudfront:Get*",
       "cloudfront:List*",
+      "lambda:Get*",
+      "lambda:List*",
+      "scheduler:Get*",
+      "scheduler:List*",
     ]
     resources = ["*"]
   }
@@ -987,6 +1005,57 @@ data "aws_iam_policy_document" "tasks_apply" {
       "cloudfront:DeleteResponseHeadersPolicy",
     ]
     resources = ["*"]
+  }
+
+  # Lambda write (ecs-scheduler: function CRUD)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: tasks-* function ARN にスコープ
+  statement {
+    sid = "LambdaWrite"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:DeleteFunction",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:TagResource",
+      "lambda:UntagResource",
+    ]
+    resources = ["arn:aws:lambda:${var.region}:${var.account_id}:function:tasks-*"]
+  }
+
+  # EventBridge Scheduler write (ecs-scheduler: schedule CRUD, default group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: default group 内 tasks-* schedule ARN にスコープ
+  statement {
+    sid = "SchedulerWrite"
+    actions = [
+      "scheduler:CreateSchedule",
+      "scheduler:UpdateSchedule",
+      "scheduler:DeleteSchedule",
+      "scheduler:TagResource",
+      "scheduler:UntagResource",
+    ]
+    resources = ["arn:aws:scheduler:${var.region}:${var.account_id}:schedule/default/tasks-*"]
+  }
+
+  # CloudWatch Logs write for Lambda log groups (/aws/lambda/tasks-<env>-*)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: /aws/lambda/tasks-<env>-* ロググループ ARN にスコープ
+  statement {
+    sid = "LogsWriteLambda"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:TagLogGroup",
+      "logs:UntagLogGroup",
+      "logs:TagResource",
+      "logs:UntagResource",
+    ]
+    resources = [
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:/aws/lambda/tasks-${var.env}-*",
+    ]
   }
 
   # SSM — read platform outputs, write tasks params
