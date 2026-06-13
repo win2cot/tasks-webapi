@@ -4,10 +4,10 @@
 # 本体は win2cot/claude-automation の reusable-renovate-approve.yml@v1。
 #
 # 動作:
-# (1) pull_request: 投稿主が renovate[bot] のとき起動
-# (2) check_suite: CI 完了かつ紐付き PR が存在するとき起動
-# reusable 側で受入条件(label / file / package / CI status 等)を再判定し、
-# 満たさなければ no-op で終了する。
+# pull_request(投稿主が renovate[bot])で起動。reusable 側で受入条件
+# (author / label / package / file / mergeable)を再判定し、満たさなければ no-op。
+# CI 緑判定は本 shim では行わず、main の Repository Ruleset の required status checks
+# + GitHub auto-merge に委譲する(承認はポリシー判定のみ)。
 #
 # 受入条件詳細: win2cot/claude-automation docs/automation/renovate-approve.md
 
@@ -16,8 +16,6 @@ name: "Renovate: Auto Approve"
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review]
-  check_suite:
-    types: [completed]
 
 # reusable workflow が要求する権限を呼び出し側でも明示(GitHub Actions の仕様)。
 # reusable-renovate-approve.yml の jobs.approve.permissions と subset 整合が必要。
@@ -26,22 +24,29 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: renovate-approve-shim-${{ github.event.pull_request.number || github.event.check_suite.pull_requests[0].number }}
+  group: renovate-approve-shim-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
   approve:
     if: >-
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.user.login == 'renovate[bot]') ||
-      (github.event_name == 'check_suite' &&
-       github.event.check_suite.conclusion == 'success' &&
-       github.event.check_suite.pull_requests[0] != null)
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login == 'renovate[bot]'
     uses: win2cot/claude-automation/.github/workflows/reusable-renovate-approve.yml@v1
     with:
-      pr_number: >-
-        ${{ github.event.pull_request.number ||
-            github.event.check_suite.pull_requests[0].number }}
+      pr_number: ${{ github.event.pull_request.number }}
+      # 既定(gradle / Docker / workflow)+ web の npm マニフェストを許可。
+      # 入力は上書きなので既定分も全て列挙する。
+      allowed_file_patterns: |
+        **/build.gradle
+        **/build.gradle.kts
+        gradle/libs.versions.toml
+        gradle/wrapper/**
+        **/Dockerfile
+        .github/workflows/*.yml
+        .github/workflows/*.yaml
+        web/package.json
+        web/package-lock.json
     secrets:
       CLAUDE_REVIEW_APP_ID: ${{ secrets.CLAUDE_REVIEW_APP_ID }}
       CLAUDE_REVIEW_PRIVATE_KEY: ${{ secrets.CLAUDE_REVIEW_PRIVATE_KEY }}
