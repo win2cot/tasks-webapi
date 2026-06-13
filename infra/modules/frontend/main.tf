@@ -7,6 +7,8 @@
 
 locals {
   s3_origin_id = "s3-tasks-${var.env}-frontend"
+  # ADR-0022 §3.2 — CSP in Report-Only mode until violations are confirmed zero (§3.4)
+  csp_report_only = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api-${var.env}.tasks.${var.base_domain} https://auth-${var.env}.${var.base_domain}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 }
 
 resource "aws_s3_bucket" "frontend" {
@@ -35,6 +37,67 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
+}
+
+# ---------------------------------------------------------------------------
+# Response Headers Policy — security headers per ADR-0022 §3.2
+# CSP is issued as Report-Only via custom_headers_config until violations are
+# confirmed zero; switch to security_headers_config.content_security_policy
+# (enforce) after verification (ADR-0022 §3.4).
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudfront_response_headers_policy" "frontend" {
+  name    = "tasks-${var.env}-frontend-security-headers"
+  comment = "ADR-0022 §3.2 — security headers for tasks-${var.env} frontend"
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = var.hsts_max_age_sec
+      include_subdomains         = true
+      preload                    = false
+      override                   = true
+    }
+
+    content_type_options {
+      override = true
+    }
+
+    referrer_policy {
+      referrer_policy = "no-referrer"
+      override        = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Content-Security-Policy-Report-Only"
+      value    = local.csp_report_only
+      override = true
+    }
+
+    items {
+      header   = "Permissions-Policy"
+      value    = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()"
+      override = true
+    }
+
+    items {
+      header   = "Cross-Origin-Opener-Policy"
+      value    = "same-origin"
+      override = true
+    }
+
+    items {
+      header   = "Cross-Origin-Resource-Policy"
+      value    = "same-origin"
+      override = true
+    }
+  }
 }
 
 # ---------------------------------------------------------------------------
@@ -68,6 +131,8 @@ resource "aws_cloudfront_distribution" "frontend" {
 
     # AWS-managed CachingOptimized policy (ID is the same across all accounts/regions)
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.frontend.id
   }
 
   custom_error_response {
