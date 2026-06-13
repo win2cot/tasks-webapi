@@ -496,7 +496,7 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 | Webapi: Native Build | `webapi/**` `*.gradle*` `gradle/**` `gradlew*` | GraalVM `nativeCompile`(PR 破壊検知) | `./gradlew :webapi:nativeCompile`(10〜15 分) | ✕ |
 | Keycloak: CI | `keycloak/**` `*.gradle*` `gradle/**` `gradlew*` | Spotless(GJF 1.24.0)・`package-info.java` 確認・JUnit | `./gradlew :keycloak:spotlessApply && ./gradlew :keycloak:check` | △ — redhat.java + vscjava.vscode-gradle。format on save は ◎(ただし後述の注意参照) |
 | Web: CI | `web/**` | Biome lint/format・`tsc --noEmit`・html-validate・v.Nu | `cd web && npx biome ci . && npx tsc --noEmit && npm run html-validate` | ◎ — Biome(biomejs.biome)・tsc(内蔵)・html-validate(html-validate.vscode-html-validate)。v.Nu は Docker 要のため ✕ |
-| Markdown: Lint | `**/*.md` `.markdownlint.jsonc` | markdownlint-cli2 | `npx --yes markdownlint-cli2@0.22.1 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"` | ◎ — DavidAnson.vscode-markdownlint(`.markdownlint.jsonc` 自動参照) |
+| Markdown: Lint | `**/*.md` `.markdownlint.jsonc` | markdownlint-cli2 | `npx --yes markdownlint-cli2@0.22.1 "**/*.md" '!**/node_modules/**' '!**/build/**' '!**/.cowork-tmp/**' '!docs/reviews/**'` | ◎ — DavidAnson.vscode-markdownlint(`.markdownlint.jsonc` 自動参照) |
 | OpenAPI: Lint | `api/**` | Spectral lint(`api/openapi.yaml`) | `npx --yes @stoplight/spectral-cli@6 lint api/openapi.yaml --format github-actions` | ◎ — stoplight.spectral |
 | Terraform: Lint | `infra/**/*.tf` `*.hcl` `*.tfvars` | `terraform fmt -check -recursive`・init・validate・IAM wildcard ゲート | `terraform fmt -check -recursive infra/` その後 `terraform -chdir=infra/environments/dev init -backend=false && terraform -chdir=infra/environments/dev validate` | ◎ — hashicorp.terraform(fmt/validate) |
 | Terraform: Plan | `infra/**/*.tf` `*.hcl` `*.tfvars` | `terraform plan`(AWS 認証・OIDC 要) | AWS 認証が必要のためローカル再現不可 | ✕ |
@@ -555,7 +555,7 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 |---|---|
 | `webapi/` の Java | `./gradlew :webapi:spotlessApply && ./gradlew :webapi:check` |
 | `web/` の JS / HTML / CSS / JSON | `cd web && npx biome check --write . && npx tsc --noEmit && npm run html-validate` |
-| `**/*.md` | `npx --yes markdownlint-cli2@0.22.1 "**/*.md" "!**/node_modules/**" "!**/build/**" "!**/.cowork-tmp/**" "!docs/reviews/**"` |
+| `**/*.md` | `npx --yes markdownlint-cli2@0.22.1 "**/*.md" '!**/node_modules/**' '!**/build/**' '!**/.cowork-tmp/**' '!docs/reviews/**'` |
 | `api/openapi.yaml` | `npx --yes @stoplight/spectral-cli@6 lint api/openapi.yaml` |
 | `infra/**/*.tf` | `terraform fmt -recursive infra/ && terraform -chdir=infra/environments/dev validate` |
 
