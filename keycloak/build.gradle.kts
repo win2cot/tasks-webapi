@@ -19,7 +19,7 @@ repositories {
     mavenCentral()
 }
 
-val keycloakVersion = "26.2.5"
+val keycloakVersion = "26.6.3"
 
 dependencies {
     compileOnly("org.keycloak:keycloak-core:$keycloakVersion")
