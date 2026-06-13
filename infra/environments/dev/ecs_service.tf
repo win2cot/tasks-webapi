@@ -49,31 +49,13 @@ resource "aws_iam_role_policy" "webapi_exec_ssm" {
 }
 
 # ---------------------------------------------------------------------------
-# ADR-0028 巻き戻し防止 (i) — 現行稼働イメージ読取
-#
-# 初回 apply では Task Definition family が未存在のため data source read が失敗する。
-# ブートストラップ手順 (一度だけ):
-#   aws ecs register-task-definition \
-#     --family tasks-${env}-webapi \
-#     --requires-compatibilities FARGATE \
-#     --network-mode awsvpc \
-#     --cpu 512 --memory 1024 \
-#     --container-definitions '[{"name":"webapi","image":"<var.bootstrap_image>","essential":true}]'
-# 登録後に terraform apply を実行すると以降は CI デプロイ済みイメージを自動注入する。
+# ADR-0028 巻き戻し防止 (i) — 現行稼働イメージ注入
+# CI deploy pipeline (S2Infra-4/5) 完了後に実装する。
+# それまでは var.bootstrap_image を直接使用し、(ii) max(revision) のみで巻き戻しを防ぐ。
 # ---------------------------------------------------------------------------
 
-data "aws_ecs_task_definition" "webapi_current" {
-  task_definition = "tasks-${var.env}-webapi"
-}
-
-data "aws_ecs_container_definition" "webapi_current" {
-  task_definition = data.aws_ecs_task_definition.webapi_current.id
-  container_name  = "webapi"
-}
-
 locals {
-  # ADR-0028 (i): inject currently running image to prevent rollback when Terraform applies env-var changes.
-  webapi_image = try(data.aws_ecs_container_definition.webapi_current.image, var.bootstrap_image)
+  webapi_image = var.bootstrap_image
 }
 
 # ---------------------------------------------------------------------------
