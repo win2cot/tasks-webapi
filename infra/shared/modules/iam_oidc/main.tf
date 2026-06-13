@@ -490,7 +490,7 @@ data "aws_iam_policy_document" "platform_apply" {
     resources = ["*"]
   }
 
-  # RDS write (keycloak_db: DB instance / subnet group)
+  # RDS write (keycloak_db: DB instance / subnet group / parameter group)
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: 一部 action は resource-level permission 非対応(CreateDBSubnetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
@@ -502,6 +502,9 @@ data "aws_iam_policy_document" "platform_apply" {
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBSubnetGroup",
       "rds:ModifyDBSubnetGroup",
+      "rds:CreateDBParameterGroup",
+      "rds:ModifyDBParameterGroup",
+      "rds:DeleteDBParameterGroup",
       "rds:AddTagsToResource",
       "rds:RemoveTagsFromResource",
     ]
@@ -763,7 +766,7 @@ data "aws_iam_policy_document" "tasks_apply" {
     resources = ["*"]
   }
 
-  # RDS write (rds: DB instance / subnet group)
+  # RDS write (rds: DB instance / subnet group / parameter group)
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: 一部 action は resource-level permission 非対応(CreateDBSubnetGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
@@ -775,6 +778,9 @@ data "aws_iam_policy_document" "tasks_apply" {
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBSubnetGroup",
       "rds:ModifyDBSubnetGroup",
+      "rds:CreateDBParameterGroup",
+      "rds:ModifyDBParameterGroup",
+      "rds:DeleteDBParameterGroup",
       "rds:AddTagsToResource",
       "rds:RemoveTagsFromResource",
     ]

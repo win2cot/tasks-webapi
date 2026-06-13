@@ -23,6 +23,38 @@ resource "aws_security_group" "keycloak_db" {
 }
 
 # ---------------------------------------------------------------------------
+# DB Parameter Group — Asia/Tokyo / utf8mb4_unicode_ci (ADR-0009)
+# ---------------------------------------------------------------------------
+
+resource "aws_db_parameter_group" "keycloak" {
+  name        = "platform-${var.env}-keycloak-db-mysql84"
+  family      = "mysql8.4"
+  description = "platform ${var.env} Keycloak DB MySQL 8.4: Asia/Tokyo / utf8mb4_unicode_ci (ADR-0009)"
+
+  parameter {
+    name         = "time_zone"
+    value        = "Asia/Tokyo"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "character_set_server"
+    value        = "utf8mb4"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "collation_server"
+    value        = "utf8mb4_unicode_ci"
+    apply_method = "pending-reboot"
+  }
+
+  tags = {
+    Name = "platform-${var.env}-keycloak-db-mysql84"
+  }
+}
+
+# ---------------------------------------------------------------------------
 # DB Subnet Group — private subnets
 # ---------------------------------------------------------------------------
 
@@ -54,6 +86,8 @@ resource "aws_db_instance" "keycloak" {
   db_name  = "keycloak"
   username = "keycloak_admin"
   password = var.db_password
+
+  parameter_group_name = aws_db_parameter_group.keycloak.name
 
   db_subnet_group_name   = aws_db_subnet_group.keycloak.name
   vpc_security_group_ids = [aws_security_group.keycloak_db.id]

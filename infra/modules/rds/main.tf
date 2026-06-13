@@ -5,6 +5,34 @@
 # private subnet は /platform/{env}/private-subnet-ids(SSM)から渡される。
 # ---------------------------------------------------------------------------
 
+resource "aws_db_parameter_group" "main" {
+  name        = "tasks-${var.env}-mysql84"
+  family      = "mysql8.4"
+  description = "tasks ${var.env} MySQL 8.4: Asia/Tokyo / utf8mb4_unicode_ci (ADR-0009)"
+
+  parameter {
+    name         = "time_zone"
+    value        = "Asia/Tokyo"
+    apply_method = "immediate"
+  }
+
+  parameter {
+    name         = "character_set_server"
+    value        = "utf8mb4"
+    apply_method = "pending-reboot"
+  }
+
+  parameter {
+    name         = "collation_server"
+    value        = "utf8mb4_unicode_ci"
+    apply_method = "pending-reboot"
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-mysql84"
+  }
+}
+
 resource "aws_db_subnet_group" "main" {
   name        = "tasks-${var.env}-subnet-group"
   subnet_ids  = var.subnet_ids
@@ -31,6 +59,8 @@ resource "aws_db_instance" "main" {
   db_name  = "tasks"
   username = "admin"
   password = var.db_password
+
+  parameter_group_name = aws_db_parameter_group.main.name
 
   # Network
   db_subnet_group_name   = aws_db_subnet_group.main.name
