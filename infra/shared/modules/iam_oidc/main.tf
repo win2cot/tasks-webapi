@@ -957,7 +957,7 @@ data "aws_iam_policy_document" "tasks_apply" {
     resources = ["arn:aws:s3:::tasks-${var.env}-frontend"]
   }
 
-  # CloudFront write (frontend: distribution + OAC)
+  # CloudFront write (frontend: distribution + OAC + Response Headers Policy)
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: 一部 action は resource-level permission 非対応(CreateDistribution 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
@@ -971,6 +971,9 @@ data "aws_iam_policy_document" "tasks_apply" {
       "cloudfront:CreateOriginAccessControl",
       "cloudfront:UpdateOriginAccessControl",
       "cloudfront:DeleteOriginAccessControl",
+      "cloudfront:CreateResponseHeadersPolicy",   # ADR-0022 §3.2
+      "cloudfront:UpdateResponseHeadersPolicy",   # ADR-0022 §3.2
+      "cloudfront:DeleteResponseHeadersPolicy",   # ADR-0022 §3.2
     ]
     resources = ["*"]
   }
