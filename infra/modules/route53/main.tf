@@ -255,21 +255,3 @@ resource "aws_lb_listener_rule" "auth" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# Alias record — tasks-<env>.<base_domain> → CloudFront (S2Infra-3)
-# Created only when cloudfront_domain_name is set (non-null).
-# ---------------------------------------------------------------------------
-
-resource "aws_route53_record" "frontend" {
-  count = var.cloudfront_domain_name != null ? 1 : 0
-
-  zone_id = data.aws_route53_zone.public.zone_id
-  name    = "tasks-${var.env}.${var.base_domain}"
-  type    = "A"
-
-  alias {
-    name                   = var.cloudfront_domain_name
-    zone_id                = var.cloudfront_zone_id
-    evaluate_target_health = false
-  }
-}

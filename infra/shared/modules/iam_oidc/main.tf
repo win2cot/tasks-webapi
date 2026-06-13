@@ -634,6 +634,21 @@ data "aws_iam_policy_document" "tasks_plan" {
     resources = ["*"]
   }
 
+  # S3 read (frontend: S3 bucket inspection during plan)
+  statement {
+    sid     = "S3Read"
+    actions = ["s3:Get*", "s3:List*"]
+    # s3:GetBucketLocation etc. support resource-level permissions, but bucket ARN is unknown during initial plan
+    resources = ["*"]
+  }
+
+  # CloudFront read (frontend: distribution / OAC inspection during plan)
+  statement {
+    sid       = "CloudFrontRead"
+    actions   = ["cloudfront:Get*", "cloudfront:List*"]
+    resources = ["*"]
+  }
+
   # SSM read — platform outputs + tasks params
   statement {
     sid     = "SsmRead"
@@ -703,6 +718,10 @@ data "aws_iam_policy_document" "tasks_apply" {
       "acm:GetCertificate",
       "route53:Get*",
       "route53:List*",
+      "s3:Get*",
+      "s3:List*",
+      "cloudfront:Get*",
+      "cloudfront:List*",
     ]
     resources = ["*"]
   }
@@ -918,6 +937,42 @@ data "aws_iam_policy_document" "tasks_apply" {
   statement {
     sid       = "LogsDescribe"
     actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
+  }
+
+  # S3 write (frontend: bucket / public access block / bucket policy)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: scoped to tasks-<env>-frontend bucket ARN
+  statement {
+    sid = "S3Write"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:PutBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:PutBucketTagging",
+      "s3:DeleteBucketTagging",
+    ]
+    resources = ["arn:aws:s3:::tasks-${var.env}-frontend"]
+  }
+
+  # CloudFront write (frontend: distribution + OAC)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: distribution / OAC の ARN は apply 時点で未確定のため Resource: *
+  statement {
+    sid = "CloudFrontWrite"
+    actions = [
+      "cloudfront:CreateDistribution",
+      "cloudfront:UpdateDistribution",
+      "cloudfront:DeleteDistribution",
+      "cloudfront:TagResource",
+      "cloudfront:UntagResource",
+      "cloudfront:CreateOriginAccessControl",
+      "cloudfront:UpdateOriginAccessControl",
+      "cloudfront:DeleteOriginAccessControl",
+      "cloudfront:CreateInvalidation",
+    ]
     resources = ["*"]
   }
 
