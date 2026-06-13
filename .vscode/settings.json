@@ -18,8 +18,9 @@
   "[css]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
-  "biome.lsp.bin": "${workspaceFolder}/web/node_modules/@biomejs/biome/bin/biome",
+  "biome.lsp.bin": "web/node_modules/@biomejs/cli-linux-x64/biome",
   "java.format.settings.google.version": "1.34.0",
+  "java.format.settings.google.mode": "jar-file",
   "[terraform]": {
     "editor.defaultFormatter": "hashicorp.terraform",
     "editor.formatOnSave": true
