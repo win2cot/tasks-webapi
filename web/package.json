@@ -6,7 +6,7 @@
   "dependencies": {
     "@fontsource/noto-sans-jp": "^5.0.0",
     "bootstrap": "5.3.8",
-    "bootstrap-icons": "1.11.3",
+    "bootstrap-icons": "1.13.1",
     "keycloak-js": "24.0.5"
   },
   "scripts": {
