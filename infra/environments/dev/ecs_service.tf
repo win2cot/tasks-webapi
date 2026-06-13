@@ -102,9 +102,9 @@ resource "aws_ecs_task_definition" "webapi" {
     }]
 
     environment = [
-      { name = "SERVER_PORT",                value = "8080" },
-      { name = "TZ",                         value = "Asia/Tokyo" },
-      { name = "SPRING_DATASOURCE_URL",      value = "jdbc:mysql://db.tasks.internal:3306/tasks" },
+      { name = "SERVER_PORT", value = "8080" },
+      { name = "TZ", value = "Asia/Tokyo" },
+      { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://db.tasks.internal:3306/tasks" },
       { name = "SPRING_DATASOURCE_USERNAME", value = "tasks_webapi" },
     ]
 
