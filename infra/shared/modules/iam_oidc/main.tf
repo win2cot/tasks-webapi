@@ -959,7 +959,7 @@ data "aws_iam_policy_document" "tasks_apply" {
 
   # CloudFront write (frontend: distribution + OAC)
   # 規約 R1: 書込み action は完全列挙
-  # 規約 R2: distribution / OAC の ARN は apply 時点で未確定のため Resource: *
+  # 規約 R2: 一部 action は resource-level permission 非対応(CreateDistribution 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
     sid = "CloudFrontWrite"
     actions = [
@@ -971,7 +971,6 @@ data "aws_iam_policy_document" "tasks_apply" {
       "cloudfront:CreateOriginAccessControl",
       "cloudfront:UpdateOriginAccessControl",
       "cloudfront:DeleteOriginAccessControl",
-      "cloudfront:CreateInvalidation",
     ]
     resources = ["*"]
   }
