@@ -971,9 +971,9 @@ data "aws_iam_policy_document" "tasks_apply" {
       "cloudfront:CreateOriginAccessControl",
       "cloudfront:UpdateOriginAccessControl",
       "cloudfront:DeleteOriginAccessControl",
-      "cloudfront:CreateResponseHeadersPolicy",   # ADR-0022 §3.2
-      "cloudfront:UpdateResponseHeadersPolicy",   # ADR-0022 §3.2
-      "cloudfront:DeleteResponseHeadersPolicy",   # ADR-0022 §3.2
+      "cloudfront:CreateResponseHeadersPolicy",
+      "cloudfront:UpdateResponseHeadersPolicy",
+      "cloudfront:DeleteResponseHeadersPolicy",
     ]
     resources = ["*"]
   }
