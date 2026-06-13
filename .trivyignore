@@ -7,3 +7,5 @@
 AVD-AWS-0053  # platform ALB は internet-facing ALB (設計上の意図): 公開インターネットからのリクエストを受け付ける entry point であり internal=false は仕様 (承認者: win2cot, 期限: N/A)
 AVD-AWS-0104  # SG-ECS の unrestricted egress は設計上の意図: ECS Fargate タスクが ECR イメージ pull / CloudWatch Logs / Secrets Manager / SSM 等 AWS マネージドサービスへ到達するために必要。VPC エンドポイント整備は別 Issue スコープ (承認者: win2cot, 期限: N/A)
 AVD-AWS-0178  # dev platform VPC は Flow Logs 無効: Sprint0/MVP 前で実データ無し + ADR-0003 の dev コスト最適化方針(単一NAT/S3 GW EP)に整合し CloudWatch Logs 取込/保管課金を回避。prod platform 構築時に再評価 (承認者: win2cot, 期限: prod platform 構築時)
+AVD-AWS-0011  # CloudFront WAF: dev 環境はコスト最適化(~$5/月 + リクエスト課金)のため未設定。prod 構築時に再評価 (承認者: win2cot, 期限: prod 構築時)
+AVD-AWS-0132  # S3 frontend バケット CMK 暗号化: 静的公開アセットの CMK 暗号化は KMS コスト増 + 運用複雑性に対して効果が限定的。SSE-S3(デフォルト)で十分と判断 (承認者: win2cot, 期限: N/A)

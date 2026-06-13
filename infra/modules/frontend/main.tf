@@ -1,0 +1,134 @@
+# ---------------------------------------------------------------------------
+# Frontend S3 + CloudFront + OAC (S2Infra-3 / #480)
+# S3: private bucket, accessed only via CloudFront OAC (no public access).
+# CloudFront: SPA routing — 404/403 responses from S3 fall back to
+#   /tasks.html (200) so direct URLs like /tasks/new work in-browser.
+# ---------------------------------------------------------------------------
+
+locals {
+  s3_origin_id = "s3-tasks-${var.env}-frontend"
+}
+
+resource "aws_s3_bucket" "frontend" {
+  bucket = "tasks-${var.env}-frontend"
+
+  tags = {
+    Name = "tasks-${var.env}-frontend"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket                  = aws_s3_bucket.frontend.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# ---------------------------------------------------------------------------
+# Origin Access Control — modern replacement for OAI; SigV4-signs requests
+# from CloudFront to S3 so the bucket can remain fully private.
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudfront_origin_access_control" "frontend" {
+  name                              = "tasks-${var.env}-frontend-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# ---------------------------------------------------------------------------
+# CloudFront distribution
+# PriceClass_200 covers Asia Pacific (Japan) at lower cost than PriceClass_All.
+# SPA fallback: 404/403 from S3 → /tasks.html with HTTP 200.
+#   - 404: key not found (e.g. /tasks/new, /tasks/{id}/edit)
+#   - 403: safety net for any edge-case access-denied from S3
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudfront_distribution" "frontend" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = "index.html"
+  aliases             = ["tasks-${var.env}.${var.base_domain}"]
+  http_version        = "http2and3"
+  price_class         = "PriceClass_200"
+
+  origin {
+    domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
+    origin_id                = local.s3_origin_id
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
+  }
+
+  default_cache_behavior {
+    target_origin_id       = local.s3_origin_id
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    # AWS-managed CachingOptimized policy (ID is the same across all accounts/regions)
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/tasks.html"
+    error_caching_min_ttl = 0
+  }
+
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/tasks.html"
+    error_caching_min_ttl = 0
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = var.acm_certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-cdn"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# S3 bucket policy — grant CloudFront OAC s3:GetObject; deny all else.
+# Condition on AWS:SourceArn scopes access to this distribution only.
+# depends_on ensures public access block is in place before the policy.
+# ---------------------------------------------------------------------------
+
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontOAC"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.frontend.arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
+          }
+        }
+      }
+    ]
+  })
+
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
+}

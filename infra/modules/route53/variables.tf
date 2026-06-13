@@ -33,15 +33,3 @@ variable "alb_zone_id" {
   type        = string
   description = "Hosted Zone ID of the shared ALB (from platform SSM /platform/<env>/alb-zone-id)"
 }
-
-variable "cloudfront_domain_name" {
-  type        = string
-  default     = null
-  description = "CloudFront distribution domain name for tasks-<env>.<base_domain> alias (S2Infra-3). Set null until CloudFront is provisioned."
-}
-
-variable "cloudfront_zone_id" {
-  type        = string
-  default     = "Z2FDTNDATAQYW2"
-  description = "CloudFront hosted zone ID. Defaults to Z2FDTNDATAQYW2 (fixed AWS constant for all CloudFront distributions)."
-}
