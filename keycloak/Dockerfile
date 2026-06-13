@@ -1,6 +1,6 @@
 # ─── Stage 1: Build SPI JAR ────────────────────────────────────────────────
 # Builds the tasks-webapi User Storage SPI JAR from the Gradle keycloak subproject.
-FROM eclipse-temurin:21-jdk-jammy AS spi-builder
+FROM eclipse-temurin:21.0.11_10-jdk-jammy AS spi-builder
 
 WORKDIR /workspace
 
