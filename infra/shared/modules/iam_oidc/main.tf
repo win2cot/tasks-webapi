@@ -25,6 +25,7 @@ data "aws_iam_policy_document" "trust" {
     platform_apply = "platform-apply"
     tasks_plan     = "tasks-plan"
     tasks_apply    = "tasks-apply"
+    release_build  = "release-build"
   }
 
   statement {
@@ -1167,4 +1168,74 @@ resource "aws_iam_role_policy" "tasks_apply" {
   name   = "tasks-${var.env}-apply-policy"
   role   = aws_iam_role.tasks_apply.id
   policy = data.aws_iam_policy_document.tasks_apply.json
+}
+
+# ---------------------------------------------------------------------------
+# release-build  (write; v* tag → ECR push + S3 web bundle upload)
+# Trust: environment:release-build (GitHub Environment, works for both tag
+# push and workflow_dispatch triggers when jobs use environment: release-build)
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "release_build" {
+  name               = "release-build"
+  assume_role_policy = data.aws_iam_policy_document.trust["release_build"].json
+}
+
+data "aws_iam_policy_document" "release_build" {
+  # ECR auth token — GetAuthorizationToken does not support resource-level
+  statement {
+    sid       = "EcrAuth"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  # ECR push + retag for tasks-webapi and keycloak-custom
+  # ecr:GetDownloadUrlForLayer is intentionally omitted: all base images (keycloak FROM quay.io,
+  # webapi builder from Paketo/paketobuildpacks) are pulled from public registries, not ECR.
+  statement {
+    sid = "EcrPush"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:PutImage",
+      "ecr:BatchGetImage",
+      "ecr:DescribeImages",
+      "ecr:ListImages",
+    ]
+    resources = [
+      "arn:aws:ecr:${var.region}:${var.account_id}:repository/tasks-webapi",
+      "arn:aws:ecr:${var.region}:${var.account_id}:repository/keycloak-custom",
+    ]
+  }
+
+  # S3: web bundle objects under web/ prefix (GetObject needed for s3 cp server-side copy)
+  # s3:DeleteObject is omitted: s3 sync runs without --delete, and s3 cp does not delete objects.
+  statement {
+    sid     = "S3WebBundleObjects"
+    actions = ["s3:GetObject", "s3:PutObject"]
+    resources = [
+      "arn:aws:s3:::tasks-${var.env}-frontend/web/*",
+    ]
+  }
+
+  # s3:ListBucket does not support resource-level prefix restrictions inline;
+  # use a condition to scope it to the web/ prefix
+  statement {
+    sid       = "S3WebBundleList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::tasks-${var.env}-frontend"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["web/*"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "release_build" {
+  name   = "release-build-policy"
+  role   = aws_iam_role.release_build.id
+  policy = data.aws_iam_policy_document.release_build.json
 }
