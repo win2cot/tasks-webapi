@@ -1190,6 +1190,8 @@ data "aws_iam_policy_document" "release_build" {
   }
 
   # ECR push + retag for tasks-webapi and keycloak-custom
+  # ecr:GetDownloadUrlForLayer is intentionally omitted: all base images (keycloak FROM quay.io,
+  # webapi builder from Paketo/paketobuildpacks) are pulled from public registries, not ECR.
   statement {
     sid = "EcrPush"
     actions = [
@@ -1199,7 +1201,6 @@ data "aws_iam_policy_document" "release_build" {
       "ecr:CompleteLayerUpload",
       "ecr:PutImage",
       "ecr:BatchGetImage",
-      "ecr:GetDownloadUrlForLayer",
       "ecr:DescribeImages",
       "ecr:ListImages",
     ]
@@ -1210,9 +1211,10 @@ data "aws_iam_policy_document" "release_build" {
   }
 
   # S3: web bundle objects under web/ prefix (GetObject needed for s3 cp server-side copy)
+  # s3:DeleteObject is omitted: s3 sync runs without --delete, and s3 cp does not delete objects.
   statement {
     sid     = "S3WebBundleObjects"
-    actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    actions = ["s3:GetObject", "s3:PutObject"]
     resources = [
       "arn:aws:s3:::tasks-${var.env}-frontend/web/*",
     ]
