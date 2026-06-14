@@ -1334,11 +1334,13 @@ data "aws_iam_policy_document" "tasks_deploy" {
 
   # CloudFront invalidation — live/ prefix を無効化して新バンドルを即時配信
   # 規約 R1: 書込み action は完全列挙
-  # 規約 R2: distribution ID は apply 時点で未確定のため Resource: *
+  # 規約 R2: distribution ID は apply 時点で未確定のため account-scope pattern で最小化
   statement {
-    sid       = "CloudFrontInvalidate"
-    actions   = ["cloudfront:CreateInvalidation"]
-    resources = ["*"]
+    sid     = "CloudFrontInvalidate"
+    actions = ["cloudfront:CreateInvalidation"]
+    resources = [
+      "arn:aws:cloudfront::${var.account_id}:distribution/*",
+    ]
   }
 }
 
