@@ -1,6 +1,6 @@
 # ADR-0030: 全環境デプロイタグでの GitHub Release 自動生成(チャンネル比較)
 
-- **Status**: Accepted
+- **Status**: Superseded(→ [ADR-0031](0031-single-product-version-dispatch-deploy.md))
 - **Date**: 2026-06-14
 - **Deciders**: win2cot, 開発チーム
 - **Tags**: ci-cd, release

@@ -1,6 +1,6 @@
 # ADR-0026: デプロイ tag のコンポーネント別 prefix 化と infra apply の承認ゲート
 
-- **Status**: Accepted
+- **Status**: Superseded(→ [ADR-0031](0031-single-product-version-dispatch-deploy.md))
 - **Date**: 2026-06-12
 - **Deciders**: win2cot, 開発チーム
 - **Tags**: ci-cd, infra, release
