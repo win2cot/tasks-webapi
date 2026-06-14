@@ -216,10 +216,10 @@ jobs:
       - name: Build webapi image (bootBuildImage)
         if: env.BUILD_WEBAPI == 'true' && steps.webapi-exists.outputs.skip != 'true'
         run: |
-          VERSION_BARE="${VERSION#v}"
           chmod +x ./gradlew
-          ./gradlew :webapi:bootBuildImage -Pversion="${VERSION_BARE}" --no-daemon
-          docker tag "tasks-webapi:${VERSION_BARE}" "${ECR_REGISTRY}/tasks-webapi:${VERSION}"
+          ./gradlew :webapi:bootBuildImage \
+            --imageName="${ECR_REGISTRY}/tasks-webapi:${VERSION}" \
+            --no-daemon
           docker push "${ECR_REGISTRY}/tasks-webapi:${VERSION}"
 
       - name: Retag webapi (no source change — reuse previous digest)
