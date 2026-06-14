@@ -1273,14 +1273,20 @@ data "aws_iam_policy_document" "tasks_deploy" {
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: RegisterTaskDefinition / DescribeTaskDefinition は resource-level 非対応 → Resource: *
   statement {
-    sid = "EcsTasksWebapi"
-    actions = [
-      "ecs:DescribeTaskDefinition",
-      "ecs:RegisterTaskDefinition",
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
-    ]
+    sid     = "EcsTaskDefinition"
+    actions = ["ecs:DescribeTaskDefinition", "ecs:RegisterTaskDefinition"]
+    # RegisterTaskDefinition / DescribeTaskDefinition は resource-level permission 非対応
     resources = ["*"]
+  }
+
+  # 規約 R2: UpdateService / DescribeServices は resource-level 対応 → クラスター/サービス ARN にスコープ
+  statement {
+    sid     = "EcsServiceUpdate"
+    actions = ["ecs:UpdateService", "ecs:DescribeServices"]
+    resources = [
+      "arn:aws:ecs:${var.region}:${var.account_id}:cluster/tasks-${var.env}-cluster",
+      "arn:aws:ecs:${var.region}:${var.account_id}:service/tasks-${var.env}-cluster/tasks-${var.env}-webapi",
+    ]
   }
 
   # IAM PassRole — ecs:RegisterTaskDefinition 時に task execution role / task role を指定するために必要
@@ -1372,14 +1378,20 @@ data "aws_iam_policy_document" "platform_deploy" {
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: RegisterTaskDefinition / DescribeTaskDefinition は resource-level 非対応 → Resource: *
   statement {
-    sid = "EcsPlatformKeycloak"
-    actions = [
-      "ecs:DescribeTaskDefinition",
-      "ecs:RegisterTaskDefinition",
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
-    ]
+    sid     = "EcsTaskDefinition"
+    actions = ["ecs:DescribeTaskDefinition", "ecs:RegisterTaskDefinition"]
+    # RegisterTaskDefinition / DescribeTaskDefinition は resource-level permission 非対応
     resources = ["*"]
+  }
+
+  # 規約 R2: UpdateService / DescribeServices は resource-level 対応 → クラスター/サービス ARN にスコープ
+  statement {
+    sid     = "EcsServiceUpdate"
+    actions = ["ecs:UpdateService", "ecs:DescribeServices"]
+    resources = [
+      "arn:aws:ecs:${var.region}:${var.account_id}:cluster/platform-${var.env}-cluster",
+      "arn:aws:ecs:${var.region}:${var.account_id}:service/platform-${var.env}-cluster/platform-${var.env}-keycloak",
+    ]
   }
 
   # IAM PassRole — ecs:RegisterTaskDefinition 時に keycloak 実行ロールを指定するために必要
