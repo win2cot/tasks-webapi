@@ -1,0 +1,32 @@
+changelog:
+  categories:
+    - title: "webapi"
+      labels:
+        - area/webapi
+        - area/backend
+        - area/db
+        - area/openapi
+    - title: "keycloak / セキュリティ"
+      labels:
+        - area/keycloak
+        - area/security
+    - title: "フロントエンド"
+      labels:
+        - area/web
+        - area/frontend
+    - title: "インフラ"
+      labels:
+        - area/infra
+    - title: "CI/CD"
+      labels:
+        - area/ci
+    - title: "ドキュメント / 設計"
+      labels:
+        - area/docs
+    - title: "その他"
+      labels:
+        - "*"
+  exclude:
+    labels:
+      - dependencies
+      - github_actions

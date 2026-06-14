@@ -22,3 +22,8 @@ output "tasks_apply_role_arn" {
   description = "ARN of the tasks-dev-apply IAM role"
   value       = aws_iam_role.tasks_apply.arn
 }
+
+output "release_build_role_arn" {
+  description = "ARN of the release-build IAM role (used by release-build.yml workflow)"
+  value       = aws_iam_role.release_build.arn
+}

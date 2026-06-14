@@ -1,0 +1,477 @@
+name: "Release: Build & Publish"
+
+# フロー A (ADR-0031 §6): v* タグ push を起点に変更検知 → ビルド → GitHub Release 作成。
+# デプロイはしない(フロー B = #635 の workflow_dispatch が担当)。
+#
+# 前提: GitHub Environment "release-build" が repo settings に存在すること。
+# OIDC trust: repo:win2cot/tasks-webapi:environment:release-build
+# IAM role: arn:aws:iam::138285070797:role/release-build (infra/shared/modules/iam_oidc)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to build (e.g. v1.0.0) — must already exist in git'
+        required: true
+      force_rebuild_all:
+        description: 'Force rebuild all components (base image update / build logic change)'
+        type: boolean
+        default: false
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AWS_REGION: ap-northeast-1
+  ECR_REGISTRY: 138285070797.dkr.ecr.ap-northeast-1.amazonaws.com
+
+permissions:
+  contents: write   # create GitHub Release
+  id-token: write   # OIDC for AWS credentials
+
+# 同一バージョンの重複実行防止。cancel-in-progress: false で後続をキュー(中断ビルド防止)
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # detect-changes: バージョン解決 + 前バージョンとの diff からコンポーネントフラグを決定
+  # ---------------------------------------------------------------------------
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prev_version: ${{ steps.prev.outputs.prev_version }}
+      first_release: ${{ steps.prev.outputs.first_release }}
+      build_webapi: ${{ steps.detect.outputs.build_webapi }}
+      build_keycloak: ${{ steps.detect.outputs.build_keycloak }}
+      build_web: ${{ steps.detect.outputs.build_web }}
+      run_validate_infra: ${{ steps.detect.outputs.run_validate_infra }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::Invalid version: '${VERSION}' (expected vX.Y.Z)"
+            exit 1
+          fi
+          # Verify the tag exists locally (for dispatch with non-existent tag)
+          if ! git rev-parse "${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag '${VERSION}' not found in repository"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building version: ${VERSION}"
+
+      - name: Resolve previous version tag
+        id: prev
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Sort by semver descending; exclude the current tag to get the previous one
+          PREV=$(git tag --list 'v*' --sort=-version:refname | grep -v "^${VERSION}$" | head -1 || true)
+          if [ -z "$PREV" ]; then
+            echo "first_release=true" >> "$GITHUB_OUTPUT"
+            echo "prev_version=" >> "$GITHUB_OUTPUT"
+            echo "First release — all components will be built."
+          else
+            echo "first_release=false" >> "$GITHUB_OUTPUT"
+            echo "prev_version=${PREV}" >> "$GITHUB_OUTPUT"
+            echo "Previous version: ${PREV} → current: ${VERSION}"
+          fi
+
+      - name: Detect component changes
+        id: detect
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PREV: ${{ steps.prev.outputs.prev_version }}
+          FIRST_RELEASE: ${{ steps.prev.outputs.first_release }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild_all || 'false' }}
+        run: |
+          # First release or force-rebuild-all → build everything
+          if [ "$FIRST_RELEASE" = "true" ] || [ "$FORCE_REBUILD" = "true" ]; then
+            reason="first_release=${FIRST_RELEASE} force=${FORCE_REBUILD}"
+            echo "::notice::All components will be built (${reason})"
+            for key in build_webapi build_keycloak build_web run_validate_infra; do
+              echo "${key}=true" >> "$GITHUB_OUTPUT"
+            done
+            exit 0
+          fi
+
+          DIFF=$(git diff --name-only "${PREV}..${VERSION}")
+          echo "Files changed between ${PREV} and ${VERSION}:"
+          echo "$DIFF"
+
+          # Root Gradle files → force webapi + keycloak rebuild
+          GRADLE_TRIGGER=$(echo "$DIFF" | grep -E \
+            '^(build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|gradle/|buildSrc/|gradlew(\.bat)?)' \
+            || true)
+
+          # Known no-rebuild paths: .github/, docs/, README, org/, renovate.json
+          # Unknown paths outside the component map → conservative: rebuild all
+          MAPPED_PATTERN='^(webapi/|keycloak/|web/|infra/|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|gradle\.properties|gradle/|buildSrc/|gradlew(\.bat)?|\.github/|docs/|README|org/|renovate\.json)'
+          UNKNOWN=$(echo "$DIFF" | grep -vE "$MAPPED_PATTERN" || true)
+          if [ -n "$UNKNOWN" ]; then
+            echo "::warning::Changed paths outside component map — conservatively rebuilding all components:"
+            echo "$UNKNOWN"
+            for key in build_webapi build_keycloak build_web run_validate_infra; do
+              echo "${key}=true" >> "$GITHUB_OUTPUT"
+            done
+            exit 0
+          fi
+
+          WEBAPI_DIFF=$(echo "$DIFF" | grep '^webapi/' || true)
+          KEYCLOAK_DIFF=$(echo "$DIFF" | grep '^keycloak/' || true)
+          WEB_DIFF=$(echo "$DIFF" | grep '^web/' || true)
+          INFRA_DIFF=$(echo "$DIFF" | grep '^infra/' || true)
+
+          # Apply component rules
+          BUILD_WEBAPI=false
+          BUILD_KEYCLOAK=false
+          BUILD_WEB=false
+          RUN_VALIDATE_INFRA=false
+
+          if [ -n "$WEBAPI_DIFF" ] || [ -n "$GRADLE_TRIGGER" ]; then BUILD_WEBAPI=true; fi
+          if [ -n "$KEYCLOAK_DIFF" ] || [ -n "$GRADLE_TRIGGER" ]; then BUILD_KEYCLOAK=true; fi
+          if [ -n "$WEB_DIFF" ]; then BUILD_WEB=true; fi
+          if [ -n "$INFRA_DIFF" ]; then RUN_VALIDATE_INFRA=true; fi
+
+          echo "build_webapi=${BUILD_WEBAPI}" >> "$GITHUB_OUTPUT"
+          echo "build_keycloak=${BUILD_KEYCLOAK}" >> "$GITHUB_OUTPUT"
+          echo "build_web=${BUILD_WEB}" >> "$GITHUB_OUTPUT"
+          echo "run_validate_infra=${RUN_VALIDATE_INFRA}" >> "$GITHUB_OUTPUT"
+
+          echo "Detection summary:"
+          echo "  webapi:   ${BUILD_WEBAPI}  (gradle_trigger: $([ -n "$GRADLE_TRIGGER" ] && echo yes || echo no))"
+          echo "  keycloak: ${BUILD_KEYCLOAK}  (gradle_trigger: $([ -n "$GRADLE_TRIGGER" ] && echo yes || echo no))"
+          echo "  web:      ${BUILD_WEB}"
+          echo "  infra:    ${RUN_VALIDATE_INFRA}"
+
+  # ---------------------------------------------------------------------------
+  # build-containers: webapi + keycloak を ECR にビルドまたは re-tag
+  # ---------------------------------------------------------------------------
+  build-containers:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    environment: release-build
+    env:
+      VERSION: ${{ needs.detect-changes.outputs.version }}
+      PREV_VERSION: ${{ needs.detect-changes.outputs.prev_version }}
+      FIRST_RELEASE: ${{ needs.detect-changes.outputs.first_release }}
+      BUILD_WEBAPI: ${{ needs.detect-changes.outputs.build_webapi }}
+      BUILD_KEYCLOAK: ${{ needs.detect-changes.outputs.build_keycloak }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.detect-changes.outputs.version }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/release-build
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── webapi ──────────────────────────────────────────────────────────────
+      - name: Check webapi image in ECR (idempotency)
+        id: webapi-exists
+        if: env.BUILD_WEBAPI == 'true'
+        run: |
+          if aws ecr describe-images \
+            --repository-name tasks-webapi \
+            --image-ids imageTag="${VERSION}" \
+            --no-cli-pager 2>/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "tasks-webapi:${VERSION} already in ECR — skipping build."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up JDK 25 (Temurin)
+        if: env.BUILD_WEBAPI == 'true' && steps.webapi-exists.outputs.skip != 'true'
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        if: env.BUILD_WEBAPI == 'true' && steps.webapi-exists.outputs.skip != 'true'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build webapi image (bootBuildImage)
+        if: env.BUILD_WEBAPI == 'true' && steps.webapi-exists.outputs.skip != 'true'
+        run: |
+          VERSION_BARE="${VERSION#v}"
+          chmod +x ./gradlew
+          ./gradlew :webapi:bootBuildImage -Pversion="${VERSION_BARE}" --no-daemon
+          docker tag "tasks-webapi:${VERSION_BARE}" "${ECR_REGISTRY}/tasks-webapi:${VERSION}"
+          docker push "${ECR_REGISTRY}/tasks-webapi:${VERSION}"
+
+      - name: Retag webapi (no source change — reuse previous digest)
+        if: env.BUILD_WEBAPI != 'true' && env.FIRST_RELEASE != 'true'
+        run: |
+          # Idempotency: skip if tag already exists
+          if aws ecr describe-images \
+            --repository-name tasks-webapi \
+            --image-ids imageTag="${VERSION}" \
+            --no-cli-pager 2>/dev/null; then
+            echo "tasks-webapi:${VERSION} already in ECR — retag skipped."
+            exit 0
+          fi
+          MANIFEST=$(aws ecr batch-get-image \
+            --repository-name tasks-webapi \
+            --image-ids imageTag="${PREV_VERSION}" \
+            --query 'images[0].imageManifest' \
+            --output text)
+          if [ -z "$MANIFEST" ] || [ "$MANIFEST" = "None" ]; then
+            echo "::error::tasks-webapi:${PREV_VERSION} not found in ECR"
+            exit 1
+          fi
+          aws ecr put-image \
+            --repository-name tasks-webapi \
+            --image-tag "${VERSION}" \
+            --image-manifest "$MANIFEST" \
+            --no-cli-pager
+          echo "Retagged tasks-webapi:${PREV_VERSION} → ${VERSION}"
+
+      # ── keycloak ────────────────────────────────────────────────────────────
+      - name: Check keycloak image in ECR (idempotency)
+        id: keycloak-exists
+        if: env.BUILD_KEYCLOAK == 'true'
+        run: |
+          if aws ecr describe-images \
+            --repository-name keycloak-custom \
+            --image-ids imageTag="${VERSION}" \
+            --no-cli-pager 2>/dev/null; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "keycloak-custom:${VERSION} already in ECR — skipping build."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build keycloak image (docker build)
+        if: env.BUILD_KEYCLOAK == 'true' && steps.keycloak-exists.outputs.skip != 'true'
+        run: |
+          docker build \
+            -t "${ECR_REGISTRY}/keycloak-custom:${VERSION}" \
+            -f keycloak/Dockerfile \
+            .
+          docker push "${ECR_REGISTRY}/keycloak-custom:${VERSION}"
+
+      - name: Retag keycloak (no source change — reuse previous digest)
+        if: env.BUILD_KEYCLOAK != 'true' && env.FIRST_RELEASE != 'true'
+        run: |
+          if aws ecr describe-images \
+            --repository-name keycloak-custom \
+            --image-ids imageTag="${VERSION}" \
+            --no-cli-pager 2>/dev/null; then
+            echo "keycloak-custom:${VERSION} already in ECR — retag skipped."
+            exit 0
+          fi
+          MANIFEST=$(aws ecr batch-get-image \
+            --repository-name keycloak-custom \
+            --image-ids imageTag="${PREV_VERSION}" \
+            --query 'images[0].imageManifest' \
+            --output text)
+          if [ -z "$MANIFEST" ] || [ "$MANIFEST" = "None" ]; then
+            echo "::error::keycloak-custom:${PREV_VERSION} not found in ECR"
+            exit 1
+          fi
+          aws ecr put-image \
+            --repository-name keycloak-custom \
+            --image-tag "${VERSION}" \
+            --image-manifest "$MANIFEST" \
+            --no-cli-pager
+          echo "Retagged keycloak-custom:${PREV_VERSION} → ${VERSION}"
+
+  # ---------------------------------------------------------------------------
+  # build-web: web バンドルを S3 にアップロードまたは前バージョンをコピー
+  # ---------------------------------------------------------------------------
+  build-web:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    environment: release-build
+    env:
+      VERSION: ${{ needs.detect-changes.outputs.version }}
+      PREV_VERSION: ${{ needs.detect-changes.outputs.prev_version }}
+      FIRST_RELEASE: ${{ needs.detect-changes.outputs.first_release }}
+      BUILD_WEB: ${{ needs.detect-changes.outputs.build_web }}
+      S3_BUCKET: tasks-dev-frontend
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.detect-changes.outputs.version }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/release-build
+          aws-region: ap-northeast-1
+
+      # ── Build + Upload ───────────────────────────────────────────────────────
+      - name: Check web bundle in S3 (idempotency)
+        id: web-exists
+        if: env.BUILD_WEB == 'true'
+        run: |
+          if aws s3 ls "s3://${S3_BUCKET}/web/${VERSION}/" --no-cli-pager 2>/dev/null | grep -q .; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "web/${VERSION} already in S3 — skipping build."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node 24
+        if: env.BUILD_WEB == 'true' && steps.web-exists.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: npm ci
+        if: env.BUILD_WEB == 'true' && steps.web-exists.outputs.skip != 'true'
+        working-directory: web
+        run: npm ci
+
+      - name: Copy vendor assets
+        if: env.BUILD_WEB == 'true' && steps.web-exists.outputs.skip != 'true'
+        working-directory: web
+        run: node scripts/copy-vendor.js
+
+      - name: Upload web bundle to S3
+        if: env.BUILD_WEB == 'true' && steps.web-exists.outputs.skip != 'true'
+        run: |
+          aws s3 sync web/ "s3://${S3_BUCKET}/web/${VERSION}/" \
+            --exclude "node_modules/*" \
+            --exclude "scripts/*" \
+            --exclude "types/*" \
+            --exclude "package.json" \
+            --exclude "package-lock.json" \
+            --exclude "biome.json" \
+            --exclude "tsconfig.json" \
+            --exclude "*.md" \
+            --exclude ".gitignore" \
+            --no-cli-pager
+          echo "Uploaded web bundle to s3://${S3_BUCKET}/web/${VERSION}/"
+
+      # ── Copy from previous version (no source change) ────────────────────────
+      - name: Copy web bundle from previous version
+        if: env.BUILD_WEB != 'true' && env.FIRST_RELEASE != 'true'
+        run: |
+          if aws s3 ls "s3://${S3_BUCKET}/web/${VERSION}/" --no-cli-pager 2>/dev/null | grep -q .; then
+            echo "web/${VERSION} already in S3 — copy skipped."
+            exit 0
+          fi
+          aws s3 cp \
+            "s3://${S3_BUCKET}/web/${PREV_VERSION}/" \
+            "s3://${S3_BUCKET}/web/${VERSION}/" \
+            --recursive \
+            --no-cli-pager
+          echo "Copied web bundle: ${PREV_VERSION} → ${VERSION}"
+
+  # ---------------------------------------------------------------------------
+  # validate-infra: terraform validate(環境非依存・creds 不要)
+  # infra/ に変更があった場合のみ実行
+  # ---------------------------------------------------------------------------
+  validate-infra:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_validate_infra == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.detect-changes.outputs.version }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-release-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl', 'infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            tf-plugins-release-
+            tf-plugins-lint-
+
+      - name: terraform init + validate (tasks/dev)
+        id: validate-tasks
+        working-directory: infra/environments/dev
+        run: |
+          terraform init -backend=false -lockfile=readonly -no-color
+          terraform validate -no-color
+        continue-on-error: true
+
+      - name: terraform init + validate (shared/dev)
+        id: validate-shared
+        working-directory: infra/shared/environments/dev
+        run: |
+          terraform init -backend=false -lockfile=readonly -no-color
+          terraform validate -no-color
+        continue-on-error: true
+
+      - name: Fail on validation errors
+        if: steps.validate-tasks.outcome == 'failure' || steps.validate-shared.outcome == 'failure'
+        run: exit 1
+
+  # ---------------------------------------------------------------------------
+  # create-release: 全ビルド成功後に GitHub Release を作成
+  # いずれかのビルドが失敗した場合は Release を作らず fail
+  # ---------------------------------------------------------------------------
+  create-release:
+    needs: [detect-changes, build-containers, build-web, validate-infra]
+    if: |
+      always() && !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.build-containers.result == 'success' &&
+      needs.build-web.result == 'success' &&
+      (needs.validate-infra.result == 'success' || needs.validate-infra.result == 'skipped')
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.detect-changes.outputs.version }}
+      PREV_VERSION: ${{ needs.detect-changes.outputs.prev_version }}
+      FIRST_RELEASE: ${{ needs.detect-changes.outputs.first_release }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.detect-changes.outputs.version }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_ARGS=(
+            "${VERSION}"
+            --title "${VERSION}"
+            --generate-notes
+            --latest
+          )
+          if [ "$FIRST_RELEASE" != "true" ] && [ -n "$PREV_VERSION" ]; then
+            RELEASE_ARGS+=(--notes-start-tag "${PREV_VERSION}")
+          fi
+          gh release create "${RELEASE_ARGS[@]}"
+          echo "Created GitHub Release: ${VERSION}"
