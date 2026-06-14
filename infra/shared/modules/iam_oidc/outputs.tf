@@ -27,3 +27,13 @@ output "release_build_role_arn" {
   description = "ARN of the release-build IAM role (used by release-build.yml workflow)"
   value       = aws_iam_role.release_build.arn
 }
+
+output "tasks_deploy_role_arn" {
+  description = "ARN of the tasks-<env>-deploy IAM role (used by deploy.yml: verify / deploy-webapi / deploy-web)"
+  value       = aws_iam_role.tasks_deploy.arn
+}
+
+output "platform_deploy_role_arn" {
+  description = "ARN of the platform-<env>-deploy IAM role (used by deploy.yml: deploy-keycloak)"
+  value       = aws_iam_role.platform_deploy.arn
+}

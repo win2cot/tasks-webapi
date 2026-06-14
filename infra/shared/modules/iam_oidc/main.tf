@@ -21,11 +21,13 @@ locals {
 
 data "aws_iam_policy_document" "trust" {
   for_each = {
-    platform_plan  = "platform-plan"
-    platform_apply = "platform-apply"
-    tasks_plan     = "tasks-plan"
-    tasks_apply    = "tasks-apply"
-    release_build  = "release-build"
+    platform_plan   = "platform-plan"
+    platform_apply  = "platform-apply"
+    tasks_plan      = "tasks-plan"
+    tasks_apply     = "tasks-apply"
+    release_build   = "release-build"
+    tasks_deploy    = var.env # "dev" → environment:dev OIDC sub (webapi ECS + web S3/CF + artifact verify)
+    platform_deploy = var.env # "dev" → environment:dev OIDC sub (keycloak ECS on platform cluster)
   }
 
   statement {
@@ -1238,4 +1240,163 @@ resource "aws_iam_role_policy" "release_build" {
   name   = "release-build-policy"
   role   = aws_iam_role.release_build.id
   policy = data.aws_iam_policy_document.release_build.json
+}
+
+# ---------------------------------------------------------------------------
+# tasks-<env>-deploy  (write; deploy workflow — webapi ECS + web S3/CF + verify)
+# Trust: environment:<env> (e.g. "dev") — GitHub Environment for the deploy target
+# Used by deploy.yml jobs: verify / deploy-webapi / deploy-web
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "tasks_deploy" {
+  name               = "tasks-${var.env}-deploy"
+  assume_role_policy = data.aws_iam_policy_document.trust["tasks_deploy"].json
+
+  tags = {
+    Name = "tasks-${var.env}-deploy"
+  }
+}
+
+data "aws_iam_policy_document" "tasks_deploy" {
+  # ECR read — both repos for artifact verify + no-op digest check
+  # ecr:DescribeImages のみ使用(aws ecr describe-images); BatchGetImage / GetAuthorizationToken 不要
+  statement {
+    sid     = "EcrRead"
+    actions = ["ecr:DescribeImages"]
+    resources = [
+      "arn:aws:ecr:${var.region}:${var.account_id}:repository/tasks-webapi",
+      "arn:aws:ecr:${var.region}:${var.account_id}:repository/keycloak-custom",
+    ]
+  }
+
+  # ECS — webapi task definition 更新 + サービス安定待ち
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: RegisterTaskDefinition / DescribeTaskDefinition は resource-level 非対応 → Resource: *
+  statement {
+    sid = "EcsTasksWebapi"
+    actions = [
+      "ecs:DescribeTaskDefinition",
+      "ecs:RegisterTaskDefinition",
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
+    ]
+    resources = ["*"]
+  }
+
+  # IAM PassRole — ecs:RegisterTaskDefinition 時に task execution role / task role を指定するために必要
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: tasks-<env>-webapi-* ロール ARN にスコープ
+  statement {
+    sid     = "IamPassRole"
+    actions = ["iam:PassRole"]
+    resources = [
+      "arn:aws:iam::${var.account_id}:role/tasks-${var.env}-webapi-exec-role",
+      "arn:aws:iam::${var.account_id}:role/tasks-${var.env}-webapi-task-role",
+    ]
+  }
+
+  # S3: web バンドルの読み書き(web/<version>/ から web/live/ へ sync)
+  # 規約 R1: 書込み action は完全列挙
+  # GetObject: コピー元バージョン prefix (web/<version>/) の読み取り
+  # PutObject: コピー先 live/ への書き込み
+  # DeleteObject: sync --delete で live/ 内の旧ファイル削除; バージョン prefix は削除不可
+  statement {
+    sid     = "S3WebBundleReadWrite"
+    actions = ["s3:GetObject", "s3:PutObject"]
+    resources = [
+      "arn:aws:s3:::tasks-${var.env}-frontend/web/*",
+    ]
+  }
+  statement {
+    sid     = "S3WebLiveDelete"
+    actions = ["s3:DeleteObject"]
+    resources = [
+      "arn:aws:s3:::tasks-${var.env}-frontend/web/live/*",
+    ]
+  }
+  # s3:ListBucket は resource-level prefix 制限を condition で行う
+  statement {
+    sid       = "S3WebBundleList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::tasks-${var.env}-frontend"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["web/*"]
+    }
+  }
+
+  # CloudFront invalidation — live/ prefix を無効化して新バンドルを即時配信
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: distribution ID は apply 時点で未確定のため Resource: *
+  statement {
+    sid       = "CloudFrontInvalidate"
+    actions   = ["cloudfront:CreateInvalidation"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "tasks_deploy" {
+  name   = "tasks-${var.env}-deploy-policy"
+  role   = aws_iam_role.tasks_deploy.id
+  policy = data.aws_iam_policy_document.tasks_deploy.json
+}
+
+# ---------------------------------------------------------------------------
+# platform-<env>-deploy  (write; deploy workflow — keycloak ECS on platform cluster)
+# Trust: environment:<env> (e.g. "dev") — GitHub Environment for the deploy target
+# Used by deploy.yml job: deploy-keycloak
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "platform_deploy" {
+  name               = "platform-${var.env}-deploy"
+  assume_role_policy = data.aws_iam_policy_document.trust["platform_deploy"].json
+
+  tags = {
+    Name = "platform-${var.env}-deploy"
+  }
+}
+
+data "aws_iam_policy_document" "platform_deploy" {
+  # ECR read — keycloak-custom のみ(no-op digest check)
+  # ecr:DescribeImages のみ使用(aws ecr describe-images); BatchGetImage / GetAuthorizationToken 不要
+  statement {
+    sid     = "EcrRead"
+    actions = ["ecr:DescribeImages"]
+    resources = [
+      "arn:aws:ecr:${var.region}:${var.account_id}:repository/keycloak-custom",
+    ]
+  }
+
+  # ECS — platform cluster の keycloak task definition 更新
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: RegisterTaskDefinition / DescribeTaskDefinition は resource-level 非対応 → Resource: *
+  statement {
+    sid = "EcsPlatformKeycloak"
+    actions = [
+      "ecs:DescribeTaskDefinition",
+      "ecs:RegisterTaskDefinition",
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
+    ]
+    resources = ["*"]
+  }
+
+  # IAM PassRole — ecs:RegisterTaskDefinition 時に keycloak 実行ロールを指定するために必要
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: platform-<env>-keycloak-* ロール ARN にスコープ
+  statement {
+    sid     = "IamPassRole"
+    actions = ["iam:PassRole"]
+    resources = [
+      "arn:aws:iam::${var.account_id}:role/platform-${var.env}-keycloak-exec-role",
+      "arn:aws:iam::${var.account_id}:role/platform-${var.env}-keycloak-task-role",
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "platform_deploy" {
+  name   = "platform-${var.env}-deploy-policy"
+  role   = aws_iam_role.platform_deploy.id
+  policy = data.aws_iam_policy_document.platform_deploy.json
 }
