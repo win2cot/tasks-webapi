@@ -1,14 +1,9 @@
 name: "Terraform: Apply"
 
-# 主トリガー: infra-v* タグ push による 2 段階 plan → approval → apply (ADR-0026)
-# 副トリガー: workflow_dispatch (緊急手動実行用フォールバック)
-#
-# 移行方針: workflow_dispatch は緊急フォールバックとして存続。
-# 通常の infra apply は infra-v* タグ push を使用する。
+# トリガー: workflow_dispatch のみ(手動実行)。
+# ADR-0031 により tag 駆動デプロイ(旧 infra-v*)を撤去し infra を一旦リセット。
+# 新デプロイモデル(単一プロダクトバージョン + dispatch version+environment)は #635 で再設計する。
 on:
-  push:
-    tags:
-      - 'infra-v*'
   workflow_dispatch:
 
 env:
