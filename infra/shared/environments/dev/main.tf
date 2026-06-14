@@ -245,6 +245,87 @@ module "keycloak" {
   depends_on = [module.iam_oidc]
 }
 
+# ---------------------------------------------------------------------------
+# platform dev スケジューラ — platform-dev-keycloak (ECS) + platform-dev-keycloak-db (RDS) 制御
+# tasks dev スケジューラより 15 分先行して起動し、tasks-webapi の keycloak 認証を保証する (#625)
+#
+# 二段スケジュール(fire-and-forget / 待機なし):
+#   RDS start 18:30(平日) / 09:30(土日) — keycloak ECS 起動の 15 分前
+#   ECS start 18:45(平日) / 09:45(土日) — tasks dev RDS start と同時刻 (tasks ECS の 15 分前)
+#   stop      毎日 02:00             — ECS desiredCount=0 → RDS stop
+# ---------------------------------------------------------------------------
+
+module "scheduler" {
+  source = "../../../modules/scheduler"
+
+  env        = "dev"
+  stack      = "platform"
+  region     = "ap-northeast-1"
+  account_id = data.aws_caller_identity.current.account_id
+
+  ecs_service_arns = [
+    "arn:aws:ecs:ap-northeast-1:${data.aws_caller_identity.current.account_id}:service/platform-dev-cluster/platform-dev-keycloak",
+  ]
+  rds_instance_arns = [
+    "arn:aws:rds:ap-northeast-1:${data.aws_caller_identity.current.account_id}:db:${module.keycloak_db.db_instance_identifier}",
+  ]
+
+  schedules = [
+    # 平日 18:30 JST — keycloak-db RDS start (keycloak ECS の 15 分前)
+    {
+      name                = "rds-start-weekday"
+      schedule_expression = "cron(30 18 ? * MON-FRI *)"
+      input = jsonencode({
+        action = "start"
+        rds    = ["platform-dev-keycloak-db"]
+        ecs    = []
+      })
+    },
+    # 土日 09:30 JST — keycloak-db RDS start (keycloak ECS の 15 分前)
+    {
+      name                = "rds-start-weekend"
+      schedule_expression = "cron(30 9 ? * SAT-SUN *)"
+      input = jsonencode({
+        action = "start"
+        rds    = ["platform-dev-keycloak-db"]
+        ecs    = []
+      })
+    },
+    # 平日 18:45 JST — keycloak ECS start
+    {
+      name                = "ecs-start-weekday"
+      schedule_expression = "cron(45 18 ? * MON-FRI *)"
+      input = jsonencode({
+        action = "start"
+        rds    = []
+        ecs    = [["platform-dev-cluster", "platform-dev-keycloak"]]
+      })
+    },
+    # 土日 09:45 JST — keycloak ECS start
+    {
+      name                = "ecs-start-weekend"
+      schedule_expression = "cron(45 9 ? * SAT-SUN *)"
+      input = jsonencode({
+        action = "start"
+        rds    = []
+        ecs    = [["platform-dev-cluster", "platform-dev-keycloak"]]
+      })
+    },
+    # 毎日 02:00 JST — keycloak ECS desiredCount=0 + keycloak-db RDS stop
+    {
+      name                = "stop-daily"
+      schedule_expression = "cron(0 2 * * ? *)"
+      input = jsonencode({
+        action = "stop"
+        rds    = ["platform-dev-keycloak-db"]
+        ecs    = [["platform-dev-cluster", "platform-dev-keycloak"]]
+      })
+    },
+  ]
+
+  depends_on = [module.iam_oidc]
+}
+
 # SG-KeycloakDB: ingress を VPC CIDR(暫定)から SG-Keycloak に tighten (#322)
 # keycloak_db module の inline ingress rule を削除し、ここで SG reference に差し替える。
 resource "aws_security_group_rule" "keycloak_db_from_keycloak" {

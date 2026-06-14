@@ -147,6 +147,20 @@ data "aws_iam_policy_document" "platform_plan" {
     resources = ["*"]
   }
 
+  # Lambda read (platform scheduler function inspection during plan)
+  statement {
+    sid       = "LambdaRead"
+    actions   = ["lambda:Get*", "lambda:List*"]
+    resources = ["*"]
+  }
+
+  # EventBridge Scheduler read (platform scheduler cron inspection during plan)
+  statement {
+    sid       = "SchedulerRead"
+    actions   = ["scheduler:Get*", "scheduler:List*"]
+    resources = ["*"]
+  }
+
   # SSM read — platform outputs published to /platform/<env>/*
   statement {
     sid     = "SsmRead"
@@ -288,6 +302,10 @@ data "aws_iam_policy_document" "platform_apply" {
       "logs:DescribeLogGroups",
       "logs:ListTagsLogGroup",
       "logs:ListTagsForResource",
+      "lambda:Get*",
+      "lambda:List*",
+      "scheduler:Get*",
+      "scheduler:List*",
     ]
     resources = ["*"]
   }
@@ -538,6 +556,59 @@ data "aws_iam_policy_document" "platform_apply" {
     sid       = "SsmDescribe"
     actions   = ["ssm:DescribeParameters"]
     resources = ["*"]
+  }
+
+  # Lambda write (platform scheduler function CRUD)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: platform-* function ARN にスコープ
+  statement {
+    sid = "LambdaWrite"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:DeleteFunction",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:TagResource",
+      "lambda:UntagResource",
+    ]
+    resources = ["arn:aws:lambda:${var.region}:${var.account_id}:function:platform-*"]
+  }
+
+  # EventBridge Scheduler write (platform scheduler: schedule CRUD, default group)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: default group 内 platform-* schedule ARN にスコープ
+  statement {
+    sid = "SchedulerWrite"
+    actions = [
+      "scheduler:CreateSchedule",
+      "scheduler:UpdateSchedule",
+      "scheduler:DeleteSchedule",
+      "scheduler:TagResource",
+      "scheduler:UntagResource",
+    ]
+    resources = ["arn:aws:scheduler:${var.region}:${var.account_id}:schedule/default/platform-*"]
+  }
+
+  # CloudWatch Logs write for Lambda log groups (/aws/lambda/platform-<env>-*)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: /aws/lambda/platform-<env>-* ロググループ ARN にスコープ
+  statement {
+    sid = "LogsWriteLambda"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:PutRetentionPolicy",
+      "logs:DeleteRetentionPolicy",
+      "logs:TagLogGroup",
+      "logs:UntagLogGroup",
+      "logs:TagResource",
+      "logs:UntagResource",
+      "logs:ListTagsLogGroup",
+      "logs:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:/aws/lambda/platform-${var.env}-*",
+    ]
   }
 }
 

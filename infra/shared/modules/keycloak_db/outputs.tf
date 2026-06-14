@@ -27,3 +27,8 @@ output "password_ssm_name" {
   description = "SSM parameter name for Keycloak DB password"
   value       = aws_ssm_parameter.keycloak_db_password.name
 }
+
+output "db_instance_identifier" {
+  description = "RDS instance identifier"
+  value       = aws_db_instance.keycloak.identifier
+}
