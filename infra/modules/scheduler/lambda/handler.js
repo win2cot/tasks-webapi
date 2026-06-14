@@ -1,4 +1,4 @@
-// ECS + RDS Scheduler — Node.js 24.x / AWS SDK v3 (runtime-bundled)
+// ECS + RDS Scheduler — Node.js 22.x / AWS SDK v3 (runtime-bundled)
 // Event payload: { action: "start"|"stop", rds: [...ids], ecs: [[cluster, service], ...] }
 // Fire-and-forget: no polling or wait loops. Per-target try/catch prevents one failure blocking others.
 
