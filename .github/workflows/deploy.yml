@@ -1,0 +1,657 @@
+name: Deploy
+
+# ADR-0031 フロー B — workflow_dispatch で version + environment を指定し、
+# 変更のあるコンポーネントのみ対象環境へデプロイする。
+# 旧 #481/#482/#483 を集約し、terraform-apply.yml の infra dispatch も本 workflow に取り込む。
+#
+# 必要な GitHub Environments (repo Settings → Environments):
+#   dev / (stg) / (prd)   : required reviewers 設定(stg/prd のみ)
+#   platform-plan         : 既存、platform-dev-plan IAM ロールと紐付け
+#   tasks-plan            : 既存、tasks-dev-plan IAM ロールと紐付け
+#   platform-apply        : 既存、platform-dev-apply IAM ロールと紐付け
+#   tasks-apply           : 既存、tasks-dev-apply IAM ロールと紐付け
+#
+# 必要な GitHub Environment Variables (dev 環境):
+#   CLOUDFRONT_DISTRIBUTION_ID : CloudFront distribution ID (CF invalidation に使用)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Deploy version (e.g. v0.1.0)'
+        required: true
+        type: string
+      environment:
+        description: 'Target environment'
+        required: true
+        type: environment
+
+# 同一環境へのデプロイは直列化(割り込みによる中途半端な状態を防ぐ)
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AWS_REGION: ap-northeast-1
+  ECR_REGISTRY: 138285070797.dkr.ecr.ap-northeast-1.amazonaws.com
+  AWS_ACCOUNT_ID: "138285070797"
+  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+
+# --------------------------------------------------------------------------
+# verify — 成果物の存在確認 (ECR image + S3 bundle)。fail-closed。
+# deploy_webapi / deploy_keycloak / deploy_web を output に出力し
+# 各 deploy job の if 条件として利用する。
+# --------------------------------------------------------------------------
+jobs:
+  verify:
+    name: Verify artifacts (${{ inputs.version }} → ${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
+    outputs:
+      deploy_webapi: ${{ steps.check.outputs.deploy_webapi }}
+      deploy_keycloak: ${{ steps.check.outputs.deploy_keycloak }}
+      deploy_web: ${{ steps.check.outputs.deploy_web }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/tasks-${{ inputs.environment }}-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check artifacts for ${{ inputs.version }}
+        id: check
+        env:
+          VERSION: ${{ inputs.version }}
+          ENV: ${{ inputs.environment }}
+        run: |
+          # webapi ECR image
+          if aws ecr describe-images \
+            --repository-name tasks-webapi \
+            --image-ids imageTag="${VERSION}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null | grep -q '^sha256:'; then
+            echo "deploy_webapi=true" >> "$GITHUB_OUTPUT"
+            echo "✓ webapi image ${VERSION} found in ECR"
+          else
+            echo "deploy_webapi=false" >> "$GITHUB_OUTPUT"
+            echo "– webapi image ${VERSION} not found (component unchanged in this release)"
+          fi
+
+          # keycloak ECR image
+          if aws ecr describe-images \
+            --repository-name keycloak-custom \
+            --image-ids imageTag="${VERSION}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null | grep -q '^sha256:'; then
+            echo "deploy_keycloak=true" >> "$GITHUB_OUTPUT"
+            echo "✓ keycloak image ${VERSION} found in ECR"
+          else
+            echo "deploy_keycloak=false" >> "$GITHUB_OUTPUT"
+            echo "– keycloak image ${VERSION} not found (component unchanged in this release)"
+          fi
+
+          # web S3 bundle (tasks-<env>-frontend/web/<version>/)
+          BUCKET="tasks-${ENV}-frontend"
+          if aws s3 ls "s3://${BUCKET}/web/${VERSION}/" --recursive 2>/dev/null | grep -q '.'; then
+            echo "deploy_web=true" >> "$GITHUB_OUTPUT"
+            echo "✓ web bundle ${VERSION} found in s3://${BUCKET}/web/${VERSION}/"
+          else
+            echo "deploy_web=false" >> "$GITHUB_OUTPUT"
+            echo "– web bundle ${VERSION} not found (component unchanged in this release)"
+          fi
+
+  # --------------------------------------------------------------------------
+  # plan-platform — platform/shared terraform plan (artifact に保存して apply job へ渡す)
+  # TODO: infra/shared/environments/<env> を parameterize して stg/prd に対応する (#635 follow-up)
+  # --------------------------------------------------------------------------
+  plan-platform:
+    name: Terraform plan (platform/dev)
+    needs: verify
+    if: inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    environment: platform-plan
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/platform-dev-plan
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (shared/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: tf-plugins-shared-dev-
+
+      - name: terraform init (platform/dev)
+        working-directory: infra/shared/environments/dev
+        run: terraform init -no-color
+
+      - name: terraform plan (platform/dev)
+        id: plan
+        working-directory: infra/shared/environments/dev
+        shell: bash
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -out=tfplan.binary -no-color 2>&1 | tee plan.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Check plan result
+        shell: bash
+        run: |
+          CODE="${{ steps.plan.outputs.exit_code }}"
+          if [ "$CODE" = "1" ]; then
+            echo "::error::terraform plan (platform/dev) failed"
+            exit 1
+          elif [ "$CODE" = "2" ]; then
+            echo "Plan has changes — apply-platform will proceed"
+            grep -E '^(Plan:|No changes\.|Error:)' infra/shared/environments/dev/plan.txt | head -3 || true
+          else
+            echo "No changes in platform/dev"
+          fi
+
+      - name: Upload tfplan artifact (platform)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-platform-${{ inputs.environment }}
+          path: |
+            infra/shared/environments/dev/tfplan.binary
+            infra/shared/environments/dev/plan.txt
+          retention-days: 7
+
+  # --------------------------------------------------------------------------
+  # plan-tasks — tasks terraform plan (artifact に保存 + ADR-0028 iii baseline 記録)
+  # TODO: infra/environments/<env> を parameterize して stg/prd に対応する (#635 follow-up)
+  # --------------------------------------------------------------------------
+  plan-tasks:
+    name: Terraform plan (tasks/dev)
+    needs: verify
+    if: inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    environment: tasks-plan
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/tasks-dev-plan
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (tasks/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: tf-plugins-tasks-dev-
+
+      - name: terraform init (tasks/dev)
+        working-directory: infra/environments/dev
+        run: terraform init -no-color
+
+      - name: terraform plan (tasks/dev)
+        id: plan
+        working-directory: infra/environments/dev
+        shell: bash
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -out=tfplan.binary -no-color 2>&1 | tee plan.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Check plan result
+        shell: bash
+        run: |
+          CODE="${{ steps.plan.outputs.exit_code }}"
+          if [ "$CODE" = "1" ]; then
+            echo "::error::terraform plan (tasks/dev) failed"
+            exit 1
+          elif [ "$CODE" = "2" ]; then
+            echo "Plan has changes — apply-tasks will proceed"
+            grep -E '^(Plan:|No changes\.|Error:)' infra/environments/dev/plan.txt | head -3 || true
+          else
+            echo "No changes in tasks/dev"
+          fi
+
+      # ADR-0028 (iii): plan 実行時点の ECS image を記録し apply guard で比較する。
+      # deploy-webapi が同 workflow run で ECS を更新する場合は apply-tasks が
+      # 「baseline or target version image」の両方を許容する(下記 guard 参照)。
+      - name: Capture ECS baseline image (ADR-0028 iii)
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition tasks-dev-webapi \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text > baseline_image.txt
+          echo "Baseline ECS image: $(cat baseline_image.txt)"
+
+      - name: Upload tfplan artifact (tasks)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-tasks-${{ inputs.environment }}
+          path: |
+            infra/environments/dev/tfplan.binary
+            infra/environments/dev/plan.txt
+            baseline_image.txt
+          retention-days: 7
+
+  # --------------------------------------------------------------------------
+  # deploy-webapi — ECS task definition を新バージョンのイメージに更新する。
+  # 目標 digest と現行 digest が一致する場合は no-op(rolling update なし)。
+  # --------------------------------------------------------------------------
+  deploy-webapi:
+    name: Deploy webapi (${{ inputs.version }})
+    needs: verify
+    if: needs.verify.outputs.deploy_webapi == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/tasks-${{ inputs.environment }}-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy webapi to ECS
+        env:
+          VERSION: ${{ inputs.version }}
+          ENV: ${{ inputs.environment }}
+        run: |
+          CLUSTER="tasks-${ENV}-cluster"
+          SERVICE="tasks-${ENV}-webapi"
+          FAMILY="tasks-${ENV}-webapi"
+          CONTAINER="webapi"
+          NEW_IMAGE="${ECR_REGISTRY}/tasks-webapi:${VERSION}"
+
+          # 目標イメージの digest を取得
+          TARGET_DIGEST=$(aws ecr describe-images \
+            --repository-name tasks-webapi \
+            --image-ids imageTag="${VERSION}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+          echo "Target  digest: ${TARGET_DIGEST}"
+
+          # 現行 task definition のイメージを取得
+          CURRENT_TD=$(aws ecs describe-task-definition \
+            --task-definition "${FAMILY}" \
+            --query 'taskDefinition' \
+            --output json)
+          CURRENT_IMAGE=$(echo "${CURRENT_TD}" | jq -r \
+            ".containerDefinitions[] | select(.name==\"${CONTAINER}\") | .image")
+          echo "Current image: ${CURRENT_IMAGE}"
+
+          # 現行イメージの digest を取得して比較(digest 一致 = no-op)
+          CURRENT_DIGEST=""
+          if echo "${CURRENT_IMAGE}" | grep -q "${ECR_REGISTRY}/tasks-webapi:v"; then
+            CURRENT_TAG="${CURRENT_IMAGE##*:}"
+            CURRENT_DIGEST=$(aws ecr describe-images \
+              --repository-name tasks-webapi \
+              --image-ids imageTag="${CURRENT_TAG}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text 2>/dev/null || echo "")
+          fi
+          echo "Current digest: ${CURRENT_DIGEST:-<unknown>}"
+
+          if [ -n "${CURRENT_DIGEST}" ] && [ "${TARGET_DIGEST}" = "${CURRENT_DIGEST}" ]; then
+            echo "Same digest — ECS is already running this image. No-op."
+            exit 0
+          fi
+
+          # 新 task definition を登録(イメージ URI のみ差し替え)
+          # .tags を削除: CI リビジョンに tags を付与しないことで ecs:TagResource 不要(最小権限)
+          NEW_TD=$(echo "${CURRENT_TD}" | jq \
+            --arg image "${NEW_IMAGE}" \
+            --arg name "${CONTAINER}" \
+            'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.placementConstraints,.compatibilities,.registeredAt,.registeredBy,.tags) |
+             .containerDefinitions |= map(if .name == $name then .image = $image else . end)')
+
+          NEW_REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "${NEW_TD}" \
+            --query 'taskDefinition.revision' \
+            --output text)
+          echo "Registered ${FAMILY}:${NEW_REVISION} with image ${NEW_IMAGE}"
+
+          # ECS サービスを新 revision に更新
+          aws ecs update-service \
+            --cluster "${CLUSTER}" \
+            --service "${SERVICE}" \
+            --task-definition "${FAMILY}:${NEW_REVISION}" \
+            --query 'service.taskDefinition' \
+            --output text
+
+          echo "Waiting for service stability..."
+          aws ecs wait services-stable \
+            --cluster "${CLUSTER}" \
+            --services "${SERVICE}"
+          echo "✓ webapi deployed: ${NEW_IMAGE}"
+
+  # --------------------------------------------------------------------------
+  # deploy-keycloak — platform cluster の keycloak ECS を新バージョンに更新する。
+  # lifecycle.ignore_changes = [task_definition] により Terraform drift なし。
+  # --------------------------------------------------------------------------
+  deploy-keycloak:
+    name: Deploy keycloak (${{ inputs.version }})
+    needs: verify
+    if: needs.verify.outputs.deploy_keycloak == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/platform-${{ inputs.environment }}-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy keycloak to ECS
+        env:
+          VERSION: ${{ inputs.version }}
+          ENV: ${{ inputs.environment }}
+        run: |
+          CLUSTER="platform-${ENV}-cluster"
+          SERVICE="platform-${ENV}-keycloak"
+          FAMILY="platform-${ENV}-keycloak"
+          CONTAINER="keycloak"
+          NEW_IMAGE="${ECR_REGISTRY}/keycloak-custom:${VERSION}"
+
+          TARGET_DIGEST=$(aws ecr describe-images \
+            --repository-name keycloak-custom \
+            --image-ids imageTag="${VERSION}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+          echo "Target  digest: ${TARGET_DIGEST}"
+
+          CURRENT_TD=$(aws ecs describe-task-definition \
+            --task-definition "${FAMILY}" \
+            --query 'taskDefinition' \
+            --output json)
+          CURRENT_IMAGE=$(echo "${CURRENT_TD}" | jq -r \
+            ".containerDefinitions[] | select(.name==\"${CONTAINER}\") | .image")
+          echo "Current image: ${CURRENT_IMAGE}"
+
+          CURRENT_DIGEST=""
+          if echo "${CURRENT_IMAGE}" | grep -q "${ECR_REGISTRY}/keycloak-custom:v"; then
+            CURRENT_TAG="${CURRENT_IMAGE##*:}"
+            CURRENT_DIGEST=$(aws ecr describe-images \
+              --repository-name keycloak-custom \
+              --image-ids imageTag="${CURRENT_TAG}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text 2>/dev/null || echo "")
+          fi
+          echo "Current digest: ${CURRENT_DIGEST:-<unknown>}"
+
+          if [ -n "${CURRENT_DIGEST}" ] && [ "${TARGET_DIGEST}" = "${CURRENT_DIGEST}" ]; then
+            echo "Same digest — keycloak is already running this image. No-op."
+            exit 0
+          fi
+
+          # .tags を削除: CI リビジョンに tags を付与しないことで ecs:TagResource 不要(最小権限)
+          NEW_TD=$(echo "${CURRENT_TD}" | jq \
+            --arg image "${NEW_IMAGE}" \
+            --arg name "${CONTAINER}" \
+            'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.placementConstraints,.compatibilities,.registeredAt,.registeredBy,.tags) |
+             .containerDefinitions |= map(if .name == $name then .image = $image else . end)')
+
+          NEW_REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "${NEW_TD}" \
+            --query 'taskDefinition.revision' \
+            --output text)
+          echo "Registered ${FAMILY}:${NEW_REVISION} with image ${NEW_IMAGE}"
+
+          aws ecs update-service \
+            --cluster "${CLUSTER}" \
+            --service "${SERVICE}" \
+            --task-definition "${FAMILY}:${NEW_REVISION}" \
+            --query 'service.taskDefinition' \
+            --output text
+
+          echo "Waiting for service stability..."
+          aws ecs wait services-stable \
+            --cluster "${CLUSTER}" \
+            --services "${SERVICE}"
+          echo "✓ keycloak deployed: ${NEW_IMAGE}"
+
+  # --------------------------------------------------------------------------
+  # deploy-web — S3 バンドルを live/ prefix に sync + CloudFront invalidation。
+  # バージョン付きアセットは immutable cache、index.html は no-cache で配信。
+  # --------------------------------------------------------------------------
+  deploy-web:
+    name: Deploy web (${{ inputs.version }})
+    needs: verify
+    if: needs.verify.outputs.deploy_web == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/tasks-${{ inputs.environment }}-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync web bundle to live prefix
+        env:
+          VERSION: ${{ inputs.version }}
+          ENV: ${{ inputs.environment }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          BUCKET="tasks-${ENV}-frontend"
+          SRC="s3://${BUCKET}/web/${VERSION}/"
+          DST="s3://${BUCKET}/web/live/"
+
+          echo "Syncing ${SRC} → ${DST}"
+
+          # バージョン付きアセット(JS/CSS/フォント等): 長期 immutable cache
+          # index.html は後続ステップで上書きするので --exclude で除外
+          aws s3 sync "${SRC}" "${DST}" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html"
+
+          # index.html: 常に最新を取得させる(no-cache)
+          aws s3 cp \
+            "${SRC}index.html" \
+            "${DST}index.html" \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+          echo "S3 sync complete"
+
+          # CloudFront invalidation(CLOUDFRONT_DISTRIBUTION_ID が未設定の場合はスキップ)
+          if [ -n "${CLOUDFRONT_DISTRIBUTION_ID}" ]; then
+            INVALIDATION_ID=$(aws cloudfront create-invalidation \
+              --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+              --paths "/web/*" \
+              --query 'Invalidation.Id' \
+              --output text)
+            echo "✓ CloudFront invalidation created: ${INVALIDATION_ID}"
+          else
+            echo "::warning::CLOUDFRONT_DISTRIBUTION_ID not set — skipping CloudFront invalidation"
+          fi
+
+  # --------------------------------------------------------------------------
+  # apply-platform — 両 plan 成功後、承認ゲートを経て platform terraform を apply する。
+  # TODO: stg/prd 対応時は role-to-assume と working-directory を parameterize する。
+  # --------------------------------------------------------------------------
+  apply-platform:
+    name: Terraform apply (platform/dev)
+    needs: [plan-platform, plan-tasks]
+    if: inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    environment: platform-apply
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/platform-dev-apply
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (shared/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: tf-plugins-shared-dev-
+
+      - name: Download tfplan artifact (platform)
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-platform-${{ inputs.environment }}
+          path: .
+
+      - name: terraform init (platform/dev)
+        working-directory: infra/shared/environments/dev
+        run: terraform init -no-color
+
+      - name: terraform apply (platform/dev)
+        working-directory: infra/shared/environments/dev
+        run: terraform apply -auto-approve -no-color tfplan.binary
+
+  # --------------------------------------------------------------------------
+  # apply-tasks — platform apply 後に tasks terraform を apply する。
+  # ADR-0028 (iii): apply 直前に ECS image を再確認し、plan 後の割り込みを検知して fail-closed。
+  #   許容パターン:
+  #     (a) 現行 = baseline (ECS 変化なし)
+  #     (b) 現行 = 今回デプロイする target version (同 workflow run の deploy-webapi が先行)
+  #   それ以外 = 別デプロイによる割り込み → fail
+  # --------------------------------------------------------------------------
+  apply-tasks:
+    name: Terraform apply (tasks/dev)
+    needs: apply-platform
+    if: inputs.environment == 'dev'
+    runs-on: ubuntu-latest
+    environment: tasks-apply
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.11.4'
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/tasks-dev-apply
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create plugin cache dir
+        run: mkdir -p ~/.terraform.d/plugin-cache
+
+      - name: Restore Terraform plugin cache (tasks/dev)
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
+          restore-keys: tf-plugins-tasks-dev-
+
+      - name: Download tfplan artifact (tasks)
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-tasks-${{ inputs.environment }}
+          path: .
+
+      - name: ADR-0028 (iii) apply guard — ECS image mismatch check
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          BASELINE=$(cat baseline_image.txt)
+          EXPECTED="${ECR_REGISTRY}/tasks-webapi:${VERSION}"
+          CURRENT=$(aws ecs describe-task-definition \
+            --task-definition tasks-dev-webapi \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text)
+          echo "Baseline (plan 時):       ${BASELINE}"
+          echo "Expected (このデプロイ):   ${EXPECTED}"
+          echo "Current  (現在の ECS):     ${CURRENT}"
+
+          if [ "${CURRENT}" != "${BASELINE}" ] && [ "${CURRENT}" != "${EXPECTED}" ]; then
+            echo "::error::ECS image が plan 後に予期しない値に変化しました (ADR-0028 iii)。"
+            echo "::error::別の deploy workflow が割り込んだ可能性があります。"
+            echo "::error::再度 deploy を実行してください。"
+            exit 1
+          fi
+          echo "Image guard passed."
+
+      - name: terraform init (tasks/dev)
+        working-directory: infra/environments/dev
+        run: terraform init -no-color
+
+      - name: terraform apply (tasks/dev)
+        working-directory: infra/environments/dev
+        run: terraform apply -auto-approve -no-color tfplan.binary
