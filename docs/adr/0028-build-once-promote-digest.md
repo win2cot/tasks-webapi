@@ -1,6 +1,7 @@
 # ADR-0028: コンテナイメージの build once / promote digest と Task Definition の責務分担
 
 - **Status**: Accepted
+- **Amended by**: [ADR-0031](0031-single-product-version-dispatch-deploy.md)
 - **Date**: 2026-06-12
 - **Deciders**: win2cot, 開発チーム
 - **Tags**: ci-cd, infra, release
