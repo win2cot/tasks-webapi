@@ -80,7 +80,7 @@ resource "aws_cloudwatch_log_group" "scheduler_lambda" {
 }
 
 # ---------------------------------------------------------------------------
-# Lambda 関数 — Node.js 24.x / SDK v3 同梱 / タイムアウト 30s (待機なし)
+# Lambda 関数 — Node.js 22.x / SDK v3 同梱 / タイムアウト 30s (待機なし)
 # ---------------------------------------------------------------------------
 
 resource "aws_lambda_function" "scheduler" {
