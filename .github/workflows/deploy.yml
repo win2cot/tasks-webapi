@@ -274,6 +274,17 @@ jobs:
             baseline_image.txt
           retention-days: 7
 
+      # archive_file が plan 時に生成した決定性 ZIP をアーティファクトに保存する。
+      # apply runner(別ランナー)では archive_file が再実行されないケースがあるため、
+      # plan 時点と同一 ZIP を apply-platform / apply-tasks で使い回す。
+      # (zip コマンドではタイムスタンプが変わり Lambda が毎回更新されるため不可)
+      - name: Upload Lambda ZIP artifact (scheduler)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-zip-scheduler-${{ inputs.environment }}
+          path: infra/modules/scheduler/lambda/handler.zip
+          retention-days: 7
+
   # --------------------------------------------------------------------------
   # deploy-webapi — ECS task definition を新バージョンのイメージに更新する。
   # 目標 digest と現行 digest が一致する場合は no-op(rolling update なし)。
@@ -567,6 +578,16 @@ jobs:
           name: tfplan-platform-${{ inputs.environment }}
           path: infra/shared/environments/${{ inputs.environment }}
 
+      # apply runner は fresh なため archive_file が生成した handler.zip が存在しない。
+      # plan-tasks がアーティファクトに保存した決定性 ZIP を配置してから apply する。
+      # (同じ handler.js からは archive_file が常に同一バイナリを生成するため
+      #  source_code_hash は変わらず、コード未変更時に Lambda は更新されない)
+      - name: Download Lambda ZIP artifact (scheduler)
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip-scheduler-${{ inputs.environment }}
+          path: infra/modules/scheduler/lambda
+
       - name: terraform init (platform/dev)
         working-directory: infra/shared/environments/dev
         run: terraform init -no-color
@@ -647,6 +668,16 @@ jobs:
             exit 1
           fi
           echo "Image guard passed."
+
+      # apply runner は fresh なため archive_file が生成した handler.zip が存在しない。
+      # plan-tasks がアーティファクトに保存した決定性 ZIP を配置してから apply する。
+      # (同じ handler.js からは archive_file が常に同一バイナリを生成するため
+      #  source_code_hash は変わらず、コード未変更時に Lambda は更新されない)
+      - name: Download Lambda ZIP artifact (scheduler)
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip-scheduler-${{ inputs.environment }}
+          path: infra/modules/scheduler/lambda
 
       - name: terraform init (tasks/dev)
         working-directory: infra/environments/dev
