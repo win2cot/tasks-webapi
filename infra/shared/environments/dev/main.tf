@@ -186,6 +186,28 @@ resource "aws_ssm_parameter" "keycloak_db_sg_id" {
 }
 
 # ---------------------------------------------------------------------------
+# Route53 — auth-dev.dgz48.xyz → ALB (Keycloak public hostname)
+# Keycloak module の KC_HOSTNAME / ALB リスナールールは auth-dev.dgz48.xyz を使用する。
+# ---------------------------------------------------------------------------
+
+data "aws_route53_zone" "public" {
+  name         = "dgz48.xyz."
+  private_zone = false
+}
+
+resource "aws_route53_record" "keycloak" {
+  zone_id = data.aws_route53_zone.public.zone_id
+  name    = "auth-dev.dgz48.xyz"
+  type    = "A"
+
+  alias {
+    name                   = module.alb.dns_name
+    zone_id                = module.alb.zone_id
+    evaluate_target_health = true
+  }
+}
+
+# ---------------------------------------------------------------------------
 # Platform ECS Cluster — Keycloak ECS Service が乗るクラスタ (ADR-0004 / #322)
 # ---------------------------------------------------------------------------
 
