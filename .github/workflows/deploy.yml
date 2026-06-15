@@ -565,7 +565,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tfplan-platform-${{ inputs.environment }}
-          path: .
+          path: infra/shared/environments/${{ inputs.environment }}
 
       - name: terraform init (platform/dev)
         working-directory: infra/shared/environments/dev
