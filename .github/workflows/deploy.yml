@@ -523,7 +523,7 @@ jobs:
           if [ -n "${CLOUDFRONT_DISTRIBUTION_ID}" ]; then
             INVALIDATION_ID=$(aws cloudfront create-invalidation \
               --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
-              --paths "/web/*" \
+              --paths "/*" \
               --query 'Invalidation.Id' \
               --output text)
             echo "✓ CloudFront invalidation created: ${INVALIDATION_ID}"
