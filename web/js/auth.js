@@ -14,7 +14,7 @@
 const Auth = (() => {
   const _envMatch = window.location.hostname.match(/^tasks(?:-(\w+))?\.dgz48\.xyz$/);
   const KEYCLOAK_URL = _envMatch
-    ? `https://auth${_envMatch[1] ? `-${_envMatch[1]}` : ''}.dgz48.xyz`
+    ? `https://auth${_envMatch[1] ? `-${_envMatch[1]}` : ''}.tasks.dgz48.xyz`
     : 'http://localhost:18080';
   const REALM = 'tasks';
   const CLIENT_ID = 'tasks-webapi';
