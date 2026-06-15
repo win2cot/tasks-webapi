@@ -87,7 +87,7 @@ resource "aws_lambda_function" "scheduler" {
   function_name    = "${var.stack}-${var.env}-scheduler"
   role             = aws_iam_role.scheduler_lambda.arn
   handler          = "handler.handler"
-  runtime          = "nodejs22.x"
+  runtime          = "nodejs24.x"
   filename         = data.archive_file.scheduler.output_path
   source_code_hash = data.archive_file.scheduler.output_base64sha256
   timeout          = 30
