@@ -272,6 +272,10 @@ resource "aws_ecs_service" "keycloak" {
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
+  # Keycloak 26 takes ~50s to boot (Quarkus + realm import). Without this grace
+  # period, ALB reports 3 consecutive 503s and ECS stops the task before it is ready.
+  health_check_grace_period_seconds = 120
+
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [aws_security_group.keycloak.id]
