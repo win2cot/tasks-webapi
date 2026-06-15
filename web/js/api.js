@@ -92,7 +92,10 @@
  */
 
 const Api = (() => {
-  const BASE_URL = 'http://localhost:8080';
+  const _envMatch = window.location.hostname.match(/^tasks(?:-(\w+))?\.dgz48\.xyz$/);
+  const BASE_URL = _envMatch
+    ? `https://api${_envMatch[1] ? `-${_envMatch[1]}` : ''}.tasks.dgz48.xyz`
+    : 'http://localhost:8080';
 
   /** @type {string|null} */
   let _tenantId = null;

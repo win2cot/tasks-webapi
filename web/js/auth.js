@@ -2,7 +2,8 @@
  * Keycloak OIDC 認証モジュール
  *
  * 設定:
- *   KEYCLOAK_URL  — Keycloak の base URL (デフォルト: http://localhost:18080)
+ *   KEYCLOAK_URL  — ホスト名から自動導出。tasks[-<env>].dgz48.xyz → auth[-<env>].dgz48.xyz
+ *                   それ以外(localhost 等)は http://localhost:18080 にフォールバック
  *   REALM         — realm 名 (デフォルト: tasks)
  *   CLIENT_ID     — public client ID (デフォルト: tasks-webapi)
  *
@@ -11,7 +12,10 @@
  */
 
 const Auth = (() => {
-  const KEYCLOAK_URL = 'http://localhost:18080';
+  const _envMatch = window.location.hostname.match(/^tasks(?:-(\w+))?\.dgz48\.xyz$/);
+  const KEYCLOAK_URL = _envMatch
+    ? `https://auth${_envMatch[1] ? `-${_envMatch[1]}` : ''}.dgz48.xyz`
+    : 'http://localhost:18080';
   const REALM = 'tasks';
   const CLIENT_ID = 'tasks-webapi';
 
