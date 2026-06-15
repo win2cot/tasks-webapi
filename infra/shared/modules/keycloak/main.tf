@@ -231,6 +231,7 @@ resource "aws_ecs_task_definition" "keycloak" {
       { name = "KC_HEALTH_ENABLED", value = "true" },
       { name = "KC_METRICS_ENABLED", value = "true" },
       { name = "KEYCLOAK_ADMIN", value = "admin" },
+      { name = "KC_PROXY_HEADERS", value = "xforwarded" },
     ]
 
     secrets = [

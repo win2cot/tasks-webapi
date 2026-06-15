@@ -88,6 +88,7 @@ resource "aws_ecs_task_definition" "webapi" {
       { name = "TZ", value = "Asia/Tokyo" },
       { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://db.tasks.internal:3306/tasks" },
       { name = "SPRING_DATASOURCE_USERNAME", value = "tasks_webapi" },
+      { name = "CORS_ALLOWED_ORIGINS", value = "https://tasks-dev.dgz48.xyz" },
     ]
 
     secrets = [
