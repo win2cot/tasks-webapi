@@ -159,7 +159,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          terraform plan -detailed-exitcode -out=tfplan.binary -no-color 2>&1 | tee plan.txt
+          terraform plan -detailed-exitcode -lock=false -out=tfplan.binary -no-color 2>&1 | tee plan.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Check plan result
@@ -236,7 +236,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          terraform plan -detailed-exitcode -out=tfplan.binary -no-color 2>&1 | tee plan.txt
+          terraform plan -detailed-exitcode -lock=false -out=tfplan.binary -no-color 2>&1 | tee plan.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Check plan result
