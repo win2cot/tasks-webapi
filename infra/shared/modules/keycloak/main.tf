@@ -133,7 +133,9 @@ resource "aws_cloudwatch_log_group" "keycloak" {
 }
 
 # ---------------------------------------------------------------------------
-# ALB Target Group — HTTP:8080, /health/ready, ip target type (Fargate awsvpc)
+# ALB Target Group — HTTP:8080, /realms/master, ip target type (Fargate awsvpc)
+# Keycloak 25+ moved /health/ready to the management interface (port 9000).
+# /realms/master is stable on port 8080 and returns 200 when Keycloak is ready.
 # ---------------------------------------------------------------------------
 
 resource "aws_lb_target_group" "keycloak" {
@@ -145,7 +147,7 @@ resource "aws_lb_target_group" "keycloak" {
 
   health_check {
     enabled             = true
-    path                = "/health/ready"
+    path                = "/realms/master"
     protocol            = "HTTP"
     port                = "traffic-port"
     healthy_threshold   = 2
