@@ -8,7 +8,7 @@
 locals {
   s3_origin_id = "s3-tasks-${var.env}-frontend"
   # ADR-0022 §3.2 — CSP in Report-Only mode until violations are confirmed zero (§3.4)
-  csp_report_only = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api-${var.env}.tasks.${var.base_domain} https://auth-${var.env}.${var.base_domain}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+  csp_report_only = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api-${var.env}.tasks.${var.base_domain} https://auth-${var.env}.tasks.${var.base_domain}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 }
 
 resource "aws_s3_bucket" "frontend" {
