@@ -837,6 +837,9 @@ data "aws_iam_policy_document" "tasks_apply" {
       "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
       "ec2:CreateInstanceConnectEndpoint",
       "ec2:DeleteInstanceConnectEndpoint",
+      "ec2:CreateNetworkInterface",
+      "ec2:DeleteNetworkInterface",
+      "ec2:ModifyNetworkInterfaceAttribute",
       "ec2:CreateTags",
       "ec2:DeleteTags",
     ]
@@ -889,6 +892,11 @@ data "aws_iam_policy_document" "tasks_apply" {
     sid       = "RdsSlr"
     actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/rds.amazonaws.com/*"]
+  }
+  statement {
+    sid       = "EiceSlr"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/ec2-instance-connect.amazonaws.com/*"]
   }
 
   # ECR write (ecr: repository / lifecycle policy)
