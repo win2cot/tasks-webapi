@@ -1194,6 +1194,7 @@ data "aws_iam_policy_document" "release_build" {
   # ECR push + retag for tasks-webapi and keycloak-custom
   # ecr:GetDownloadUrlForLayer is intentionally omitted: all base images (keycloak FROM quay.io,
   # webapi builder from Paketo/paketobuildpacks) are pulled from public registries, not ECR.
+  # Smoke test runs against the locally-built image before ECR push, so pull is not needed.
   statement {
     sid = "EcrPush"
     actions = [
