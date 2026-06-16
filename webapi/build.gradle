@@ -193,6 +193,10 @@ tasks.named('processAot') {
     environment 'DATASOURCE_URL',     aotEnv('DATASOURCE_URL',     'jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true')
     environment 'DATASOURCE_USERNAME', aotEnv('DATASOURCE_USERNAME', 'tasks_webapi')
     environment 'DATASOURCE_PASSWORD', aotEnv('DATASOURCE_PASSWORD', 'tasks_webapi')
+    // Force RDS IAM auth branch into the native image so @ConditionalOnProperty resolves to 'true'
+    // at AOT time. GraalVM bakes the condition result in; local JVM tests are unaffected because
+    // they never run the native image.
+    environment 'RDS_IAM_AUTH_ENABLED', 'true'
 }
 
 tasks.named('processTestAot') {
