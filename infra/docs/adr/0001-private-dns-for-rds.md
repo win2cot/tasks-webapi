@@ -1,6 +1,6 @@
 # ADR-0001: Private DNS for RDS — Route53 Private Hosted Zone による RDS エンドポイント固定化
 
-- **Status**: Accepted
+- **Status**: Superseded by [ADR-0008](0008-rds-direct-endpoint.md)
 - **Date**: 2026-05-24
 - **Deciders**: win2cot (Masayuki Ishikawa)
 - **Tags**: infra, network, dns, rds, terraform

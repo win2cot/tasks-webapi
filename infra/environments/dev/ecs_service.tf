@@ -87,7 +87,7 @@ resource "aws_ecs_task_definition" "webapi" {
       { name = "SERVER_PORT", value = "8080" },
       { name = "TZ", value = "Asia/Tokyo" },
       # sslMode=REQUIRED is mandatory for RDS IAM auth; connectionTimeZone keeps timestamps consistent
-      { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://db.tasks.internal:3306/tasks?sslMode=REQUIRED&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" },
+      { name = "SPRING_DATASOURCE_URL", value = "jdbc:mysql://${module.rds.db_instance_address}:3306/tasks?sslMode=REQUIRED&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" },
       { name = "SPRING_DATASOURCE_USERNAME", value = "tasks_webapi" },
       { name = "RDS_IAM_AUTH_ENABLED", value = "true" },
       { name = "CORS_ALLOWED_ORIGINS", value = "https://tasks-dev.dgz48.xyz" },
