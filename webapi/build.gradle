@@ -70,6 +70,10 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.core'
     }
 
+    // AWS SDK v2 — RDS IAM auth token generation (ECS Fargate runtime identity)
+    implementation platform('software.amazon.awssdk:bom:2.46.7')
+    implementation 'software.amazon.awssdk:rds'
+
     // Other dependencies
     errorprone 'com.google.errorprone:error_prone_core:2.49.0'
     errorprone 'com.uber.nullaway:nullaway:0.13.6'
