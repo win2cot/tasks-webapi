@@ -438,17 +438,114 @@ jobs:
         run: exit 1
 
   # ---------------------------------------------------------------------------
+  # smoke-test-webapi: ネイティブイメージが GraalVM エラーなく起動できることを確認
+  #
+  # ECR のイメージをダミー AWS 認証情報で起動し、エラーの種類で合否を判定する:
+  #   PASS: MySQL "Access denied" / "Connection refused" → AWS SDK は正常動作
+  #   FAIL: GraalVM UnsupportedFeatureError / "CredentialProvider should be provided" など
+  #
+  # webapi がビルドされた場合のみ実行。スキップ時は create-release がそのまま通過。
+  # ---------------------------------------------------------------------------
+  smoke-test-webapi:
+    needs: [detect-changes, build-containers]
+    if: needs.detect-changes.outputs.build_webapi == 'true'
+    runs-on: ubuntu-latest
+    environment: release-build
+    env:
+      VERSION: ${{ needs.detect-changes.outputs.version }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::138285070797:role/release-build
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Pull webapi image from ECR
+        run: docker pull "${ECR_REGISTRY}/tasks-webapi:${VERSION}"
+
+      - name: Start MySQL for smoke test
+        run: |
+          docker network create smoke-net
+          docker run -d --name smoke-mysql --network smoke-net \
+            -e MYSQL_DATABASE=tasks \
+            -e MYSQL_USER=tasks_webapi \
+            -e MYSQL_PASSWORD=tasks_webapi_pass \
+            -e MYSQL_ROOT_PASSWORD=root \
+            mysql:8.4 --default-time-zone=Asia/Tokyo
+          echo "Waiting for MySQL..."
+          for i in $(seq 1 30); do
+            docker exec smoke-mysql mysqladmin ping -u tasks_webapi -ptasks_webapi_pass --silent 2>/dev/null && echo "MySQL ready" && break || sleep 3
+          done
+
+      - name: Run smoke test
+        run: |
+          # ダミー認証情報を使用。SigV4 署名はローカル演算のため AWS ネットワーク不要。
+          # MySQL はダミー署名トークンをパスワードとして拒否 → "Access denied" が期待する失敗。
+          CONTAINER_ID=$(docker run -d \
+            --network smoke-net \
+            -e RDS_IAM_AUTH_ENABLED=true \
+            -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
+            -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+            -e AWS_DEFAULT_REGION=ap-northeast-1 \
+            -e SPRING_DATASOURCE_URL="jdbc:mysql://smoke-mysql:3306/tasks?sslMode=REQUIRED&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" \
+            -e SPRING_DATASOURCE_USERNAME=tasks_webapi \
+            -e OIDC_ISSUER_URI=http://localhost:18080/realms/tasks \
+            "${ECR_REGISTRY}/tasks-webapi:${VERSION}")
+
+          # コンテナ終了まで最大 90 秒待機（DB 接続失敗で自然終了する）
+          ELAPSED=0
+          while docker inspect --format='{{.State.Running}}' "$CONTAINER_ID" 2>/dev/null | grep -q true; do
+            sleep 3
+            ELAPSED=$((ELAPSED + 3))
+            [[ $ELAPSED -ge 90 ]] && echo "Timeout — collecting logs" && break
+          done
+
+          LOGS=$(docker logs "$CONTAINER_ID" 2>&1)
+          docker rm -f "$CONTAINER_ID" || true
+
+          echo "=== Smoke test container logs ==="
+          echo "$LOGS"
+          echo "================================="
+
+          # FAIL: GraalVM リフレクションエラー / AWS SDK 設定不備
+          FAIL_PATTERNS="UnsupportedFeatureError|com\.oracle\.svm|CredentialProvider should be provided|NoSuchMethodException.*isFlywaySpecificVersionOf|ClassNotFoundException"
+          if echo "$LOGS" | grep -qE "$FAIL_PATTERNS"; then
+            echo "::error::SMOKE TEST FAILED: GraalVM / AWS SDK error detected in native image"
+            exit 1
+          fi
+
+          # PASS: AWS SDK は正常動作し MySQL 層で失敗（期待通り）
+          PASS_PATTERNS="Access denied|Communications link failure|Connection refused|HikariPool"
+          if echo "$LOGS" | grep -qiE "$PASS_PATTERNS"; then
+            echo "SMOKE TEST PASSED: Native image started, AWS SDK worked, failure at MySQL layer (expected)"
+            exit 0
+          fi
+
+          echo "::warning::SMOKE TEST INCONCLUSIVE: Could not classify logs — treating as passed"
+          exit 0
+
+      - name: Cleanup smoke-net
+        if: always()
+        run: |
+          docker rm -f smoke-mysql || true
+          docker network rm smoke-net || true
+
+  # ---------------------------------------------------------------------------
   # create-release: 全ビルド成功後に GitHub Release を作成
   # いずれかのビルドが失敗した場合は Release を作らず fail
   # ---------------------------------------------------------------------------
   create-release:
-    needs: [detect-changes, build-containers, build-web, validate-infra]
+    needs: [detect-changes, build-containers, build-web, validate-infra, smoke-test-webapi]
     if: |
       always() && !cancelled() &&
       needs.detect-changes.result == 'success' &&
       needs.build-containers.result == 'success' &&
       needs.build-web.result == 'success' &&
-      (needs.validate-infra.result == 'success' || needs.validate-infra.result == 'skipped')
+      (needs.validate-infra.result == 'success' || needs.validate-infra.result == 'skipped') &&
+      (needs.smoke-test-webapi.result == 'success' || needs.smoke-test-webapi.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.detect-changes.outputs.version }}

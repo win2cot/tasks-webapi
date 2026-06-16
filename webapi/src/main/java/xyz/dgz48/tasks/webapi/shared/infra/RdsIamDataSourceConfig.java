@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.rds.RdsUtilities;
 
 /**
  * Activates when {@code rds.iam-auth.enabled=true} (set via {@code RDS_IAM_AUTH_ENABLED} env var in
@@ -16,6 +19,9 @@ import org.springframework.context.annotation.Configuration;
  * <p>IAM tokens expire in 15 minutes. {@code maxLifetime=840000} (14 min) ensures HikariCP discards
  * connections before their token expires, causing {@link RdsIamDriverDataSource} to generate a new
  * token for each replacement connection.
+ *
+ * <p>{@code processAot} must set {@code RDS_IAM_AUTH_ENABLED=true} so this condition resolves to
+ * {@code true} during AOT processing and the bean is included in the GraalVM native image.
  */
 @Configuration
 @ConditionalOnProperty(name = "rds.iam-auth.enabled", havingValue = "true")
@@ -31,15 +37,28 @@ class RdsIamDataSourceConfig {
   private String region;
 
   @Bean
-  DataSource dataSource() {
+  RdsUtilities rdsUtilities() {
+    return RdsUtilities.builder()
+        .region(Region.of(region))
+        .credentialsProvider(DefaultCredentialsProvider.create())
+        .build();
+  }
+
+  @Bean
+  DataSource dataSource(RdsUtilities rdsUtilities) {
+    return new HikariDataSource(buildHikariConfig(rdsUtilities));
+  }
+
+  HikariConfig buildHikariConfig(RdsUtilities rdsUtilities) {
     String sslJdbcUrl = withSsl(jdbcUrl);
     String host = extractHost(jdbcUrl);
     int port = extractPort(jdbcUrl);
 
     HikariConfig config = new HikariConfig();
-    config.setDataSource(new RdsIamDriverDataSource(sslJdbcUrl, username, host, port, region));
+    config.setDataSource(
+        new RdsIamDriverDataSource(sslJdbcUrl, username, host, port, rdsUtilities));
     config.setMaxLifetime(840_000L);
-    return new HikariDataSource(config);
+    return config;
   }
 
   private static String withSsl(String url) {

@@ -177,6 +177,11 @@ graalvmNative {
         }
     }
     toolchainDetection = false
+    // Enable GraalVM Reachability Metadata Repository so community-maintained reflection configs
+    // for software.amazon.awssdk:* and other libraries are applied automatically.
+    metadataRepository {
+        enabled = true
+    }
 }
 
 // AOT processing runs a trimmed Spring context at build time and requires
