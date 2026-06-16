@@ -821,7 +821,7 @@ data "aws_iam_policy_document" "tasks_apply" {
     resources = ["*"]
   }
 
-  # EC2 write (security_group: SG-ECS / SG-RDS)
+  # EC2 write (security_group: SG-ECS / SG-RDS / SG-EICE + EICE endpoint)
   # 規約 R1: 書込み action は完全列挙
   # 規約 R2: 一部 action は resource-level permission 非対応(CreateSecurityGroup 等)、残りは apply 時点で対象 ARN が未確定のため Resource: *
   statement {
@@ -835,6 +835,8 @@ data "aws_iam_policy_document" "tasks_apply" {
       "ec2:RevokeSecurityGroupEgress",
       "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
       "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+      "ec2:CreateInstanceConnectEndpoint",
+      "ec2:DeleteInstanceConnectEndpoint",
       "ec2:CreateTags",
       "ec2:DeleteTags",
     ]

@@ -68,24 +68,27 @@ resource "aws_security_group" "rds" {
 }
 
 # ---------------------------------------------------------------------------
-# SG-EICE — EC2 Instance Connect Endpoint; outbound unrestricted (EICE itself
-#           controls which destination port is reachable via the tunnel)
+# SG-EICE — EC2 Instance Connect Endpoint; egress scoped to RDS :3306 only.
+# aws_security_group_rule is used to avoid a circular dependency between
+# eice (egress → rds) and rds (ingress ← eice).
 # ---------------------------------------------------------------------------
 
 resource "aws_security_group" "eice" {
   name        = "tasks-${var.env}-sg-eice"
-  description = "EICE: unrestricted outbound for DBA tunnel to RDS"
+  description = "EICE: outbound to RDS :3306 only for DBA tunnel"
   vpc_id      = var.vpc_id
-
-  egress {
-    description = "All outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 
   tags = {
     Name = "tasks-${var.env}-sg-eice"
   }
+}
+
+resource "aws_security_group_rule" "eice_to_rds" {
+  type                     = "egress"
+  description              = "MySQL to RDS"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.eice.id
+  source_security_group_id = aws_security_group.rds.id
 }
