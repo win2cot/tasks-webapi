@@ -38,7 +38,7 @@ resource "aws_security_group" "ecs" {
 }
 
 # ---------------------------------------------------------------------------
-# SG-RDS — inbound from SG-ECS on :3306 only, no egress
+# SG-RDS — inbound from SG-ECS and SG-EICE on :3306, no egress
 # ---------------------------------------------------------------------------
 
 resource "aws_security_group" "rds" {
@@ -54,7 +54,38 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ecs.id]
   }
 
+  ingress {
+    description     = "MySQL from EICE (DBA tunnel)"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.eice.id]
+  }
+
   tags = {
     Name = "tasks-${var.env}-sg-rds"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# SG-EICE — EC2 Instance Connect Endpoint; outbound unrestricted (EICE itself
+#           controls which destination port is reachable via the tunnel)
+# ---------------------------------------------------------------------------
+
+resource "aws_security_group" "eice" {
+  name        = "tasks-${var.env}-sg-eice"
+  description = "EICE: unrestricted outbound for DBA tunnel to RDS"
+  vpc_id      = var.vpc_id
+
+  egress {
+    description = "All outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-sg-eice"
   }
 }
