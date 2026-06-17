@@ -50,12 +50,24 @@ resource "aws_iam_role_policy" "webapi_exec_ssm" {
 
 # ---------------------------------------------------------------------------
 # ADR-0028 巻き戻し防止 (i) — 現行稼働イメージ注入
-# CI deploy pipeline (S2Infra-4/5) 完了後に実装する。
-# それまでは var.bootstrap_image を直接使用し、(ii) max(revision) のみで巻き戻しを防ぐ。
+# apply 前の ECS タスク定義から稼働中イメージを読み取り、
+# Terraform が busybox で上書きするのを防ぐ。
+# 前提: タスク定義ファミリーが存在すること（初回 apply 後は常に存在する）。
 # ---------------------------------------------------------------------------
 
+data "aws_ecs_task_definition" "webapi_pre_apply" {
+  task_definition = "tasks-${var.env}-webapi"
+}
+
 locals {
-  webapi_image = var.bootstrap_image
+  _pre_apply_containers = jsondecode(data.aws_ecs_task_definition.webapi_pre_apply.container_definitions)
+  _pre_apply_image = try(
+    [for c in local._pre_apply_containers : c.image if c.name == "webapi"][0],
+    var.bootstrap_image
+  )
+  # ECR の tasks-webapi リポジトリのイメージが稼働中ならそれを保持する。
+  # busybox 等のブートストラップ用プレースホルダーは保持しない。
+  webapi_image = can(regex("tasks-webapi:", local._pre_apply_image)) ? local._pre_apply_image : var.bootstrap_image
 }
 
 # ---------------------------------------------------------------------------
