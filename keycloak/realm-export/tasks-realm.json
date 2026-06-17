@@ -84,6 +84,7 @@
   ],
   "users": [
     {
+      "id": "69649e2f-63a3-4b75-ae2e-2916ee22e1b5",
       "username": "admin@example.com",
       "email": "admin@example.com",
       "firstName": "Admin",
@@ -102,6 +103,7 @@
       ]
     },
     {
+      "id": "0090cd3a-7ac2-4409-b086-23a285c196ea",
       "username": "tenant1-admin@example.com",
       "email": "tenant1-admin@example.com",
       "firstName": "Tenant1",
@@ -120,6 +122,7 @@
       ]
     },
     {
+      "id": "c490c707-819c-4ac7-860f-6e05426a6708",
       "username": "tenant1-member1@example.com",
       "email": "tenant1-member1@example.com",
       "firstName": "Tenant1",
@@ -138,6 +141,7 @@
       ]
     },
     {
+      "id": "11873fb0-285d-4188-bd3b-cf223c257ecf",
       "username": "tenant1-member2@example.com",
       "email": "tenant1-member2@example.com",
       "firstName": "Tenant1",
