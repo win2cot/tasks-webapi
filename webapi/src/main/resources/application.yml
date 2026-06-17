@@ -17,8 +17,6 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jackson:
     time-zone: Asia/Tokyo
-    serialization:
-      write-dates-as-timestamps: false
   jpa:
     open-in-view: false
     hibernate:
