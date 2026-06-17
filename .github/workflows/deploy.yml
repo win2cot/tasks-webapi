@@ -254,8 +254,8 @@ jobs:
           fi
 
       # ADR-0028 (iii): plan 実行時点の ECS image を記録し apply guard で比較する。
-      # deploy-webapi が同 workflow run で ECS を更新する場合は apply-tasks が
-      # 「baseline or target version image」の両方を許容する(下記 guard 参照)。
+      # deploy-webapi は apply-tasks の後に実行されるため、apply 時点の CURRENT は
+      # 常に BASELINE と一致する(target version への更新は apply-tasks 完了後に deploy-webapi が行う)。
       - name: Capture ECS baseline image (ADR-0028 iii)
         run: |
           aws ecs describe-task-definition \
@@ -291,8 +291,14 @@ jobs:
   # --------------------------------------------------------------------------
   deploy-webapi:
     name: Deploy webapi (${{ inputs.version }})
-    needs: verify
-    if: needs.verify.outputs.deploy_webapi == 'true'
+    # ADR-0028: Terraform apply (apply-tasks) must complete first so it creates a lower revision
+    # than deploy-webapi. This ensures max(revision) always selects the CI-deployed image, not busybox.
+    needs: [verify, apply-tasks]
+    if: |
+      always() &&
+      needs.verify.result == 'success' &&
+      needs.verify.outputs.deploy_webapi == 'true' &&
+      (needs.apply-tasks.result == 'success' || needs.apply-tasks.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
