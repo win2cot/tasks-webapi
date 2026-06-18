@@ -1,10 +1,11 @@
 # ADR-0032: エージェント駆動の手動/探索 E2E 検証レイヤー(dev/local)— ADR-0023 の補完
 
-- **Status**: Accepted
-- **Date**: 2026-06-18
-- **Deciders**: win2cot, 開発チーム
-- **Tags**: testing, e2e, frontend, tooling, quality
-- **補完対象**: ADR-0023(最小 E2E テスト基盤)
+- Status: Accepted
+- Date: 2026-06-18
+- Deciders: win2cot, 開発チーム
+- Tags: testing, e2e, frontend, tooling, quality
+- 補完対象: ADR-0023(最小 E2E テスト基盤)
+- 改訂: 2026-06-18 — #538 実装議論を受け、実行スタック構成(stateful 依存=compose / app=ホスト)と静的配信の CSP ヘッダ local/CI 再現を §2/§3/§6 に追記(中核決定は不変)。作成当日・影響軽微のため追補でなく直接改訂。
 
 ## 目次
 
@@ -33,7 +34,7 @@ ADR-0023 は hermetic compose 上の Playwright(TypeScript)による決定論的
 
 ### 対象環境
 
-- **local(#538 の full-stack compose)+ dev(採用)**: ADR-0023 が CI で dev を却下したのは「決定論 spec を共有環境で回す」文脈であり、探索検証や本番投入前の実環境確認で dev を使うのは別問題として許容する。
+- **local(#538 の full-stack)+ dev(採用)**: ADR-0023 が CI で dev を却下したのは「決定論 spec を共有環境で回す」文脈であり、探索検証や本番投入前の実環境確認で dev を使うのは別問題として許容する。
 
 ### アーキテクチャ: 頭脳とブラウザ係の接続
 
@@ -47,86 +48,112 @@ ADR-0023 は hermetic compose 上の Playwright(TypeScript)による決定論的
   └─(b) nativeMessaging ─→ Claude in Chrome 拡張 ──────────────→ 実Chrome(ログイン中)  ← 不採用(将来再評価)
 ```
 
-ブラウザ係はどの方式でも「ブラウザ内(タブ / DOM / CDP の console・network)」だけを担当する。repo / ローカル / ビルドは常に頭脳(Claude Code)側であり、ブラウザ係はそれを代替しない。接続方式の差は (a) オープンな MCP プロトコルで部品として呼ぶか、(b) Anthropic 製拡張を nativeMessaging で連携するか、である。
+ブラウザ係はどの方式でも「ブラウザ内(タブ / DOM / CDP の console・network)」だけを担当する。repo / ローカル / ビルドは常に頭脳(Claude Code)側であり、ブラウザ係はそれを代替しない。
 
 ### 実現手段(ツール)
 
-- **Playwright MCP(Microsoft)— 採用(操作・通し検証)**: MCP サーバ。アクセシビリティツリー基盤で意味論的・トークン効率、Chrome/Firefox/WebKit/Edge 対応。ADR-0023 と同一 Playwright エンジンのため、探索で見つけた問題を #535 配下の決定論 spec に昇格できる。Claude Code に MCP として接続。
-- **Chrome DevTools MCP(Google)— 採用(観測)**: MCP サーバ。Chrome DevTools Protocol。`list_console_messages`(ソースマップ付き)/`list_network_requests`/perf trace で console・CSP 違反・失敗リクエストの観測が最も厚い。Chrome 専用。Claude Code に MCP として接続。
-- **Claude in Chrome(Anthropic)— 不採用(将来再評価)**: Chrome 拡張が実ブラウザを `debugger`(CDP)+`scripting` で制御し、頭脳とは nativeMessaging で連携する。モデルは Anthropic ホスト(tier 依存)。**拡張単体ではブラウザ内(タブ / DOM / CDP の console・network)しか扱えず、ローカルクローンの読取・git/gh・gradle 実行はできない。GitHub も Web UI をブラウザで見るだけで、API でも git でもない**。したがって repo / ローカルを読む頭脳にはなり得ず、あくまで Claude Code の「ブラウザ係」として連携する位置づけ。β・Chrome 専用・非決定的・hosted/tier 依存のため恒常運用の手段としては現時点で見送り、GA・安定後に再評価する。
+- **Playwright MCP(Microsoft)— 採用(操作・通し検証)**: MCP サーバ。アクセシビリティツリー基盤、Chrome/Firefox/WebKit/Edge 対応。ADR-0023 と同一 Playwright エンジンのため、探索で見つけた問題を #535 配下の決定論 spec に昇格できる。
+- **Chrome DevTools MCP(Google)— 採用(観測)**: MCP サーバ。CDP。`list_console_messages`(ソースマップ付き)/`list_network_requests`/perf trace で console・CSP 違反・失敗リクエストの観測が最も厚い。Chrome 専用。
+- **Claude in Chrome(Anthropic)— 不採用(将来再評価)**: Chrome 拡張が実ブラウザを `debugger`(CDP)+`scripting` で制御し、頭脳とは nativeMessaging で連携。**拡張単体ではブラウザ内しか扱えず、ローカルクローン読取・git/gh・gradle 実行はできない**(GitHub も Web UI を見るだけ)。β・Chrome 専用・hosted/tier 依存のため現時点見送り、GA・安定後に再評価。
 
 両 MCP はオープンプロトコルでモデル / クライアント非依存。win2cot の Claude Code に MCP サーバとして導入する。
 
+### 実行スタックの構成(execution topology)
+
+検証 / E2E で起動するスタックの分割線:
+
+- **stateful・バージョン固定したい依存(mysql / keycloak)= compose**。
+- **app(webapi / web)= ホスト直起動**(webapi は `bootRun` / `java -jar`、web はヘッダ注入 serve)。**webapi 用 Dockerfile は作らない(ADR-0018 準拠: 本番イメージは `bootBuildImage` の GraalVM native、Dockerfile 不作成)**。
+- 理由: webapi/web は stateless で Docker 固有の利点が無く、CI ランナー(clean VM)自体が hermetic。compose に webapi を入れると ADR-0018 と二重のコンテナ化になる。issuer URL もホスト起動なら単一 `localhost` に揃い単純。
+- **ADR-0023 §6 の「compose に webapi+web を入れる」実装スケッチを更新**する(ADR-0023 は確立・被参照のため不変、本 ADR に記録)。ADR-0023 の中核決定(Playwright + hermetic full stack + Sprint 3 scaffold)は不変。
+- 制約(native パリティ): E2E は JVM(`java -jar`)で回り、本番の GraalVM native(ADR-0008/0018/0021)固有の退行は拾えない。native 退行検知が要る場合は別途 Paketo native イメージを compose に載せる重い job を追加(本レイヤーの既定スコープ外、既知の制約)。
+
+### 静的配信のセキュリティヘッダ(CSP)
+
+- **local / CI とも、本番(#529 CloudFront Response Headers Policy、ADR-0022)相当の CSP / セキュリティヘッダを静的配信に注入する(採用)**。素の `http-server` / `python -m http.server` はヘッダを付けないため**不採用**。
+- 採用: **ヘッダを注入できる軽量 serve**(`web/package.json` の `serve` スクリプト = ヘッダ付与する小さな Node サーバ、Node 統一・cross-platform)。RHP のヘッダ集合は単一正本から prod / local / CI に展開し、ドリフトを防ぐ。
+- 理由: 本レイヤーと #541(ADR-0022(b) CSP 違反0 フィクスチャ)が、静的ページの CSP を本番同等で検証できるようにする。#538 はこの方式で web を配信する。
+
 ## 3. 決定(Decision)
 
-検証の**頭脳は Claude Code**(repo / ローカル / ビルドを握る)とし、その下位補完レイヤーとしてブラウザ検証を ADR-0023 に追加する。対象 = local(#538 の full-stack compose)+ dev。CI には載せない(決定論ゲートは Playwright=ADR-0023)。
+検証の**頭脳は Claude Code**(repo / ローカル / ビルドを握る)とし、その下位補完レイヤーとしてブラウザ検証を ADR-0023 に追加する。対象 = local + dev。CI には載せない(決定論ゲートは Playwright=ADR-0023)。
 
-ブラウザ係の実現手段は **MCP 接続で併用**とする:
+ブラウザ係の実現手段は **MCP 接続で併用**:
 
-- **操作・通し検証 = Playwright MCP**(ログイン → `/api/auth/me` → タスク CRUD のハッピーパス操作。発見した決定論ケースは #535 の spec へ昇格)
-- **観測 = Chrome DevTools MCP**(console error/warning・CSP 違反・失敗リクエスト・perf を構造化観測。#530 型検証と #663 の警告撲滅に使用)
-- **Claude in Chrome は現時点不採用**(nativeMessaging 接続の別系統。β・Chrome 専用・hosted/tier 依存・非決定、かつ単体では repo/ローカルを読めない)。GA・安定後に再評価。
+- 操作・通し検証 = **Playwright MCP** / 観測 = **Chrome DevTools MCP**。
+- **Claude in Chrome は現時点不採用**(β・Chrome 専用・hosted/tier 依存・単体で repo 不可)。GA 後再評価。
 
-成果物: 検証 runbook(対象 URL・Keycloak ログイン手順・代表フロー・観測項目)+ 両 MCP を Claude Code に入れる前提の文書化。棲み分け: 決定論ゲート=Playwright(ADR-0023)/ 探索・実環境確認=本レイヤー。
+実行形態:
+
+- 起動スタック = **stateful 依存(mysql/keycloak)= compose + app(webapi/web)= ホスト**。webapi Dockerfile 不作成(ADR-0018)。ADR-0023 §6 の compose 同梱スケッチを上書き(中核決定は不変)。
+- 静的配信は **#529 RHP 相当の CSP/セキュリティヘッダを注入する serve** で local / CI とも本番同等(素の http-server 不可)。
+- readiness gating: keycloak(healthcheck)・webapi(`/actuator/health`)・web の起動完了を待ってから検証 / Playwright を実行。
+
+成果物: 検証 runbook(対象 URL・Keycloak ログイン手順・代表フロー・観測項目・起動スタック手順)+ 両 MCP を Claude Code に入れる前提の文書化。棲み分け: 決定論ゲート=Playwright(ADR-0023)/ 探索・実環境確認=本レイヤー。
 
 ## 4. 理由(Rationale)
 
 - **#530 の再発防止**: 手動依存だった通し検証をエージェントで反復可能にし、「動く前提」を検証できる土台を作る。
-- **ADR-0023 との一貫性**: 操作を Playwright MCP に寄せることで、探索結果を同一エンジンの決定論 spec に昇格でき、二重投資を避ける。
-- **観測の厚み**: Chrome DevTools MCP の CDP 観測(ソースマップ付き console・network・CSP)が #663 の警告撲滅に直結する。
-- **可搬性と層の分離**: ブラウザ係をオープンな MCP 部品にすることで、頭脳(Claude Code)と疎結合になり、モデル/クライアント/単一ブラウザに固定されない。nativeMessaging 一体型(Claude in Chrome)は手軽だがベンダー・tier・Chrome に固定され、単体では repo/ローカルも読めないため見送った。
-- **機械検知優先の原則と整合**: 恒久ゲートは Playwright に集約しつつ、その手前の探索層を明示する。
+- **ADR-0023 との一貫性**: 操作を Playwright MCP に寄せ、探索結果を同一エンジンの決定論 spec に昇格でき、二重投資を避ける。
+- **観測の厚み**: Chrome DevTools MCP の CDP 観測(ソースマップ付き console・network・CSP)が #663 の警告撲滅に直結。
+- **実行形態の単純化と規約整合**: app をホストに出すと issuer が単一 localhost に揃い、ADR-0018 の no-Dockerfile とも整合。CI ランナーが clean VM のため hermetic 性は保たれる。
+- **検証の代表性**: 静的配信に本番 RHP 相当の CSP を注入することで、#541 の CSP 検証が local/CI でも本番同等に効く。
+- **可搬性と層の分離**: ブラウザ係をオープンな MCP 部品にし、頭脳と疎結合。nativeMessaging 一体型(Claude in Chrome)はベンダー・tier・Chrome に固定され単体で repo も読めないため見送り。
 
 ## 5. 影響(Consequences)
 
 ### 良い影響(Positive)
 
-- local/dev で実装直後に通し確認・警告撲滅ができ、退行と「そもそも動かない」を早期に発見できる。
-- 探索→決定論 spec(#535)への昇格パスができる。#530 型検証を反復可能化できる。
+- local/dev で実装直後に通し確認・警告撲滅ができ、退行と「そもそも動かない」を早期に発見。
+- 探索→決定論 spec(#535)への昇格パス。#530 型検証を反復可能化。CSP を local/CI で本番同等に検証できる。
 
 ### 悪い影響・制約(Negative)
 
 - 非決定的でゲートにできない(意図的)。runbook と MCP 設定の鮮度維持が要る。
 - dev を対象に含むため、データ汚染・並行操作の注意は残る(探索用途に限定)。
+- 静的配信のヘッダ集合を prod(#529 RHP)と local/CI で同期し続ける必要(単一正本から展開)。
+- native パリティは E2E 非対象(JVM 実行)。native 退行は別 job。
 - 2 つの MCP を Claude Code に導入・維持するコスト。
-- 将来 Claude in Chrome を採用する場合も、それはブラウザ係に限られ、repo/ローカル読取・ビルドは引き続き Claude Code が担う(拡張単体では代替不可)。
+- 将来 Claude in Chrome を採用してもブラウザ係に限られ、repo/ローカル読取・ビルドは引き続き Claude Code(拡張単体では代替不可)。
 
 ### 既存ドキュメント・規約への波及
 
-- #538(compose full-stack)が前提。
+- #538(compose は mysql/keycloak のみ、app はホスト、web はヘッダ注入 serve)。
+- ADR-0023 §6 の実装スケッチを本 ADR で上書き(ADR-0023 本文は不変)。
 - 検証 runbook を docs に追加(配置は実装 Issue #662 で確定)。
 
 ## 6. 実装メモ(Implementation Notes)
 
 ### 頭脳の所在(Cowork ではなく Claude Code)
 
-- 頭脳は **Claude Code(WSL 等の実環境)に限定**する。Cowork は設計・ADR 起草・起票オーケストレーション=「実装の手前」担当であり、本レイヤーの検証ブレインには使わない(repo `.claude/CLAUDE.md` / Cowork `CLAUDE.md` の役割分担と一致)。
-- 理由(Cowork sandbox の制約): あなたの WSL とは別の揮発性 Linux で network allowlist 制のため、テスト対象 compose と非同居・非到達 / gh・PAT 不在 / sandbox で git 実行不可(host `.git/index.lock` を破壊)/ host ファイル書込みが末尾欠落しうる。これらにより「頭脳＋ブラウザ係＋テスト対象を同一 OS」という本レイヤーの前提を満たせない。
-- Cowork のブラウザ手段は Claude in Chrome / computer-use であり、本 ADR の MCP 構成とは別系統。Cowork では「起動中アプリを目視する軽いスモーク」が上限で、build → run → console↔ソース突き合わせ → 修正の本ループは回さない。
+- 頭脳は **Claude Code(WSL 等の実環境)に限定**。Cowork は設計・ADR 起草・起票=「実装の手前」担当で、検証ブレインには使わない。
+- 理由(Cowork sandbox の制約): 別の揮発性 Linux で network allowlist 制 → テスト対象と非同居・非到達 / gh・PAT 不在 / sandbox で git 実行不可(host `.git/index.lock` 破壊)/ host 書込みが末尾欠落しうる。
+- Cowork のブラウザ手段は Claude in Chrome / computer-use で本 ADR の MCP 構成とは別系統。Cowork は「目視する軽いスモーク」が上限。
 
 ### 着手(#662)
 
-- win2cot の Claude Code に Playwright MCP と Chrome DevTools MCP を設定、環境前提の文書化、Keycloak ログイン手順、代表フロー定義、観測項目の列挙。
-- 観測項目: console error/warning、uncaught、CSP 違反(Report-Only/enforce)、失敗リクエスト(4xx/5xx)。
+- Claude Code に Playwright MCP / Chrome DevTools MCP を設定、環境前提・起動スタック手順の文書化、Keycloak ログイン手順、代表フロー、観測項目の列挙。
+- 起動スタック: `docker compose up -d`(mysql+keycloak)→ webapi をホスト起動 → web をヘッダ注入 serve → readiness 待ち → 検証。
 - 最初の適用 = Sprint 2.5 のブラウザ警告/エラー撲滅(#663)。
 - 決定論化すべきケースは #540/#541(Playwright spec)へ backfill。
-- Claude in Chrome は再評価用に本 ADR に記録のみ(導入しない)。
 
 ### 環境前提(実行構成)
 
-- ベース技術: 両 MCP は **Node.js(npx 起動)で Docker ではない**。Playwright MCP=Node 18+、Chromium/Firefox/WebKit を同梱(Linux は `playwright install --with-deps`)。Chrome DevTools MCP=Node 20.19+、Puppeteer で別途導入した実 Chrome を CDP 駆動(Chrome 専用)。Docker はテスト対象(#538 compose)側の話で、MCP のブラウザとは別レイヤー。
-- 群分け: テスター群(Claude Code + MCP + ブラウザ)/ テスト対象群(web・webapi・keycloak・mysql)。**各群を単一 OS に閉じ、MCP サーバとブラウザは必ず同一 OS** に置く。
+- ベース技術: 両 MCP は **Node.js(npx)で Docker ではない**。app(webapi/web)もホスト直起動で Docker 化しない。compose は **mysql/keycloak のみ**。web はヘッダ注入 serve(#529 RHP 相当)。
+- 群分け: テスター群(Claude Code + MCP + ブラウザ)/ テスト対象群(web・webapi・keycloak・mysql)。**各群を単一 OS に閉じ、MCP サーバとブラウザは必ず同一 OS**。
 - サポートする実行構成(tester → target):
-  - **WSL2 → WSL2(既定)**: 全部 WSL 内、クロス無し・localhost 自明・prod 近似。ヘッドレス自動検証はこれで過不足なし。headed は WSLg + `DISPLAY`/`WAYLAND_DISPLAY`/`XDG_RUNTIME_DIR` 注入。
-  - **Windows → Windows**: 全部 Windows、localhost 自明・headed ネイティブ。
-  - **Windows → WSL2**: app=WSL/Docker、ブラウザ=Windows headed(WSLg 不要)。Windows→WSL2 の localhost forwarding 前提(WSL 側 `0.0.0.0` bind・ポート publish)。
-- **非サポート: WSL2 → Windows**(localhost が Windows ホストに届かず host IP/ミラーモードが要る上、keycloak issuer が割れるため除外)。
-- クロスするのは「ブラウザ → テスト対象の HTTP」のみ(webapi↔keycloak↔mysql は対象群内で完結)。上記3構成は localhost が一意に効くため keycloak issuer/redirect は localhost ベースで一貫する。
+  - **WSL2 → WSL2(既定)**: クロス無し・localhost 自明・prod 近似。headed は WSLg + `DISPLAY`/`WAYLAND_DISPLAY`/`XDG_RUNTIME_DIR` 注入。
+  - **Windows → Windows**: localhost 自明・headed ネイティブ。
+  - **Windows → WSL2**: app=WSL + ブラウザ=Windows headed(WSLg 不要)。Windows→WSL2 の localhost forwarding 前提(WSL 側 `0.0.0.0` bind・ポート publish)。
+- **非サポート: WSL2 → Windows**(localhost が Windows ホストに届かず host IP/ミラーモード要・keycloak issuer 割れ)。
+- クロスは「ブラウザ → テスト対象の HTTP」のみ。3 構成は localhost が一意で keycloak issuer/redirect も一貫。
+- readiness gating: keycloak healthcheck・webapi `/actuator/health`・web の起動完了を待ってから検証/Playwright を撃つ。
 
 ## 7. 参考リンク(References)
 
 - ADR-0023 — 最小 E2E テスト基盤(本 ADR の被補完元)
-- ADR-0022 — セキュリティレスポンスヘッダー(CSP)
+- ADR-0022 — セキュリティレスポンスヘッダー(CSP)/ #529 CloudFront Response Headers Policy
+- ADR-0018 — bootBuildImage(Dockerfile 不作成)/ ADR-0008・0021 — GraalVM native・JDK
 - Issue #530 — CSP enforce 検証(手動依存の反省)
-- Issue #535 / #538 — E2E エポック / compose full-stack 化
+- Issue #535 / #538 / #541 — E2E エポック / compose full-stack / CSP フィクスチャ
 - Playwright MCP(Microsoft, Node)/ Chrome DevTools MCP(Google, Node+Puppeteer)/ Claude in Chrome(Anthropic, β)
