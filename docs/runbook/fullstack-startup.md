@@ -127,6 +127,7 @@ cd web && npm run serve
 ## 関連ドキュメント
 
 - [local-setup.md](../dev/local-setup.md) — 初回セットアップ手順
+- [browser-verification.md](browser-verification.md) — エージェント駆動ブラウザ検証手順(ADR-0032 / Playwright MCP)
 - [ADR-0023](../adr/0023-minimal-e2e-harness.md) — CI E2E 基盤
 - [ADR-0032](../adr/0032-agent-driven-verification-layer.md) — エージェント駆動検証レイヤー(実行スタック構成)
 - [ADR-0022 §3.2](../adr/0022-security-response-headers.md) — 静的配信セキュリティヘッダ
