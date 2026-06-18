@@ -1,10 +1,10 @@
 # ADR-0032: エージェント駆動の手動/探索 E2E 検証レイヤー(dev/local)— ADR-0023 の補完
 
-- Status: Accepted
-- Date: 2026-06-18
-- Deciders: win2cot, 開発チーム
-- Tags: testing, e2e, frontend, tooling, quality
-- 補完対象: ADR-0023(最小 E2E テスト基盤)
+- **Status**: Accepted
+- **Date**: 2026-06-18
+- **Deciders**: win2cot, 開発チーム
+- **Tags**: testing, e2e, frontend, tooling, quality
+- **補完対象**: ADR-0023(最小 E2E テスト基盤)
 
 ## 目次
 
