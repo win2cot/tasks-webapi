@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
+import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
@@ -110,6 +111,7 @@ class TenantContextFilterTest {
   @MockitoBean UpdateTenantUseCase updateTenantUseCase;
   @MockitoBean UpdateTenantStatusUseCase updateTenantStatusUseCase;
   @MockitoBean GetPlatformMetricsUseCase getPlatformMetricsUseCase;
+  @MockitoBean GetMeUseCase getMeUseCase;
 
   @Autowired MockMvc mockMvc;
 

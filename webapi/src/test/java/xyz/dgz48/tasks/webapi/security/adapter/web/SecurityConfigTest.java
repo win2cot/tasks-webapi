@@ -33,6 +33,7 @@ import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
+import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
@@ -94,6 +95,7 @@ class SecurityConfigTest {
   @MockitoBean UpdateTenantUseCase updateTenantUseCase;
   @MockitoBean UpdateTenantStatusUseCase updateTenantStatusUseCase;
   @MockitoBean GetPlatformMetricsUseCase getPlatformMetricsUseCase;
+  @MockitoBean GetMeUseCase getMeUseCase;
 
   @Autowired MockMvc mockMvc;
 
