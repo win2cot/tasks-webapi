@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantSummaryInfo;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 
@@ -32,5 +33,10 @@ class UserTenantMembershipAdapter implements TenantMembershipPort {
         .stream()
         .map(e -> new TenantMembership(e.getId().getTenantId(), e.getRole()))
         .toList();
+  }
+
+  @Override
+  public List<TenantSummaryInfo> findActiveMembershipDetails(Long userId) {
+    return repository.findActiveMembershipsWithTenantDetail(userId, UserTenantStatus.ACTIVE);
   }
 }
