@@ -86,12 +86,18 @@ docker compose -f docker-compose.local.yml up -d
 docker compose -f docker-compose.local.yml ps
 ```
 
+healthcheck が通るまで待ってから次のステップに進む場合は `--wait` を付ける:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --wait
+```
+
 期待する出力:
 
 ```text
-NAME                STATUS          PORTS
+NAME                          STATUS             PORTS
 tasks-webapi-mysql-1      Up (healthy)    0.0.0.0:3306->3306/tcp
-tasks-webapi-keycloak-1   Up              0.0.0.0:18080->8080/tcp
+tasks-webapi-keycloak-1   Up (healthy)    0.0.0.0:18080->8080/tcp
 ```
 
 ### 各サービスの説明
@@ -99,9 +105,9 @@ tasks-webapi-keycloak-1   Up              0.0.0.0:18080->8080/tcp
 | サービス | ポート | 用途 |
 |----------|--------|------|
 | MySQL 8.4 | `localhost:3306` | アプリケーション DB |
-| Keycloak 24.0 | `localhost:18080` | 認証・認可サーバー |
+| Keycloak 26 | `localhost:18080` | 認証・認可サーバー |
 
-> **注意**: MySQL は起動後 healthcheck が `healthy` になるまで最大 80 秒かかる場合がある。  
+> **注意**: MySQL は最大 80 秒、Keycloak は最大 150 秒 healthcheck が `healthy` になるまでかかる場合がある。  
 > Keycloak は初回起動時に `keycloak/realm-export/tasks-realm.json` を自動インポートする。
 
 ### Docker Compose 停止
@@ -237,30 +243,27 @@ echo "TOKEN: ${TOKEN:0:50}..."
 
 ## 7. Frontend skeleton 起動
 
-`web/` ディレクトリを軽量 HTTP サーバーで配信する。
-
-### VS Code Live Server (推奨)
-
-VS Code の拡張機能 [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) を使う場合:
-
-1. VS Code で `web/index.html` を開く
-2. 右下の `Go Live` をクリック
-3. ブラウザで `http://localhost:5500/index.html` が開く
-
-### Python HTTP サーバー
+`web/` ディレクトリを `npm run serve` で配信する。`serve.mjs` が起動し、本番 CloudFront Response Headers Policy(#529)相当の CSP / セキュリティヘッダを全レスポンスに付与するため、ローカルでも本番同等のヘッダ環境で動作確認できる。
 
 ```bash
 cd web
-python3 -m http.server 5500
+npm run serve
 ```
 
-ブラウザで `http://localhost:5500/index.html` を開く。
+起動ログ:
 
-### npx serve
+```text
+web  ready → http://localhost:5500
+  Content-Security-Policy-Report-Only
+    connect-src … http://localhost:8080 http://localhost:18080
+```
+
+ブラウザで `http://localhost:5500/` を開く。
+
+環境変数で origin をカスタマイズできる(デフォルトは上記の値):
 
 ```bash
-cd web
-npx serve -l 5500 .
+LOCAL_API_ORIGIN=http://localhost:8080 LOCAL_AUTH_ORIGIN=http://localhost:18080 npm run serve
 ```
 
 ---
