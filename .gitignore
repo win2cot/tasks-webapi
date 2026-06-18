@@ -51,3 +51,6 @@ terraform.rc
 # web/ npm artifacts (generated; uploaded to S3 at deploy time)
 web/node_modules/
 web/vendor/
+
+# Playwright MCP snapshot artifacts
+.playwright-mcp/

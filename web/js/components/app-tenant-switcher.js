@@ -80,6 +80,10 @@ class AppTenantSwitcher extends HTMLElement {
     this.classList.remove('d-none');
 
     if (tenants.length === 1) {
+      if (activeTenantId === null) {
+        _switchTenant(tenants[0].id);
+        return;
+      }
       const chip = /** @type {HTMLElement} */ (
         /** @type {DocumentFragment} */ (_tsBadgeTpl.content.cloneNode(true)).firstElementChild
       );
