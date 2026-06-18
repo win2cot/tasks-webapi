@@ -1,0 +1,26 @@
+{
+  "csp": {
+    "directives": {
+      "default-src": ["'none'"],
+      "script-src": ["'self'"],
+      "style-src": ["'self'"],
+      "img-src": ["'self'", "data:"],
+      "font-src": ["'self'"],
+      "connect-src": ["'self'", "__API_ORIGIN__", "__AUTH_ORIGIN__"],
+      "frame-ancestors": ["'none'"],
+      "base-uri": ["'self'"],
+      "form-action": ["'self'"],
+      "object-src": ["'none'"]
+    },
+    "reportOnly": true
+  },
+  "headers": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=()",
+    "X-Frame-Options": "DENY",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin"
+  },
+  "hsts": { "maxAgeSec": 31536000, "includeSubDomains": true }
+}

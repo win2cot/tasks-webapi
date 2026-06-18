@@ -11,7 +11,8 @@
   },
   "scripts": {
     "copy-vendor": "node scripts/copy-vendor.js",
-    "html-validate": "html-validate index.html tasks.html"
+    "html-validate": "html-validate index.html tasks.html",
+    "serve": "node serve.mjs"
   },
   "engines": {
     "node": ">=24"
