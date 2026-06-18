@@ -98,14 +98,19 @@ const Api = (() => {
     : 'http://localhost:8080';
 
   /** @type {string|null} */
-  let _tenantId = null;
+  let _tenantId = sessionStorage.getItem('tenantId');
 
   /**
-   * 現在のテナント ID を設定する。
+   * 現在のテナント ID を設定する。sessionStorage に永続化してページ遷移後も維持する。
    * @param {string|null} tenantId
    */
   function setTenantId(tenantId) {
     _tenantId = tenantId;
+    if (tenantId !== null) {
+      sessionStorage.setItem('tenantId', tenantId);
+    } else {
+      sessionStorage.removeItem('tenantId');
+    }
   }
 
   /**
