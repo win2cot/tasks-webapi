@@ -14,7 +14,7 @@
 
 import { readFile, stat } from 'node:fs/promises';
 import http from 'node:http';
-import { extname, join } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
@@ -78,7 +78,10 @@ http
     let urlPath = (req.url ?? '/').split('?')[0];
     if (urlPath === '' || urlPath === '/') urlPath = '/index.html';
 
-    const filePath = join(ROOT, urlPath);
+    const filePath = resolve(join(ROOT, urlPath));
+    if (!filePath.startsWith(ROOT)) {
+      return notFound(res);
+    }
 
     try {
       const info = await stat(filePath);

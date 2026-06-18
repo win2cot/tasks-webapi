@@ -103,7 +103,7 @@ cd web && npm run serve
 
 | サービス | gating 方法 |
 |---|---|
-| keycloak | `docker compose up --wait`(healthcheck: `curl /health/ready`) |
+| keycloak | `docker compose up --wait`(healthcheck: `/dev/tcp` → `GET /realms/tasks` 200 OK) |
 | mysql | 同上(healthcheck: `mysqladmin ping`) |
 | webapi | `GET /actuator/health` が `{"status":"UP"}` を返すまでポーリング |
 | web | `GET http://localhost:5500/` が 200 を返すまでポーリング |
