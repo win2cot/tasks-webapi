@@ -248,6 +248,17 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
   }
 
   @Override
+  public Task saveStatus(
+      Long taskId, TaskStatus newStatus, @Nullable LocalDateTime completedAt, LocalDateTime now) {
+    jpaRepository.updateStatusById(taskId, newStatus, completedAt, now);
+    return toDomain(
+        jpaRepository
+            .findById(taskId)
+            .orElseThrow(
+                () -> new IllegalStateException("Task not found after status update: " + taskId)));
+  }
+
+  @Override
   public void softDelete(Task task, LocalDateTime deletedAt) {
     TaskJpaEntity entity =
         jpaRepository

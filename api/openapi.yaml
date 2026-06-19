@@ -725,7 +725,11 @@ paths:
     patch:
       tags: [Task]
       summary: ステータス変更
-      description: "認可: 所有者または担当者(Tenant Admin の特別権限なし、ADR-0005)"
+      description: |-
+        認可: 所有者または担当者(Tenant Admin の特別権限なし、ADR-0005)。
+
+        **楽観ロック対象外(ADR-0012 amendment)**: `If-Match` ヘッダ不要。単一フィールドの絶対値 SET であり
+        多フィールド同時上書きによる lost update が構造的に発生しない。同時変更は last-write-wins で受容する。
       operationId: changeStatus
       parameters:
         - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }

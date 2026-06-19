@@ -132,3 +132,39 @@ Issue #150 派生 5(Sprint 0 UX 原則)で `tasks.completed_at` 追加の Flyway
 - Issue #150(Sprint 0 UX 原則、`tasks.completed_at` DDL)
 - ADR-0011(独自 record ErrorResponse)
 - RFC 7232(HTTP Conditional Requests)
+
+---
+
+## Amendment 1: 楽観ロック適用基準の追記(2026-06-19, Issue #680)
+
+### 経緯
+
+`PATCH /api/tasks/{id}/status` が If-Match required で実装されていたが、OpenAPI 未定義・フロント未送出のため常に 400 になることが判明。事故分析の結果、本 endpoint は楽観ロック対象外と確定した。
+
+### 適用基準(§scope)
+
+楽観ロック(If-Match)は **「呼び出し側が観測していない変更を上書きしうる write」にのみ適用する**。
+
+判定マトリクス:
+
+| 観点 | 対象とする | 対象外とする |
+|---|---|---|
+| フィールド範囲 | 多フィールドを束ねる PATCH / PUT | 単一フィールドの絶対値 SET |
+| 上書き実害 | 他人の未編集列を巻き込む lost update が起きる | 同フィールドのみ最後勝ちで自然 |
+| 頻度 / UX | 低頻度 or 412 再試行コストが許容範囲 | 高頻度で 412 が誤検知摩擦のみを生む |
+
+決定マトリクス(現行 endpoint):
+
+| Endpoint | 適用 | 理由 |
+|---|---|---|
+| `PATCH /api/tasks/{id}` | ✅ 対象 | 多フィールド read-modify-write; lost update リスク高 |
+| `DELETE /api/tasks/{id}` | ✅ 対象 | 論理削除; 低頻度・高実害 |
+| `PATCH /api/tasks/{id}/status` | ❌ 対象外 | 単一フィールド SET; last-write-wins で自然 |
+| `PATCH /api/tasks/{id}/visibility` | ✅ 対象 | stakeholders 同時置換を含む; 低頻度・高実害 |
+
+### 実装変更(Issue #680)
+
+- `ChangeTaskStatusUseCase.execute` から `ifMatchVersion` 引数と version 一致チェックを撤去
+- `TaskController.changeStatus` から `@RequestHeader(IF_MATCH)` を撤去
+- バイパス実装: `TaskRepository.saveStatus` を JPQL UPDATE(`version` 列非更新)で実装し、JPA `@Version` チェックをバイパスして last-write-wins を実現
+- `updatedAt` はアプリ層で `LocalDateTime.now(clock)` を渡してアップデート

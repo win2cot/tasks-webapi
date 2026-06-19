@@ -209,15 +209,10 @@ public class TaskController {
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
   public ResponseEntity<TaskResponse> changeStatus(
       @PathVariable Long id,
-      @RequestHeader(name = HttpHeaders.IF_MATCH) String ifMatch,
       @RequestBody @Valid ChangeTaskStatusRequest request,
       TasksAuthenticationToken token) {
-    Long ifMatchVersion = parseIfMatchVersion(ifMatch);
-    Task task =
-        changeTaskStatusUseCase.execute(
-            id, token.getPrincipal().getId(), request.status(), ifMatchVersion);
-    TaskResponse body = TaskResponse.from(task);
-    return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
+    Task task = changeTaskStatusUseCase.execute(id, token.getPrincipal().getId(), request.status());
+    return ResponseEntity.ok(TaskResponse.from(task));
   }
 
   @GetMapping("/{id}/stakeholders")

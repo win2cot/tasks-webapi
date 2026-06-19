@@ -51,4 +51,12 @@ public interface TaskRepository {
 
   /** タスクを論理削除する(deleted_at セット)。楽観ロック競合時は PreconditionFailedException を投げる。 */
   void softDelete(Task task, LocalDateTime deletedAt);
+
+  /**
+   * ステータスと completedAt のみを更新する(last-write-wins、ADR-0012 amendment)。
+   *
+   * <p>楽観ロック({@code @Version})をバイパスするため同時変更が競合しない。{@code now} は {@code updated_at} に反映される。
+   */
+  Task saveStatus(
+      Long taskId, TaskStatus newStatus, @Nullable LocalDateTime completedAt, LocalDateTime now);
 }

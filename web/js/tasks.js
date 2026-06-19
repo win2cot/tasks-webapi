@@ -83,10 +83,7 @@ async function onStatusChange(taskId, status, selectEl) {
     rerenderRow(taskId);
   } catch (err) {
     rerenderRow(taskId); // revert
-    // PATCH /api/tasks/{id}/status は ADR-0012 の If-Match 対象外のため 412 は理論上返らない
-    if (/** @type {any} */ (err).status === 412) conflictBanner.show();
-    else
-      errorBanner.show(`ステータスの更新に失敗しました: ${/** @type {any} */ (err).message || ''}`);
+    errorBanner.show(`ステータスの更新に失敗しました: ${/** @type {any} */ (err).message || ''}`);
   }
 }
 
