@@ -825,7 +825,9 @@ class AppTaskDrawer extends HTMLElement {
       saveBtn.disabled = true;
       saveBtn.textContent = '保存中...';
       try {
-        await Api.changeVisibility(task.id, newVis, shIds);
+        const etag = this.#etag;
+        if (!etag) return;
+        await Api.changeVisibility(task.id, etag, newVis, shIds);
         // Reload task + stakeholders and re-render
         await this.#loadAndRenderDetail(task.id);
         this.dispatchEvent(
@@ -835,9 +837,15 @@ class AppTaskDrawer extends HTMLElement {
           }),
         );
       } catch (err) {
-        this.#showDetailError(
-          `公開範囲の変更に失敗しました: ${/** @type {any} */ (err).message || ''}`,
-        );
+        if (/** @type {any} */ (err).status === 412) {
+          this.#showDetailError(
+            '他のユーザーがこのタスクを編集しました。一旦閉じてから再度開いてください。',
+          );
+        } else {
+          this.#showDetailError(
+            `公開範囲の変更に失敗しました: ${/** @type {any} */ (err).message || ''}`,
+          );
+        }
         this.#renderDetail();
       }
     });

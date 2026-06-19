@@ -325,17 +325,22 @@ const Api = (() => {
   }
 
   /**
-   * PATCH /api/tasks/{id}/visibility — 公開範囲変更(A-17)。
+   * PATCH /api/tasks/{id}/visibility — 公開範囲変更(A-17)。If-Match 必須(ADR-0012)。
    * @param {number} id
+   * @param {string} etag — W/"<version>" 形式の If-Match 値
    * @param {string} visibility — Visibility 値
    * @param {number[]} [stakeholderUserIds] visibility=STAKEHOLDERS のとき指定
    * @returns {Promise<Task>}
    */
-  function changeVisibility(id, visibility, stakeholderUserIds) {
+  function changeVisibility(id, etag, visibility, stakeholderUserIds) {
     /** @type {{visibility: string, stakeholderUserIds?: number[]}} */
     const body = { visibility };
     if (stakeholderUserIds) body.stakeholderUserIds = stakeholderUserIds;
-    return request(`/api/tasks/${id}/visibility`, { method: 'PATCH', body: JSON.stringify(body) });
+    return request(`/api/tasks/${id}/visibility`, {
+      method: 'PATCH',
+      headers: { 'If-Match': etag },
+      body: JSON.stringify(body),
+    });
   }
 
   /**

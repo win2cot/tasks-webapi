@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
@@ -77,7 +78,7 @@ class ChangeVisibilityUseCaseTest {
   void execute_throwsTaskNotFoundException_whenTaskNotFound() {
     when(taskRepository.findById(TASK_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null))
+    assertThatThrownBy(() -> useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null, VERSION))
         .isInstanceOf(TaskNotFoundException.class);
   }
 
@@ -89,7 +90,8 @@ class ChangeVisibilityUseCaseTest {
     when(taskAuthorizationDomainService.canBeViewedBy(task, OTHER_USER_ID, List.of()))
         .thenReturn(false);
 
-    assertThatThrownBy(() -> useCase.execute(TASK_ID, OTHER_USER_ID, Visibility.PRIVATE, null))
+    assertThatThrownBy(
+            () -> useCase.execute(TASK_ID, OTHER_USER_ID, Visibility.PRIVATE, null, VERSION))
         .isInstanceOf(TaskNotViewableException.class);
   }
 
@@ -103,8 +105,22 @@ class ChangeVisibilityUseCaseTest {
     when(taskAuthorizationDomainService.canChangeVisibilityBy(task, OTHER_USER_ID))
         .thenReturn(false);
 
-    assertThatThrownBy(() -> useCase.execute(TASK_ID, OTHER_USER_ID, Visibility.PRIVATE, null))
+    assertThatThrownBy(
+            () -> useCase.execute(TASK_ID, OTHER_USER_ID, Visibility.PRIVATE, null, VERSION))
         .isInstanceOf(TaskOwnershipException.class);
+  }
+
+  @Test
+  void execute_throwsPreconditionFailedException_whenVersionMismatch() {
+    Task task = buildTask(Visibility.TENANT);
+    when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task));
+    when(stakeholderRepository.findUserIdsByTaskId(TASK_ID, TENANT_ID)).thenReturn(List.of());
+    when(taskAuthorizationDomainService.canBeViewedBy(task, OWNER_ID, List.of())).thenReturn(true);
+    when(taskAuthorizationDomainService.canChangeVisibilityBy(task, OWNER_ID)).thenReturn(true);
+
+    assertThatThrownBy(
+            () -> useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null, VERSION + 1))
+        .isInstanceOf(PreconditionFailedException.class);
   }
 
   @Test
@@ -119,7 +135,7 @@ class ChangeVisibilityUseCaseTest {
     when(taskRepository.save(task)).thenReturn(task);
     setupClock();
 
-    Task result = useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null);
+    Task result = useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null, VERSION);
 
     assertThat(result.getVisibility()).isEqualTo(Visibility.PRIVATE);
     verify(stakeholderRepository).deleteAllByTaskId(TASK_ID, TENANT_ID);
@@ -140,7 +156,7 @@ class ChangeVisibilityUseCaseTest {
     when(taskRepository.save(task)).thenReturn(task);
     setupClock();
 
-    useCase.execute(TASK_ID, OWNER_ID, Visibility.STAKEHOLDERS, newIds);
+    useCase.execute(TASK_ID, OWNER_ID, Visibility.STAKEHOLDERS, newIds, VERSION);
 
     verify(stakeholderRepository)
         .replaceAll(eq(TASK_ID), eq(TENANT_ID), eq(newIds), eq(OWNER_ID), any(LocalDateTime.class));
@@ -161,7 +177,7 @@ class ChangeVisibilityUseCaseTest {
     when(taskRepository.save(task)).thenReturn(task);
     setupClock();
 
-    useCase.execute(TASK_ID, OWNER_ID, Visibility.TENANT, null);
+    useCase.execute(TASK_ID, OWNER_ID, Visibility.TENANT, null, VERSION);
 
     verify(stakeholderRepository, never()).deleteAllByTaskId(any(), any());
     verify(stakeholderRepository, never()).replaceAll(any(), any(), any(), any(), any());
@@ -180,7 +196,7 @@ class ChangeVisibilityUseCaseTest {
     when(taskRepository.save(task)).thenReturn(task);
     setupClock();
 
-    useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null);
+    useCase.execute(TASK_ID, OWNER_ID, Visibility.PRIVATE, null, VERSION);
 
     verify(auditLogPort, never())
         .record(eq(AuditEventType.STAKEHOLDER_PURGED), any(), any(), any());

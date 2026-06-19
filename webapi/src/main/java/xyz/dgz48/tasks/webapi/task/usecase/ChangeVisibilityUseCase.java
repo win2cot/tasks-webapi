@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
+import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskAuthorizationDomainService;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
@@ -29,7 +30,11 @@ public class ChangeVisibilityUseCase {
 
   @Transactional
   public Task execute(
-      Long taskId, Long userId, Visibility newVisibility, @Nullable List<Long> stakeholderUserIds) {
+      Long taskId,
+      Long userId,
+      Visibility newVisibility,
+      @Nullable List<Long> stakeholderUserIds,
+      Long ifMatchVersion) {
 
     Task task =
         taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException(taskId));
@@ -41,6 +46,9 @@ public class ChangeVisibilityUseCase {
     }
     if (!taskAuthorizationDomainService.canChangeVisibilityBy(task, userId)) {
       throw new TaskOwnershipException(taskId);
+    }
+    if (!task.getVersion().equals(ifMatchVersion)) {
+      throw new PreconditionFailedException("バージョンが競合しています: task=" + taskId);
     }
 
     Visibility oldVisibility = task.getVisibility();

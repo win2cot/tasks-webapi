@@ -776,9 +776,17 @@ paths:
         不要なリスト情報の残留を避けるため削除し、件数を `STAKEHOLDER_PURGED` の `detail` に記録して監査追跡を確保する。
 
         シーケンス図: `docs/diagrams/sequence-06-visibility-change.mmd`
+
+        楽観ロック(ADR-0012): `If-Match` ヘッダに `GET /api/tasks/{id}` レスポンスの ETag 値を必須指定。
+        不一致時は 412 Precondition Failed(`E_PRECONDITION_FAILED`)を返す。
       operationId: changeVisibility
       parameters:
         - { name: id, in: path, required: true, description: "タスクID", schema: { type: integer, format: int64 } }
+        - name: If-Match
+          in: header
+          required: true
+          description: "楽観ロック用 ETag (`GET /api/tasks/{id}` レスポンスの ETag 値、ADR-0012)"
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -795,6 +803,10 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            ETag:
+              description: "更新後バージョンタグ (W/\"<version>\")。次回リクエスト時の If-Match に使用"
+              schema: { type: string }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Task" }
@@ -806,6 +818,7 @@ paths:
           description: |-
             タスクが存在しないか、当該ユーザーが**参照権限**を持たない(可視性チェック不通過によりリソース存在を秘匿、HTTP Status Policy / NIST AC-4)。
             なお**公開範囲変更権限**(所有者のみ、ADR-0005)不足の場合は 403 を返す(基本設計書 §6.2.1)。
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
 
   # --- 関係者 ---
   /api/tasks/{id}/stakeholders:
