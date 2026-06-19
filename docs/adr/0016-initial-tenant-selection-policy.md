@@ -4,6 +4,7 @@
 - **Date**: 2026-06-06
 - **Deciders**: win2cot
 - **Related Issues**: #309
+- **Amended by**: [ADR-0034](0034-active-tenant-client-ownership.md)(`joined_at ASC` 自動解決を `/api/auth/me` には適用しない点を明確化。本 ADR の「業務 API における `X-Tenant-Id` 省略時フォールバック」としての決定は不変)
 
 ## 1. コンテキスト(Context)
 
