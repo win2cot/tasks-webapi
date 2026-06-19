@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -167,7 +168,9 @@ class ChangeVisibilityIT {
                 .content("{\"visibility\":\"PRIVATE\"}")
                 .with(authentication(ownerToken)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.visibility").value("PRIVATE"));
+        .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+        .andExpect(jsonPath("$.version").value(1))
+        .andExpect(header().string(HttpHeaders.ETAG, "W/\"1\""));
   }
 
   @Test
