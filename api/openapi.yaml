@@ -1217,15 +1217,12 @@ components:
 
     MeResponse:
       type: object
-      required: [user, tenants, activeTenantId]
+      required: [user, tenants]
       properties:
         user:           { $ref: "#/components/schemas/UserProfile" }
         tenants:
           type: array
           items: { $ref: "#/components/schemas/TenantSummary" }
-        activeTenantId:
-          type: [integer, 'null']
-          format: int64
 
     Tenant:
       type: object
