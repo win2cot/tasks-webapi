@@ -33,7 +33,6 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConvert
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
-import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
@@ -95,7 +94,6 @@ class TaskControllerWebMvcTest {
   }
 
   private static final long VERSION = 0L;
-  private static final String IF_MATCH = "W/\"" + VERSION + "\"";
 
   private Task buildTask(TaskStatus status) {
     return new Task(
@@ -178,12 +176,11 @@ class TaskControllerWebMvcTest {
   @WithMockMember
   void changeStatus_returns200WithCompletedAt_whenDone() throws Exception {
     Task done = buildDoneTask();
-    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE, VERSION)).thenReturn(done);
+    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
 
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
-                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isOk())
@@ -193,39 +190,13 @@ class TaskControllerWebMvcTest {
 
   @Test
   @WithMockMember
-  void changeStatus_returns400_whenIfMatchHeaderMissing() throws Exception {
-    mockMvc
-        .perform(
-            patch("/api/tasks/1/status")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"DONE\"}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
-  }
-
-  @Test
-  @WithMockMember
-  void changeStatus_returns400_whenIfMatchInvalidFormat() throws Exception {
-    mockMvc
-        .perform(
-            patch("/api/tasks/1/status")
-                .header("If-Match", "not-a-version")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"DONE\"}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
-  }
-
-  @Test
-  @WithMockMember
   void changeStatus_returns404_whenTaskNotViewable() throws Exception {
-    when(changeTaskStatusUseCase.execute(2L, USER_ID, TaskStatus.DONE, VERSION))
+    when(changeTaskStatusUseCase.execute(2L, USER_ID, TaskStatus.DONE))
         .thenThrow(new TaskNotViewableException(2L));
 
     mockMvc
         .perform(
             patch("/api/tasks/2/status")
-                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isNotFound())
@@ -235,34 +206,16 @@ class TaskControllerWebMvcTest {
   @Test
   @WithMockMember
   void changeStatus_returns403_whenOwnershipException() throws Exception {
-    when(changeTaskStatusUseCase.execute(3L, USER_ID, TaskStatus.DONE, VERSION))
+    when(changeTaskStatusUseCase.execute(3L, USER_ID, TaskStatus.DONE))
         .thenThrow(new TaskOwnershipException(3L));
 
     mockMvc
         .perform(
             patch("/api/tasks/3/status")
-                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
-  }
-
-  @Test
-  @WithMockMember
-  void changeStatus_returns412_whenOptimisticLockingFailure() throws Exception {
-    when(changeTaskStatusUseCase.execute(5L, USER_ID, TaskStatus.DONE, VERSION))
-        .thenThrow(new PreconditionFailedException("バージョンが競合しています: task=5"));
-
-    mockMvc
-        .perform(
-            patch("/api/tasks/5/status")
-                .header("If-Match", IF_MATCH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"DONE\"}"))
-        .andExpect(status().isPreconditionFailed())
-        .andExpect(jsonPath("$.code").value("E_PRECONDITION_FAILED"))
-        .andExpect(jsonPath("$.status").value(412));
   }
 
   // --- 認可マトリクス: 未認証 (401) ---
@@ -277,7 +230,6 @@ class TaskControllerWebMvcTest {
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
-                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isUnauthorized());
@@ -301,7 +253,6 @@ class TaskControllerWebMvcTest {
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
-                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isForbidden());
@@ -325,12 +276,11 @@ class TaskControllerWebMvcTest {
   @WithMockTenantAdmin
   void changeStatus_returns200_whenTenantAdmin() throws Exception {
     Task done = buildDoneTask();
-    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE, VERSION)).thenReturn(done);
+    when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
 
     mockMvc
         .perform(
             patch("/api/tasks/1/status")
-                .header("If-Match", IF_MATCH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isOk())

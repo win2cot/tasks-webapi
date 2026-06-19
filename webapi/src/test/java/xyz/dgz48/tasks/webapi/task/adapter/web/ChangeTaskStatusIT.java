@@ -3,7 +3,6 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,9 +39,10 @@ import xyz.dgz48.tasks.webapi.tenant.adapter.persistence.TenantJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 
 /**
- * PATCH /api/tasks/{id}/status の楽観ロック(ETag / If-Match)統合 IT。
+ * PATCH /api/tasks/{id}/status の統合 IT。
  *
- * <p>ADR-0012 §3 に従い、If-Match 一致→200、不一致→412、なし→400、同時実行片方→412 を検証する。
+ * <p>楽観ロック(If-Match)対象外(ADR-0012 amendment)。If-Match 不要で 200 を返し、同時変更は last-write-wins で両方 200
+ * を返すことを検証する。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -142,50 +141,20 @@ class ChangeTaskStatusIT {
   }
 
   @Test
-  void changeStatus_returns400_whenIfMatchHeaderMissing() throws Exception {
+  void changeStatus_returns200_withoutIfMatch() throws Exception {
     mockMvc
         .perform(
             patch("/api/tasks/" + taskId + "/status")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"IN_PROGRESS\"}")
-                .with(authentication(authToken)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
-  }
-
-  @Test
-  void changeStatus_returns412_whenIfMatchVersionStale() throws Exception {
-    mockMvc
-        .perform(
-            patch("/api/tasks/" + taskId + "/status")
-                .header("X-Tenant-Id", String.valueOf(tenantId))
-                .header(HttpHeaders.IF_MATCH, "W/\"99\"")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"IN_PROGRESS\"}")
-                .with(authentication(authToken)))
-        .andExpect(status().isPreconditionFailed())
-        .andExpect(jsonPath("$.code").value("E_PRECONDITION_FAILED"));
-  }
-
-  @Test
-  void changeStatus_returns200_whenIfMatchVersionMatches() throws Exception {
-    mockMvc
-        .perform(
-            patch("/api/tasks/" + taskId + "/status")
-                .header("X-Tenant-Id", String.valueOf(tenantId))
-                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"IN_PROGRESS\"}")
                 .with(authentication(authToken)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
-        .andExpect(jsonPath("$.version").value(1))
-        .andExpect(header().string(HttpHeaders.ETAG, "W/\"1\""));
+        .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
   }
 
   @Test
-  void changeStatus_concurrentRequests_oneGets412() throws Exception {
+  void changeStatus_concurrentRequests_bothReturn200_lastWriteWins() throws Exception {
     ExecutorService executor = Executors.newFixedThreadPool(2);
 
     Callable<MvcResult> patchRequest =
@@ -194,7 +163,6 @@ class ChangeTaskStatusIT {
                 .perform(
                     patch("/api/tasks/" + taskId + "/status")
                         .header("X-Tenant-Id", String.valueOf(tenantId))
-                        .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"IN_PROGRESS\"}")
                         .with(authentication(authToken)))
@@ -207,11 +175,11 @@ class ChangeTaskStatusIT {
     MockHttpServletResponse response2 = future2.get().getResponse();
     executor.shutdown();
 
-    int status1 = response1.getStatus();
-    int status2 = response2.getStatus();
-
-    assertThat(List.of(status1, status2))
-        .as("一方が 200、もう一方が 412 であること")
-        .containsExactlyInAnyOrder(200, 412);
+    assertThat(response1.getStatus())
+        .as("同時ステータス変更: リクエスト1 が 200 を返すこと(last-write-wins)")
+        .isEqualTo(200);
+    assertThat(response2.getStatus())
+        .as("同時ステータス変更: リクエスト2 が 200 を返すこと(last-write-wins)")
+        .isEqualTo(200);
   }
 }
