@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -161,11 +163,41 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"visibility\":\"PRIVATE\"}")
                 .with(authentication(ownerToken)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.visibility").value("PRIVATE"));
+        .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+        .andExpect(jsonPath("$.version").value(1))
+        .andExpect(header().string(HttpHeaders.ETAG, "W/\"1\""));
+  }
+
+  @Test
+  void changeVisibility_returns400_whenIfMatchHeaderMissing() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tasks/" + taskId + "/visibility")
+                .header("X-Tenant-Id", String.valueOf(tenantId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"visibility\":\"PRIVATE\"}")
+                .with(authentication(ownerToken)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("E_VALIDATION"));
+  }
+
+  @Test
+  void changeVisibility_returns412_whenIfMatchVersionStale() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/tasks/" + taskId + "/visibility")
+                .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"99\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"visibility\":\"PRIVATE\"}")
+                .with(authentication(ownerToken)))
+        .andExpect(status().isPreconditionFailed())
+        .andExpect(jsonPath("$.code").value("E_PRECONDITION_FAILED"));
   }
 
   @Test
@@ -174,6 +206,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"visibility\":\"PRIVATE\"}")
                 .with(authentication(memberToken)))
@@ -187,6 +220,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"visibility\":\"PRIVATE\"}")
                 .with(authentication(ownerToken)))
@@ -206,6 +240,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"visibility\":\"STAKEHOLDERS\",\"stakeholderUserIds\":[" + memberId + "]}")
@@ -228,6 +263,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}")
                 .with(authentication(ownerToken)))
@@ -241,6 +277,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/99999999/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"visibility\":\"PRIVATE\"}")
                 .with(authentication(ownerToken)))
@@ -254,6 +291,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"0\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"visibility\":\"STAKEHOLDERS\",\"stakeholderUserIds\":[" + memberId + "]}")
@@ -265,6 +303,7 @@ class ChangeVisibilityIT {
         .perform(
             patch("/api/tasks/" + taskId + "/visibility")
                 .header("X-Tenant-Id", String.valueOf(tenantId))
+                .header(HttpHeaders.IF_MATCH, "W/\"1\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"visibility\":\"TENANT\"}")
                 .with(authentication(ownerToken)))

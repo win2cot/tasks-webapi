@@ -197,12 +197,19 @@ public class TaskController {
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
   public ResponseEntity<TaskResponse> changeVisibility(
       @PathVariable Long id,
+      @RequestHeader(name = HttpHeaders.IF_MATCH) String ifMatch,
       @RequestBody @Valid ChangeVisibilityRequest request,
       TasksAuthenticationToken token) {
+    Long ifMatchVersion = parseIfMatchVersion(ifMatch);
     Task task =
         changeVisibilityUseCase.execute(
-            id, token.getPrincipal().getId(), request.visibility(), request.stakeholderUserIds());
-    return ResponseEntity.ok(TaskResponse.from(task));
+            id,
+            token.getPrincipal().getId(),
+            request.visibility(),
+            request.stakeholderUserIds(),
+            ifMatchVersion);
+    TaskResponse body = TaskResponse.from(task);
+    return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
   }
 
   @PatchMapping("/{id}/status")
