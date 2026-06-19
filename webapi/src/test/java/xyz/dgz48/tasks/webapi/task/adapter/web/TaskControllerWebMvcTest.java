@@ -138,6 +138,8 @@ class TaskControllerWebMvcTest {
   void get_returns200WithTaskJson() throws Exception {
     Task task = buildTask(TaskStatus.NOT_STARTED);
     when(getTaskUseCase.execute(1L, USER_ID)).thenReturn(task);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
 
     mockMvc
         .perform(get("/api/tasks/1"))
@@ -147,7 +149,44 @@ class TaskControllerWebMvcTest {
         .andExpect(jsonPath("$.status").value("NOT_STARTED"))
         .andExpect(jsonPath("$.priority").value("MEDIUM"))
         .andExpect(jsonPath("$.visibility").value("TENANT"))
-        .andExpect(jsonPath("$.completedAt").doesNotExist());
+        .andExpect(jsonPath("$.completedAt").doesNotExist())
+        .andExpect(jsonPath("$.owner.id").value(USER_ID))
+        .andExpect(jsonPath("$.assignee").doesNotExist())
+        .andExpect(jsonPath("$.editable").value(true))
+        .andExpect(jsonPath("$.deletable").value(true));
+  }
+
+  @Test
+  @WithMockMember
+  void get_returns200_withEditableFalse_whenNonOwner() throws Exception {
+    long otherOwnerId = 999L;
+    Task task =
+        new Task(
+            1L,
+            100L,
+            "Test task",
+            null,
+            TaskStatus.NOT_STARTED,
+            Priority.MEDIUM,
+            Visibility.TENANT,
+            otherOwnerId,
+            null,
+            LocalDate.of(2026, 6, 1),
+            null,
+            null,
+            LocalDateTime.of(2026, 5, 31, 9, 0),
+            LocalDateTime.of(2026, 5, 31, 9, 0),
+            VERSION);
+    when(getTaskUseCase.execute(1L, USER_ID)).thenReturn(task);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
+
+    mockMvc
+        .perform(get("/api/tasks/1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.owner.id").value(otherOwnerId))
+        .andExpect(jsonPath("$.editable").value(false))
+        .andExpect(jsonPath("$.deletable").value(false));
   }
 
   @Test
@@ -177,6 +216,8 @@ class TaskControllerWebMvcTest {
   void changeStatus_returns200WithCompletedAt_whenDone() throws Exception {
     Task done = buildDoneTask();
     when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
 
     mockMvc
         .perform(
@@ -265,6 +306,8 @@ class TaskControllerWebMvcTest {
   void get_returns200_whenTenantAdmin() throws Exception {
     Task task = buildTask(TaskStatus.NOT_STARTED);
     when(getTaskUseCase.execute(1L, USER_ID)).thenReturn(task);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
 
     mockMvc
         .perform(get("/api/tasks/1"))
@@ -277,6 +320,8 @@ class TaskControllerWebMvcTest {
   void changeStatus_returns200_whenTenantAdmin() throws Exception {
     Task done = buildDoneTask();
     when(changeTaskStatusUseCase.execute(1L, USER_ID, TaskStatus.DONE)).thenReturn(done);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
 
     mockMvc
         .perform(
@@ -374,6 +419,8 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any()))
         .willReturn(created);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
 
     mockMvc
         .perform(
@@ -468,6 +515,8 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any()))
         .willReturn(created);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
 
     mockMvc
         .perform(

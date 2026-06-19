@@ -233,7 +233,7 @@ class CreateTaskIT {
 
       String body = result.getResponse().getContentAsString();
       // task ID を取り出してステークホルダーが登録されたか確認
-      String taskIdStr = body.replaceAll(".*\"id\":(\\d+).*", "$1");
+      String taskIdStr = body.replaceAll("\\{\"id\":(\\d+),.*", "$1");
       Long taskId = Long.parseLong(taskIdStr);
 
       txTemplate.execute(
@@ -272,7 +272,7 @@ class CreateTaskIT {
                   .with(authentication(authToken)))
           .andExpect(status().isCreated())
           .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-          .andExpect(jsonPath("$.assigneeId").value(otherUserId));
+          .andExpect(jsonPath("$.assignee.id").value(otherUserId));
     }
   }
 
@@ -482,7 +482,7 @@ class CreateTaskIT {
               .andReturn();
 
       String body = result.getResponse().getContentAsString();
-      String taskIdStr = body.replaceAll(".*\"id\":(\\d+).*", "$1");
+      String taskIdStr = body.replaceAll("\\{\"id\":(\\d+),.*", "$1");
       Long taskId = Long.parseLong(taskIdStr);
 
       txTemplate.execute(
