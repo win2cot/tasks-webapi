@@ -71,7 +71,7 @@ dependencies {
     }
 
     // AWS SDK v2 — RDS IAM auth token generation (ECS Fargate runtime identity)
-    implementation platform('software.amazon.awssdk:bom:2.46.7')
+    implementation platform('software.amazon.awssdk:bom:2.46.14')
     implementation 'software.amazon.awssdk:rds'
 
     // Other dependencies
