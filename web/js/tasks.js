@@ -337,19 +337,20 @@ async function main() {
   /** @type {HTMLElement} */ (mustQuery(document, '#user-avatar')).textContent =
     displayName.slice(0, 1) || '?';
 
-  if (!me.activeTenantId) {
+  const activeTenantId = Api.resolveActiveTenant(me.tenants);
+
+  if (activeTenantId === null) {
     window.location.replace('index.html');
     return;
   }
-  Api.setTenantId(String(me.activeTenantId));
 
   /** @type {AppTenantSwitcherElement} */ (mustQuery(document, '#tenant-switcher')).setData(
     me.tenants,
-    me.activeTenantId,
+    activeTenantId,
   );
 
   // Reflect Tenant Admin role in sidebar
-  const activeTenant = me.tenants?.find((t) => t.id === me.activeTenantId);
+  const activeTenant = me.tenants?.find((t) => t.id === activeTenantId);
   if (activeTenant?.role === 'TENANT_ADMIN') {
     document.body.classList.add('role-admin');
   }

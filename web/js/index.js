@@ -19,9 +19,9 @@ async function main() {
 
   try {
     const me = await Api.getMe();
+    const activeTenantId = Api.resolveActiveTenant(me.tenants);
 
-    if (me.activeTenantId !== null) {
-      Api.setTenantId(String(me.activeTenantId));
+    if (activeTenantId !== null) {
       window.location.replace('tasks.html');
       return;
     }
@@ -32,7 +32,7 @@ async function main() {
 
     /** @type {AppTenantSwitcherElement} */ (mustQuery(document, '#tenant-switcher')).setData(
       me.tenants,
-      me.activeTenantId,
+      null,
     );
   } catch (err) {
     /** @type {HTMLElement} */ (mustQuery(document, '#user-info')).textContent =

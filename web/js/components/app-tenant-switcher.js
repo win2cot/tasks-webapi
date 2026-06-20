@@ -1,5 +1,5 @@
 // <app-tenant-switcher> — dropdown or chip for switching tenants.
-// Method: setData(tenants, activeTenantId)
+// Method: setData(tenants, activeTenantId) where activeTenantId is resolved by the caller (ADR-0034)
 // Depends on: Api (Api.selectTenant, Api.setTenantId), Bootstrap 5
 
 const _tsBadgeTpl = document.createElement('template');
@@ -80,10 +80,6 @@ class AppTenantSwitcher extends HTMLElement {
     this.classList.remove('d-none');
 
     if (tenants.length === 1) {
-      if (activeTenantId === null) {
-        _switchTenant(tenants[0].id);
-        return;
-      }
       const chip = /** @type {HTMLElement} */ (
         /** @type {DocumentFragment} */ (_tsBadgeTpl.content.cloneNode(true)).firstElementChild
       );

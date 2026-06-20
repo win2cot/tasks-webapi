@@ -107,7 +107,7 @@ class MeIT {
         .andExpect(jsonPath("$.user.departmentName").value("開発部"))
         .andExpect(jsonPath("$.tenants").isArray())
         .andExpect(jsonPath("$.tenants").isEmpty())
-        .andExpect(jsonPath("$.activeTenantId").isEmpty());
+        .andExpect(jsonPath("$.activeTenantId").doesNotExist());
   }
 
   @Test
@@ -122,7 +122,7 @@ class MeIT {
         .andExpect(jsonPath("$.tenants[0].code").value("me-t1"))
         .andExpect(jsonPath("$.tenants[0].name").value("MeテナントA"))
         .andExpect(jsonPath("$.tenants[0].role").value("MEMBER"))
-        .andExpect(jsonPath("$.activeTenantId").isEmpty());
+        .andExpect(jsonPath("$.activeTenantId").doesNotExist());
   }
 
   @Test
@@ -138,17 +138,6 @@ class MeIT {
         .andExpect(jsonPath("$.tenants[0].role").value("MEMBER"))
         .andExpect(jsonPath("$.tenants[1].id").value(tenantId2))
         .andExpect(jsonPath("$.tenants[1].role").value("TENANT_ADMIN"));
-  }
-
-  @Test
-  void withXTenantIdHeader_returnsActiveTenantId() throws Exception {
-    insertUserTenant(userId, tenantId1, "MEMBER", LocalDateTime.of(2026, 1, 1, 0, 0));
-
-    mockMvc
-        .perform(
-            get("/api/auth/me").with(authentication(authToken)).header("X-Tenant-Id", tenantId1))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.activeTenantId").value(tenantId1));
   }
 
   private void insertUserTenant(Long uid, Long tid, String role, LocalDateTime joinedAt) {
