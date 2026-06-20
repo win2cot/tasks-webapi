@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.usecase;
 
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +34,7 @@ public class GetTenantUseCase {
             .orElseThrow(() -> new TenantNotFoundException(tenantId));
 
     auditLogPort.record(
-        AuditEventType.TENANT_VIEWED, tenantId, userId, "{\"tenantId\":" + tenantId + "}");
+        AuditEventType.TENANT_VIEWED, tenantId, userId, Map.of("tenantId", tenantId));
 
     return tenant;
   }

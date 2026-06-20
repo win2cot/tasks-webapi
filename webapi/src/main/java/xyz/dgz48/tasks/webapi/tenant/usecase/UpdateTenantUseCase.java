@@ -2,10 +2,10 @@ package xyz.dgz48.tasks.webapi.tenant.usecase;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
+import xyz.dgz48.tasks.webapi.audit.usecase.AuditFieldChange;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.shared.usecase.TenantFilterBypassService;
 import xyz.dgz48.tasks.webapi.tenant.domain.FieldChange;
@@ -45,56 +45,12 @@ public class UpdateTenantUseCase {
         tenantFilterBypassService.runAsSaaSAdmin(
             () -> adminTenantRepository.updateName(tenantId, cmd.name()));
 
-    auditLogPort.record(AuditEventType.TENANT_UPDATED, tenantId, userId, buildDiffDetail(changes));
+    List<AuditFieldChange> auditChanges =
+        changes.stream()
+            .map(c -> new AuditFieldChange(c.field(), c.oldValue(), c.newValue()))
+            .toList();
+    auditLogPort.record(AuditEventType.TENANT_UPDATED, tenantId, userId, auditChanges);
 
     return updated;
-  }
-
-  static String buildDiffDetail(List<FieldChange> changes) {
-    StringBuilder sb = new StringBuilder("[");
-    for (int i = 0; i < changes.size(); i++) {
-      FieldChange c = changes.get(i);
-      if (i > 0) sb.append(",");
-      sb.append("{\"field\":\"")
-          .append(c.field())
-          .append("\",\"old\":")
-          .append(toJsonValue(c.oldValue()))
-          .append(",\"new\":")
-          .append(toJsonValue(c.newValue()))
-          .append("}");
-    }
-    sb.append("]");
-    return sb.toString();
-  }
-
-  private static String toJsonValue(@Nullable Object value) {
-    if (value == null) return "null";
-    if (value instanceof String s) return "\"" + escapeJsonString(s) + "\"";
-    if (value instanceof Enum<?> e) return "\"" + escapeJsonString(e.name()) + "\"";
-    return String.valueOf(value);
-  }
-
-  private static String escapeJsonString(String s) {
-    StringBuilder sb = new StringBuilder(s.length() + 16);
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
-      switch (c) {
-        case '"' -> sb.append("\\\"");
-        case '\\' -> sb.append("\\\\");
-        case '\n' -> sb.append("\\n");
-        case '\r' -> sb.append("\\r");
-        case '\t' -> sb.append("\\t");
-        case '\b' -> sb.append("\\b");
-        case '\f' -> sb.append("\\f");
-        default -> {
-          if (c < 0x20) {
-            sb.append(String.format("\\u%04X", (int) c));
-          } else {
-            sb.append(c);
-          }
-        }
-      }
-    }
-    return sb.toString();
   }
 }

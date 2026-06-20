@@ -1,10 +1,10 @@
 package xyz.dgz48.tasks.webapi.audit.usecase;
 
+import java.util.Map;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.json.JsonMapper;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.shared.domain.CrossTenantViolationDetectedEvent;
 
@@ -19,22 +19,15 @@ import xyz.dgz48.tasks.webapi.shared.domain.CrossTenantViolationDetectedEvent;
 class CrossTenantViolationAuditService {
 
   private final AuditLogPort auditLogPort;
-  private final JsonMapper jsonMapper;
 
-  CrossTenantViolationAuditService(AuditLogPort auditLogPort, JsonMapper jsonMapper) {
+  CrossTenantViolationAuditService(AuditLogPort auditLogPort) {
     this.auditLogPort = auditLogPort;
-    this.jsonMapper = jsonMapper;
   }
 
   @EventListener
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onViolationDetected(CrossTenantViolationDetectedEvent event) {
-    String detail =
-        jsonMapper
-            .createObjectNode()
-            .put("table", event.tableName())
-            .put("sqlType", event.sqlType())
-            .toString();
+    var detail = Map.of("table", event.tableName(), "sqlType", event.sqlType());
     auditLogPort.record(
         AuditEventType.CROSS_TENANT_VIOLATION_ATTEMPT, event.tenantId(), event.userId(), detail);
   }

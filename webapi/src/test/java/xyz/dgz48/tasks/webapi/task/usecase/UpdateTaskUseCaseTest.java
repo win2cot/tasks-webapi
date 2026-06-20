@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openapitools.jackson.nullable.JsonNullable;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
+import xyz.dgz48.tasks.webapi.audit.usecase.AuditFieldChange;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.task.domain.FieldChange;
@@ -156,11 +157,14 @@ class UpdateTaskUseCaseTest {
     assertThat(result).isSameAs(saved);
     verify(taskRepository).save(task);
     verify(auditLogPort)
-        .record(eq(AuditEventType.TASK_UPDATED), eq(TENANT_ID), eq(OWNER_ID), any(String.class));
+        .record(eq(AuditEventType.TASK_UPDATED), eq(TENANT_ID), eq(OWNER_ID), any());
   }
 
   @Test
-  void execute_audit_detail_quotesLocalDate() {
+  @SuppressWarnings("unchecked")
+  void execute_audit_detail_localDateFieldPassedToPort() {
+    // LocalDate 値が AuditFieldChange に正しく詰め替えられて Port に渡されることを検証(PR #703 回帰)
+    // 実際の JSON シリアライズ("2026-08-01" 引用符あり)は AuditLogPersistenceAdapterTest で検証する
     Task task = buildTask();
     List<FieldChange> changes = List.of(new FieldChange("dueDate", null, LocalDate.of(2026, 8, 1)));
 
@@ -173,10 +177,12 @@ class UpdateTaskUseCaseTest {
 
     useCase.execute(TASK_ID, OWNER_ID, titleOnlyCmd(), VERSION);
 
-    ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
     verify(auditLogPort)
         .record(eq(AuditEventType.TASK_UPDATED), eq(TENANT_ID), eq(OWNER_ID), captor.capture());
-    // LocalDate は "2026-08-01" と引用符付きで出力されなければならない（修正前は引用符なしで 500 になった）
-    assertThat(captor.getValue()).contains("\"2026-08-01\"");
+    List<AuditFieldChange> detail = (List<AuditFieldChange>) captor.getValue();
+    assertThat(detail).hasSize(1);
+    assertThat(detail.get(0).field()).isEqualTo("dueDate");
+    assertThat(detail.get(0).newValue()).isEqualTo(LocalDate.of(2026, 8, 1));
   }
 }

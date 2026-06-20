@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.usecase;
 
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,7 @@ public class GetPlatformMetricsUseCase {
     PlatformMetrics metrics =
         tenantFilterBypassService.runAsSaaSAdmin(platformMetricsPort::getMetrics);
 
-    auditLogPort.record(AuditEventType.PLATFORM_METRICS_VIEWED, null, userId, "{}");
+    auditLogPort.record(AuditEventType.PLATFORM_METRICS_VIEWED, null, userId, Map.of());
 
     return metrics;
   }

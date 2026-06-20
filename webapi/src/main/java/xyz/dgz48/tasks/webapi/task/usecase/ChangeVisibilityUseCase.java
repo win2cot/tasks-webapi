@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.usecase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -68,7 +69,7 @@ public class ChangeVisibilityUseCase {
               AuditEventType.STAKEHOLDER_PURGED,
               task.getTenantId(),
               userId,
-              "{\"taskId\":" + taskId + ",\"purgedCount\":" + purgedCount + "}");
+              Map.of("taskId", taskId, "purgedCount", purgedCount));
         }
       }
       case TENANT -> {
@@ -80,13 +81,7 @@ public class ChangeVisibilityUseCase {
         AuditEventType.VISIBILITY_CHANGED,
         task.getTenantId(),
         userId,
-        "{\"taskId\":"
-            + taskId
-            + ",\"from\":\""
-            + oldVisibility
-            + "\",\"to\":\""
-            + newVisibility
-            + "\"}");
+        Map.of("taskId", taskId, "from", oldVisibility, "to", newVisibility));
 
     return saved;
   }

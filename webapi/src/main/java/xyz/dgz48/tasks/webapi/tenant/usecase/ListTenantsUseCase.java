@@ -1,5 +1,7 @@
 package xyz.dgz48.tasks.webapi.tenant.usecase;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
@@ -32,23 +34,12 @@ public class ListTenantsUseCase {
         tenantFilterBypassService.runAsSaaSAdmin(
             () -> adminTenantRepository.findAll(status, keyword, pageable));
 
-    String detail = buildListDetail(status, keyword, result.getTotalElements());
+    Map<String, Object> detail = new LinkedHashMap<>();
+    detail.put("totalElements", result.getTotalElements());
+    if (status != null) detail.put("statusFilter", status.name());
+    if (keyword != null && !keyword.isBlank()) detail.put("hasKeyword", true);
     auditLogPort.record(AuditEventType.TENANT_LIST_VIEWED, null, userId, detail);
 
     return result;
-  }
-
-  private static String buildListDetail(
-      @Nullable TenantStatus status, @Nullable String keyword, long totalElements) {
-    StringBuilder sb = new StringBuilder("{");
-    sb.append("\"totalElements\":").append(totalElements);
-    if (status != null) {
-      sb.append(",\"statusFilter\":\"").append(status.name()).append("\"");
-    }
-    if (keyword != null && !keyword.isBlank()) {
-      sb.append(",\"hasKeyword\":true");
-    }
-    sb.append("}");
-    return sb.toString();
   }
 }

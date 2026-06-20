@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.usecase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,7 +55,7 @@ public class AddStakeholderUseCase {
         AuditEventType.STAKEHOLDER_ADDED,
         task.getTenantId(),
         operatorUserId,
-        "{\"taskId\":" + taskId + ",\"userId\":" + targetUserId + "}");
+        Map.of("taskId", taskId, "userId", targetUserId));
     return stakeholder;
   }
 }
