@@ -16,8 +16,8 @@ import software.amazon.awssdk.services.rds.model.GenerateAuthenticationTokenRequ
 
 class RdsIamDataSourceConfigTest {
 
-  private static final String JDBC_URL =
-      "jdbc:mysql://db.tasks.internal:3306/tasks?sslMode=REQUIRED";
+  private static final String DB_HOST = "db.tasks.internal";
+  private static final int DB_PORT = 3306;
   private static final String USERNAME = "tasks_webapi";
   private static final String REGION = "ap-northeast-1";
 
@@ -25,7 +25,8 @@ class RdsIamDataSourceConfigTest {
   void buildHikariConfig_maxLifetimeIsLessThan15Minutes() {
     RdsUtilities mockUtils = mock(RdsUtilities.class);
 
-    HikariConfig config = buildConfig(JDBC_URL, USERNAME, REGION).buildHikariConfig(mockUtils);
+    HikariConfig config =
+        buildConfig(DB_HOST, DB_PORT, USERNAME, REGION).buildHikariConfig(mockUtils);
 
     // IAM tokens expire in 15 min; maxLifetime must be below 900000 ms to ensure reconnects
     assertThat(config.getMaxLifetime()).isLessThan(900_000L);
@@ -35,29 +36,47 @@ class RdsIamDataSourceConfigTest {
   void buildHikariConfig_hasUnderlyingDataSource() {
     RdsUtilities mockUtils = mock(RdsUtilities.class);
 
-    HikariConfig config = buildConfig(JDBC_URL, USERNAME, REGION).buildHikariConfig(mockUtils);
+    HikariConfig config =
+        buildConfig(DB_HOST, DB_PORT, USERNAME, REGION).buildHikariConfig(mockUtils);
 
     assertThat(config.getDataSource()).isInstanceOf(RdsIamDriverDataSource.class);
   }
 
   @Test
-  void buildHikariConfig_extractsHostAndPortFromJdbcUrl() throws Exception {
+  void buildHikariConfig_usesDbHostAndPortForTokenGeneration() throws Exception {
     RdsUtilities mockUtils = mock(RdsUtilities.class);
     when(mockUtils.generateAuthenticationToken(any(GenerateAuthenticationTokenRequest.class)))
         .thenReturn("mock-iam-token");
 
     var ds =
         (RdsIamDriverDataSource)
-            buildConfig(JDBC_URL, USERNAME, REGION).buildHikariConfig(mockUtils).getDataSource();
+            buildConfig(DB_HOST, DB_PORT, USERNAME, REGION)
+                .buildHikariConfig(mockUtils)
+                .getDataSource();
 
     // Trigger token generation by attempting a connection (will fail at TCP level)
     assertThatThrownBy(ds::getConnection).isInstanceOf(SQLException.class);
 
     var captor = ArgumentCaptor.forClass(GenerateAuthenticationTokenRequest.class);
     verify(mockUtils).generateAuthenticationToken(captor.capture());
-    assertThat(captor.getValue().hostname()).isEqualTo("db.tasks.internal");
-    assertThat(captor.getValue().port()).isEqualTo(3306);
+    assertThat(captor.getValue().hostname()).isEqualTo(DB_HOST);
+    assertThat(captor.getValue().port()).isEqualTo(DB_PORT);
     assertThat(captor.getValue().username()).isEqualTo(USERNAME);
+  }
+
+  @Test
+  void buildHikariConfig_jdbcUrlContainsSslRequired() throws Exception {
+    RdsUtilities mockUtils = mock(RdsUtilities.class);
+
+    var ds =
+        (RdsIamDriverDataSource)
+            buildConfig(DB_HOST, DB_PORT, USERNAME, REGION)
+                .buildHikariConfig(mockUtils)
+                .getDataSource();
+
+    var field = RdsIamDriverDataSource.class.getDeclaredField("jdbcUrl");
+    field.setAccessible(true);
+    assertThat((String) field.get(ds)).contains("sslMode=REQUIRED");
   }
 
   @Test
@@ -79,42 +98,14 @@ class RdsIamDataSourceConfigTest {
     verify(mockUtils).generateAuthenticationToken(any(GenerateAuthenticationTokenRequest.class));
   }
 
-  @Test
-  void buildHikariConfig_appendsSslModeWhenAbsent() throws Exception {
-    RdsUtilities mockUtils = mock(RdsUtilities.class);
-
-    var ds =
-        (RdsIamDriverDataSource)
-            buildConfig("jdbc:mysql://db.tasks.internal:3306/db", USERNAME, REGION)
-                .buildHikariConfig(mockUtils)
-                .getDataSource();
-
-    var field = RdsIamDriverDataSource.class.getDeclaredField("jdbcUrl");
-    field.setAccessible(true);
-    assertThat((String) field.get(ds)).contains("sslMode=REQUIRED");
-  }
-
-  @Test
-  void buildHikariConfig_doesNotDuplicateSslMode() throws Exception {
-    RdsUtilities mockUtils = mock(RdsUtilities.class);
-
-    var ds =
-        (RdsIamDriverDataSource)
-            buildConfig(JDBC_URL, USERNAME, REGION).buildHikariConfig(mockUtils).getDataSource();
-
-    var field = RdsIamDriverDataSource.class.getDeclaredField("jdbcUrl");
-    field.setAccessible(true);
-    String url = (String) field.get(ds);
-    assertThat(url.indexOf("sslMode")).isEqualTo(url.lastIndexOf("sslMode"));
-  }
-
   // ── helpers ─────────────────────────────────────────────────────────────────
 
   private static RdsIamDataSourceConfig buildConfig(
-      String jdbcUrl, String username, String region) {
+      String dbHost, int dbPort, String username, String region) {
     try {
       var config = new RdsIamDataSourceConfig();
-      setField(config, "jdbcUrl", jdbcUrl);
+      setField(config, "dbHost", dbHost);
+      setField(config, "dbPort", dbPort);
       setField(config, "username", username);
       setField(config, "region", region);
       return config;
@@ -123,7 +114,7 @@ class RdsIamDataSourceConfigTest {
     }
   }
 
-  private static void setField(Object target, String name, String value)
+  private static void setField(Object target, String name, Object value)
       throws ReflectiveOperationException {
     var field = target.getClass().getDeclaredField(name);
     field.setAccessible(true);

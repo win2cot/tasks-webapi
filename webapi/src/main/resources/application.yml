@@ -1,5 +1,6 @@
 # env vars (required at startup):
-#   DATASOURCE_URL       - JDBC URL e.g. jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true
+#   DB_HOST              - DB hostname e.g. localhost
+#   DB_PORT              - DB port (optional, default 3306)
 #   DATASOURCE_USERNAME  - DB user e.g. tasks_webapi
 #   DATASOURCE_PASSWORD  - DB password (unused when RDS_IAM_AUTH_ENABLED=true)
 #   OIDC_ISSUER_URI      - Keycloak realm issuer e.g. http://localhost:8080/realms/tasks
@@ -11,7 +12,7 @@ spring:
   application:
     name: tasks-webapi
   datasource:
-    url: ${DATASOURCE_URL}
+    url: "jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true"
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver

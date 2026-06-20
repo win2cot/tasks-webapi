@@ -137,7 +137,7 @@ cp .env.local.example .env.local
 ```bash
 # リポジトリルートで実行
 cat > .env.local << 'EOF'
-export DATASOURCE_URL=jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true
+export DB_HOST=localhost
 export DATASOURCE_USERNAME=tasks_webapi
 export DATASOURCE_PASSWORD=tasks_webapi
 export OIDC_ISSUER_URI=http://localhost:18080/realms/tasks
@@ -148,7 +148,7 @@ EOF
 
 | 変数名 | ローカル開発値 | 説明 |
 |--------|----------------|------|
-| `DATASOURCE_URL` | `jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true` | MySQL JDBC URL |
+| `DB_HOST` | `localhost` | DB ホスト名。JDBC URL テンプレートは `application.yml` にハードコード済み |
 | `DATASOURCE_USERNAME` | `tasks_webapi` | DB ユーザー名 |
 | `DATASOURCE_PASSWORD` | `tasks_webapi` | DB パスワード |
 | `OIDC_ISSUER_URI` | `http://localhost:18080/realms/tasks` | Keycloak realm の issuer URI |
@@ -350,7 +350,7 @@ docker compose -f docker-compose.local.yml stop
 
 ```bash
 docker run --rm \
-  -e DATASOURCE_URL="jdbc:mysql://host.docker.internal:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" \
+  -e DB_HOST=host.docker.internal \
   -e DATASOURCE_USERNAME=tasks_webapi \
   -e DATASOURCE_PASSWORD=tasks_webapi \
   -e OIDC_ISSUER_URI=http://host.docker.internal:18080/realms/tasks \
@@ -410,8 +410,8 @@ sudo systemctl stop mysql
 # または docker-compose.local.yml の ports を変更
 # ports:
 #   - "3307:3306"  # 3307 に変更
-# その場合 .env.local の DATASOURCE_URL も更新すること
-# DATASOURCE_URL=jdbc:mysql://localhost:3307/tasks?...
+# その場合 .env.local の DB_PORT も更新すること
+# DB_PORT=3307
 ```
 
 ---
@@ -450,8 +450,8 @@ ls keycloak/realm-export/tasks-realm.json
 |------|----------|------|
 | MySQL が起動していない | `docker compose ps` | `docker compose -f docker-compose.local.yml up -d` |
 | MySQL がまだ healthy でない | `docker compose ps` の STATUS | healthy になるまで最大 80 秒待つ |
-| `.env.local` が読み込まれていない | `echo $DATASOURCE_URL`(空なら未読込) | `source .env.local && ./gradlew :webapi:bootRun` で再起動(`.env.local` に `export` があることを確認) |
-| DATASOURCE_URL の値が間違い | `.env.local` を確認 | [セクション 4](#4-環境変数設定) の値を再確認 |
+| `.env.local` が読み込まれていない | `echo $DB_HOST`(空なら未読込) | `source .env.local && ./gradlew :webapi:bootRun` で再起動(`.env.local` に `export` があることを確認) |
+| `DB_HOST` の値が間違い | `.env.local` を確認 | [セクション 4](#4-環境変数設定) の値を再確認 |
 
 ```bash
 # MySQL への接続テスト

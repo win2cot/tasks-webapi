@@ -71,7 +71,7 @@ jobs:
     env:
       # processAot starts the production Spring context (Flyway + Hibernate validate).
       # These env vars are picked up by the aotEnv() fallback in webapi/build.gradle.
-      DATASOURCE_URL: "jdbc:mysql://localhost:3306/tasks?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true"
+      DB_HOST: "localhost"
       DATASOURCE_USERNAME: tasks_webapi
       DATASOURCE_PASSWORD: tasks_webapi
       # Spring Security JwtDecoder is lazy (no network call at context startup).
