@@ -247,7 +247,7 @@ jobs:
             -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
             -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
             -e AWS_DEFAULT_REGION=ap-northeast-1 \
-            -e SPRING_DATASOURCE_URL="jdbc:mysql://smoke-mysql:3306/tasks?sslMode=REQUIRED&connectionTimeZone=SERVER&forceConnectionTimeZoneToSession=true" \
+            -e DB_HOST=smoke-mysql \
             -e SPRING_DATASOURCE_USERNAME=tasks_webapi \
             -e OIDC_ISSUER_URI=http://localhost:18080/realms/tasks \
             "${ECR_REGISTRY}/tasks-webapi:${VERSION}")

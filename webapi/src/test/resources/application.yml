@@ -1,7 +1,7 @@
 # Test-only property values for placeholders defined in src/main/resources/application.yml.
 # @ServiceConnection (Testcontainers) overrides the actual datasource connection at runtime;
 # these values only exist to satisfy placeholder resolution before the context starts.
-DATASOURCE_URL: jdbc:mysql://localhost:3306/tasks_test
+DB_HOST: localhost
 DATASOURCE_USERNAME: test
 OIDC_ISSUER_URI: http://localhost:8080/realms/tasks
 

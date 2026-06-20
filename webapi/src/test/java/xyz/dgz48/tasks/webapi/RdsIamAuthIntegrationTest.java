@@ -60,12 +60,11 @@ class RdsIamAuthIntegrationTest {
 
   @DynamicPropertySource
   static void datasourceProps(DynamicPropertyRegistry registry) {
-    // Prepend sslMode=DISABLED so RdsIamDataSourceConfig.withSsl() leaves the URL unchanged.
-    // Local Testcontainer MySQL uses self-signed certs; adding sslMode=REQUIRED causes cert-verify
-    // failures that are irrelevant to what this test validates.
-    String baseUrl = mysql.getJdbcUrl();
-    String separator = baseUrl.contains("?") ? "&" : "?";
-    registry.add("spring.datasource.url", () -> baseUrl + separator + "sslMode=DISABLED");
+    // RdsIamDataSourceConfig reads DB_HOST / DB_PORT directly and builds the IAM JDBC URL
+    // (sslMode=REQUIRED) internally. MySQL 8.4 in Docker supports TLS by default, so
+    // sslMode=REQUIRED works without additional certificate configuration.
+    registry.add("DB_HOST", mysql::getHost);
+    registry.add("DB_PORT", () -> mysql.getMappedPort(3306));
     registry.add("spring.datasource.username", mysql::getUsername);
     // spring.datasource.password is intentionally omitted — RdsIamDataSourceConfig does not read
     // it. The mock RdsUtilities returns the password directly as the IAM token.
