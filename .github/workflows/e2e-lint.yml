@@ -1,0 +1,102 @@
+name: "E2E: Lint"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-lint-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            e2e:
+              - 'e2e/**'
+              - '.github/workflows/e2e-lint.yml'
+
+  e2e-lint:
+    needs: e2e-lint-changes
+    if: needs.e2e-lint-changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: e2e
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: npm ci
+        id: npm-ci
+        run: npm ci
+
+      - name: Biome lint / format check
+        id: biome
+        run: npx biome ci .
+
+      - name: Type check (tsc --noEmit)
+        id: tsc
+        run: npx tsc --noEmit
+
+      - name: Build CI report
+        id: ci-report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          NPM_CI_OUTCOME: ${{ steps.npm-ci.outcome }}
+          BIOME_OUTCOME: ${{ steps.biome.outcome }}
+          TSC_OUTCOME: ${{ steps.tsc.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUM: ${{ github.run_number }}
+          GH_SHA: ${{ github.sha }}
+        run: |
+          SHA_SHORT="${GH_SHA:0:7}"
+          NOW="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M JST')"
+          icon() { [ "$1" = "success" ] && echo ":white_check_mark:" || echo ":x:"; }
+          {
+            echo 'BODY<<__CI_REPORT_EOF__'
+            echo "### E2E Lint 結果 — Run [#${RUN_NUM}](${RUN_URL}) (\`${SHA_SHORT}\`)"
+            echo ""
+            echo "| ステップ | 結果 |"
+            echo "|----------|------|"
+            echo "| npm ci $(icon "$NPM_CI_OUTCOME") | lockfile 整合検証 |"
+            echo "| biome ci $(icon "$BIOME_OUTCOME") | lint / format 検証 |"
+            echo "| tsc --noEmit $(icon "$TSC_OUTCOME") | 型検査 |"
+            echo ""
+            echo "_最終更新: ${NOW}_"
+            echo '__CI_REPORT_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky CI report
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always() && github.event_name == 'pull_request' && steps.ci-report.outcome == 'success'
+        with:
+          header: e2e-lint
+          message: ${{ steps.ci-report.outputs.BODY }}
