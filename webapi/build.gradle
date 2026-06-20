@@ -55,8 +55,8 @@ dependencies {
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
-    // Prometheus metrics
-    implementation 'io.micrometer:micrometer-registry-prometheus'
+    // OpenTelemetry (traces + metrics via OTLP; OFF by default — ADR-0029 §3.2)
+    implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
 
     // Testcontainers
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
