@@ -4,18 +4,6 @@ name: "E2E: Test"
 
 on:
   pull_request:
-    paths:
-      - 'e2e/**'
-      - 'webapi/**'
-      - 'web/**'
-      - 'keycloak/**'
-      - 'docker-compose.local.yml'
-      - '*.gradle*'
-      - 'settings.gradle*'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/workflows/e2e-test.yml'
 
 env:
   LANG: ja_JP.UTF-8
@@ -30,7 +18,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  e2e-test-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            e2e:
+              - 'e2e/**'
+              - 'webapi/**'
+              - 'web/**'
+              - 'keycloak/**'
+              - 'docker-compose.local.yml'
+              - '*.gradle*'
+              - 'settings.gradle*'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradlew.bat'
+              - '.github/workflows/e2e-test.yml'
+
   e2e-test:
+    needs: e2e-test-changes
+    if: needs.e2e-test-changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
