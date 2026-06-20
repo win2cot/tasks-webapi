@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
 import { loginAs, MEMBER1 } from '../fixtures/auth';
+import { expect, test } from '../fixtures/test';
 
 // ADR-0023 §6 Step 4 — テナント切替
 // ログイン後に単一テナントが自動選択され、ナビバーのテナントチップに

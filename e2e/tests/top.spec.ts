@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures/test';
 
 // 未認証ユーザーがトップ(/)を開くと Keycloak ログインページへリダイレクトされる。
 // これが full-stack の「トップ表示」の正常系。
