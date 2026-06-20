@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
 import { loginAs, MEMBER1 } from '../fixtures/auth';
+import { expect, test } from '../fixtures/test';
 
 // ADR-0023 §6 Step 4 — Keycloak ログイン往復
 // 認証情報を入力して Keycloak PKCE フローを完了し、
