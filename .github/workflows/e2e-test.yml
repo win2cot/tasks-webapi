@@ -175,3 +175,4 @@ jobs:
         with:
           name: playwright-results
           path: e2e/test-results/
+          if-no-files-found: ignore
