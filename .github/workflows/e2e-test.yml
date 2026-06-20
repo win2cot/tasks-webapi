@@ -4,6 +4,8 @@ name: "E2E: Test"
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 env:
   LANG: ja_JP.UTF-8
