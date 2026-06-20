@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -156,5 +157,28 @@ class UpdateTaskUseCaseTest {
     verify(taskRepository).save(task);
     verify(auditLogPort)
         .record(eq(AuditEventType.TASK_UPDATED), eq(TENANT_ID), eq(OWNER_ID), any(String.class));
+  }
+
+  @Test
+  void execute_audit_detail_quotesLocalDate() {
+    Task task = buildTask();
+    List<FieldChange> changes =
+        List.of(new FieldChange("dueDate", null, LocalDate.of(2026, 8, 1)));
+
+    when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(task));
+    when(stakeholderRepository.findUserIdsByTaskId(TASK_ID, TENANT_ID)).thenReturn(List.of());
+    when(taskAuthorizationDomainService.canBeViewedBy(task, OWNER_ID, List.of())).thenReturn(true);
+    when(taskAuthorizationDomainService.canBeEditedBy(task, OWNER_ID)).thenReturn(true);
+    when(taskAuditDiffDomainService.diff(any(), any())).thenReturn(changes);
+    when(taskRepository.save(any())).thenReturn(buildTask());
+
+    useCase.execute(TASK_ID, OWNER_ID, titleOnlyCmd(), VERSION);
+
+    ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+    verify(auditLogPort)
+        .record(
+            eq(AuditEventType.TASK_UPDATED), eq(TENANT_ID), eq(OWNER_ID), captor.capture());
+    // LocalDate は "2026-08-01" と引用符付きで出力されなければならない（修正前は引用符なしで 500 になった）
+    assertThat(captor.getValue()).contains("\"2026-08-01\"");
   }
 }
