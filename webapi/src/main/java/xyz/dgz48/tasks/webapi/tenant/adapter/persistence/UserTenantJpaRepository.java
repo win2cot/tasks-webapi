@@ -29,4 +29,6 @@ interface UserTenantJpaRepository extends JpaRepository<UserTenantJpaEntity, Use
       """)
   List<TenantSummaryInfo> findActiveMembershipsWithTenantDetail(
       @Param("userId") Long userId, @Param("status") UserTenantStatus status);
+
+  List<UserTenantJpaEntity> findByIdTenantIdOrderByJoinedAtAsc(Long tenantId);
 }

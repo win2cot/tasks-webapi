@@ -41,6 +41,7 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.GetPlatformMetricsUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.GetTenantUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantUsersUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantsUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.SwitchTenantUseCase;
@@ -112,6 +113,7 @@ class TenantContextFilterTest {
   @MockitoBean UpdateTenantStatusUseCase updateTenantStatusUseCase;
   @MockitoBean GetPlatformMetricsUseCase getPlatformMetricsUseCase;
   @MockitoBean GetMeUseCase getMeUseCase;
+  @MockitoBean ListTenantUsersUseCase listTenantUsersUseCase;
 
   @Autowired MockMvc mockMvc;
 
