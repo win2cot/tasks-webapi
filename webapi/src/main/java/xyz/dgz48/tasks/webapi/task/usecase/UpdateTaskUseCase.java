@@ -83,7 +83,8 @@ public class UpdateTaskUseCase {
       return "\"" + escapeJsonString(s) + "\"";
     }
     if (value instanceof Enum<?> e) return "\"" + escapeJsonString(e.name()) + "\"";
-    return String.valueOf(value);
+    if (value instanceof Number || value instanceof Boolean) return String.valueOf(value);
+    return "\"" + escapeJsonString(String.valueOf(value)) + "\"";
   }
 
   private static String escapeJsonString(String s) {
