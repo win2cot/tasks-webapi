@@ -1,0 +1,18 @@
+{
+  "name": "tasks-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tasks SaaS E2E テスト (Playwright / TypeScript)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^24.13.2"
+  }
+}
