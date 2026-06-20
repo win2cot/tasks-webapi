@@ -65,6 +65,10 @@
       "addLabels": ["area/web", "renovate"]
     },
     {
+      "matchFileNames": ["e2e/**"],
+      "addLabels": ["area/e2e", "renovate"]
+    },
+    {
       "matchFileNames": [".github/**"],
       "addLabels": ["area/ci", "renovate"]
     },
