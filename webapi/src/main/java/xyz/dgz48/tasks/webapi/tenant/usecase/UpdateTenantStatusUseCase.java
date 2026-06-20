@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.usecase;
 
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,13 +55,10 @@ public class UpdateTenantStatusUseCase {
         eventType,
         tenantId,
         userId,
-        "{\"tenantId\":"
-            + tenantId
-            + ",\"newStatus\":\""
-            + cmd.status().name()
-            + "\",\"previousStatus\":\""
-            + previous.getStatus().name()
-            + "\"}");
+        Map.of(
+            "tenantId", tenantId,
+            "newStatus", cmd.status().name(),
+            "previousStatus", previous.getStatus().name()));
 
     return updated;
   }

@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -97,7 +98,7 @@ class CreateTaskUseCaseTest {
     assertThat(result.getStatus()).isEqualTo(TaskStatus.NOT_STARTED);
     assertThat(result.getId()).isEqualTo(1L);
     verify(auditLogPort)
-        .record(eq(AuditEventType.TASK_CREATED), eq(TENANT_ID), eq(OWNER_ID), any(String.class));
+        .record(eq(AuditEventType.TASK_CREATED), eq(TENANT_ID), eq(OWNER_ID), any());
   }
 
   @Test
@@ -233,6 +234,7 @@ class CreateTaskUseCaseTest {
         null);
 
     verify(auditLogPort)
-        .record(eq(AuditEventType.TASK_CREATED), eq(TENANT_ID), eq(OWNER_ID), eq("{\"taskId\":1}"));
+        .record(
+            eq(AuditEventType.TASK_CREATED), eq(TENANT_ID), eq(OWNER_ID), eq(Map.of("taskId", 1L)));
   }
 }

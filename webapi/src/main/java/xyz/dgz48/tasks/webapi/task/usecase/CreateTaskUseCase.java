@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.usecase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -71,7 +72,7 @@ public class CreateTaskUseCase {
     }
 
     auditLogPort.record(
-        AuditEventType.TASK_CREATED, tenantId, ownerUserId, "{\"taskId\":" + task.getId() + "}");
+        AuditEventType.TASK_CREATED, tenantId, ownerUserId, Map.of("taskId", task.getId()));
 
     return task;
   }

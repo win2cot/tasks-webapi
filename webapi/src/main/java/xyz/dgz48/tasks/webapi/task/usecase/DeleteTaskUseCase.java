@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.task.usecase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,6 @@ public class DeleteTaskUseCase {
     taskRepository.softDelete(task, LocalDateTime.now(clock));
 
     auditLogPort.record(
-        AuditEventType.TASK_DELETED, task.getTenantId(), userId, "{\"taskId\":" + taskId + "}");
+        AuditEventType.TASK_DELETED, task.getTenantId(), userId, Map.of("taskId", taskId));
   }
 }
