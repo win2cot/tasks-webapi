@@ -1,0 +1,148 @@
+name: "E2E: Test"
+
+# ADR-0023 §6 Step 3: full stack 起動 → npx playwright test → trace/動画 アーティファクト
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/**'
+      - 'webapi/**'
+      - 'web/**'
+      - 'keycloak/**'
+      - 'docker-compose.local.yml'
+      - '*.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - '.github/workflows/e2e-test.yml'
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            e2e/package-lock.json
+
+      # ── stateful 依存起動 (mysql + keycloak) ────────────────────────────
+      - name: Start stateful dependencies
+        run: docker compose -f docker-compose.local.yml up -d --wait
+        timeout-minutes: 5
+
+      # ── webapi JAR ビルド ────────────────────────────────────────────────
+      - name: Build webapi JAR
+        run: ./gradlew :webapi:bootJar
+
+      # ── web vendor 準備 ──────────────────────────────────────────────────
+      - name: Prepare web vendor
+        working-directory: web
+        run: |
+          npm ci
+          node scripts/copy-vendor.js
+
+      # ── e2e 依存インストール ─────────────────────────────────────────────
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      # ── webapi 起動 ──────────────────────────────────────────────────────
+      - name: Start webapi
+        env:
+          DB_HOST: localhost
+          DATASOURCE_USERNAME: tasks_webapi
+          DATASOURCE_PASSWORD: tasks_webapi
+          OIDC_ISSUER_URI: http://localhost:18080/realms/tasks
+        run: java -jar webapi/build/libs/webapi-*.jar &
+
+      - name: Wait for webapi
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/actuator/health; then
+              echo "webapi ready"
+              break
+            fi
+            echo "Waiting for webapi ($i/30)..."
+            sleep 3
+            if [ "$i" -eq 30 ]; then
+              echo "::error::webapi did not become ready in time"
+              exit 1
+            fi
+          done
+
+      # ── web 静的配信起動 ─────────────────────────────────────────────────
+      - name: Start web
+        run: node web/serve.mjs &
+
+      - name: Wait for web
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:5500/ >/dev/null; then
+              echo "web ready"
+              break
+            fi
+            sleep 1
+            if [ "$i" -eq 10 ]; then
+              echo "::error::web did not become ready in time"
+              exit 1
+            fi
+          done
+
+      # ── Playwright ───────────────────────────────────────────────────────
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: e2e
+        env:
+          CI: true
+        run: npx playwright test
+
+      # ── アーティファクト ──────────────────────────────────────────────────
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+
+      - name: Upload test results (trace / video)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-results
+          path: e2e/test-results/
