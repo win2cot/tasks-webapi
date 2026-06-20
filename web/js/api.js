@@ -87,7 +87,6 @@
 /**
  * @typedef {object} MeResponse
  * @property {{ id: number, fullName: string }} user
- * @property {number|null} activeTenantId
  * @property {TenantRef[]} tenants
  */
 
@@ -111,6 +110,27 @@ const Api = (() => {
     } else {
       sessionStorage.removeItem('tenantId');
     }
+  }
+
+  /**
+   * /me のテナント一覧からアクティブテナント ID を解決する(ADR-0034 §5)。
+   * 1. sessionStorage の tenantId が一覧に含まれる → 採用
+   * 2. 0 件 → null(テナント未所属)
+   * 3. 1 件 → 先頭を自動採用し sessionStorage に保存
+   * 4. 複数かつ有効な保存値なし → null(テナント選択 UI を表示)
+   * @param {Array<{id: number}>} tenants
+   * @returns {number|null}
+   */
+  function resolveActiveTenant(tenants) {
+    if (_tenantId !== null) {
+      const id = Number(_tenantId);
+      if (tenants.some((t) => t.id === id)) return id;
+    }
+    if (tenants.length === 1) {
+      setTenantId(String(tenants[0].id));
+      return tenants[0].id;
+    }
+    return null;
   }
 
   /**
@@ -377,6 +397,7 @@ const Api = (() => {
 
   return {
     setTenantId,
+    resolveActiveTenant,
     request,
     requestRaw,
     getMe,

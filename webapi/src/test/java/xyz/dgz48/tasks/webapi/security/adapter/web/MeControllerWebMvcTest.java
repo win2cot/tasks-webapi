@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -64,20 +63,24 @@ class MeControllerWebMvcTest {
         .andExpect(jsonPath("$.tenants[0].code").value("acme"))
         .andExpect(jsonPath("$.tenants[0].name").value("Acme Corp"))
         .andExpect(jsonPath("$.tenants[0].role").value("MEMBER"))
-        .andExpect(jsonPath("$.activeTenantId").isEmpty());
+        .andExpect(jsonPath("$.activeTenantId").doesNotExist());
   }
 
   @Test
   @WithMockJwt
-  void withXTenantIdHeader_returnsActiveTenantId() throws Exception {
-    // TenantContextFilter validates X-Tenant-Id membership before the controller runs
-    when(tenantMembershipPort.findActiveRole(1L, 42L)).thenReturn(Optional.of(TenantRole.MEMBER));
-    when(getMeUseCase.findTenants(1L)).thenReturn(List.of());
+  void multipleTenants_returnedInUseCaseOrder() throws Exception {
+    when(getMeUseCase.findTenants(1L))
+        .thenReturn(
+            List.of(
+                new TenantSummaryInfo(10L, "alpha", "Alpha", TenantRole.MEMBER),
+                new TenantSummaryInfo(20L, "beta", "Beta", TenantRole.TENANT_ADMIN)));
 
     mockMvc
-        .perform(get("/api/auth/me").header("X-Tenant-Id", "42"))
+        .perform(get("/api/auth/me"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.activeTenantId").value(42));
+        .andExpect(jsonPath("$.tenants.length()").value(2))
+        .andExpect(jsonPath("$.tenants[0].id").value(10))
+        .andExpect(jsonPath("$.tenants[1].id").value(20));
   }
 
   @Test
@@ -89,6 +92,6 @@ class MeControllerWebMvcTest {
         .perform(get("/api/auth/me"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.tenants").isEmpty())
-        .andExpect(jsonPath("$.activeTenantId").isEmpty());
+        .andExpect(jsonPath("$.activeTenantId").doesNotExist());
   }
 }
