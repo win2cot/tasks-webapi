@@ -87,10 +87,11 @@ public class TaskController {
     if (tenantId == null) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "テナントが選択されていません");
     }
+    Long userId = token.getPrincipal().getId();
     Task task =
         createTaskUseCase.execute(
             tenantId,
-            token.getPrincipal().getId(),
+            userId,
             request.title(),
             request.description(),
             request.priority(),
@@ -103,7 +104,8 @@ public class TaskController {
             .path("/{id}")
             .buildAndExpand(task.getId())
             .toUri();
-    return ResponseEntity.created(location).body(TaskResponse.from(task));
+    return ResponseEntity.created(location)
+        .body(TaskResponse.from(task, userId, loadUserMap(task)));
   }
 
   /**
@@ -157,8 +159,9 @@ public class TaskController {
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
   public ResponseEntity<TaskResponse> getTask(
       @PathVariable Long id, TasksAuthenticationToken token) {
-    Task task = getTaskUseCase.execute(id, token.getPrincipal().getId());
-    TaskResponse body = TaskResponse.from(task);
+    Long userId = token.getPrincipal().getId();
+    Task task = getTaskUseCase.execute(id, userId);
+    TaskResponse body = TaskResponse.from(task, userId, loadUserMap(task));
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
   }
 
@@ -177,8 +180,9 @@ public class TaskController {
             request.priority(),
             request.assigneeId(),
             request.dueDate());
-    Task task = updateTaskUseCase.execute(id, token.getPrincipal().getId(), cmd, ifMatchVersion);
-    TaskResponse body = TaskResponse.from(task);
+    Long userId = token.getPrincipal().getId();
+    Task task = updateTaskUseCase.execute(id, userId, cmd, ifMatchVersion);
+    TaskResponse body = TaskResponse.from(task, userId, loadUserMap(task));
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
   }
 
@@ -201,14 +205,11 @@ public class TaskController {
       @RequestBody @Valid ChangeVisibilityRequest request,
       TasksAuthenticationToken token) {
     Long ifMatchVersion = parseIfMatchVersion(ifMatch);
+    Long userId = token.getPrincipal().getId();
     Task task =
         changeVisibilityUseCase.execute(
-            id,
-            token.getPrincipal().getId(),
-            request.visibility(),
-            request.stakeholderUserIds(),
-            ifMatchVersion);
-    TaskResponse body = TaskResponse.from(task);
+            id, userId, request.visibility(), request.stakeholderUserIds(), ifMatchVersion);
+    TaskResponse body = TaskResponse.from(task, userId, loadUserMap(task));
     return ResponseEntity.ok().header(HttpHeaders.ETAG, etagValue(task.getVersion())).body(body);
   }
 
@@ -218,8 +219,9 @@ public class TaskController {
       @PathVariable Long id,
       @RequestBody @Valid ChangeTaskStatusRequest request,
       TasksAuthenticationToken token) {
-    Task task = changeTaskStatusUseCase.execute(id, token.getPrincipal().getId(), request.status());
-    return ResponseEntity.ok(TaskResponse.from(task));
+    Long userId = token.getPrincipal().getId();
+    Task task = changeTaskStatusUseCase.execute(id, userId, request.status());
+    return ResponseEntity.ok(TaskResponse.from(task, userId, loadUserMap(task)));
   }
 
   @GetMapping("/{id}/stakeholders")
@@ -249,6 +251,10 @@ public class TaskController {
       @PathVariable Long taskId, @PathVariable Long userId, TasksAuthenticationToken token) {
     removeStakeholderUseCase.execute(taskId, token.getPrincipal().getId(), userId);
     return ResponseEntity.noContent().build();
+  }
+
+  private Map<Long, UserJpaEntity> loadUserMap(Task task) {
+    return loadUserMap(List.of(task));
   }
 
   private Map<Long, UserJpaEntity> loadUserMap(List<Task> tasks) {

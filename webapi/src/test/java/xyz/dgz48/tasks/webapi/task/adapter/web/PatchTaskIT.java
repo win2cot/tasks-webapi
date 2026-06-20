@@ -220,7 +220,11 @@ class PatchTaskIT {
         .andExpect(jsonPath("$.title").value("Updated title"))
         .andExpect(jsonPath("$.description").value("Original description"))
         .andExpect(jsonPath("$.version").value(1))
-        .andExpect(header().string(HttpHeaders.ETAG, "W/\"1\""));
+        .andExpect(header().string(HttpHeaders.ETAG, "W/\"1\""))
+        .andExpect(jsonPath("$.owner.id").value(userId))
+        .andExpect(jsonPath("$.owner.fullName").value("PATCH 太郎"))
+        .andExpect(jsonPath("$.editable").value(true))
+        .andExpect(jsonPath("$.deletable").value(true));
   }
 
   @Test
