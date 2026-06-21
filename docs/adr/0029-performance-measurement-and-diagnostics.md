@@ -5,6 +5,8 @@
 - **Deciders**: win2cot (Masayuki Ishikawa)
 - **Tags**: observability, performance, diagnostics, native-image, dependencies
 
+> **改訂 2026-06-22 (#587)**: §3.3 / §6.3 の診断ビルド方針を変更。当初は「非本番ビルドに `heapdump`、ソークテスト用ビルドに `jfr` を付与する診断バリアント」を別ビルドとして整備する方針だったが、全環境共通イメージ(infra ADR-0004 確定前提)と矛盾するため見直した。`--enable-monitoring=heapdump,jfr` は **closed-world のビルド時フラグ**であり環境別 ON/OFF ができない。結論として **全環境共通の単一イメージに `heapdump,jfr` を常時付与**し、**本番での安全性はインフラ制御(ECS Exec 無効・ヒープダンプ/JFR 出力先の永続ボリューム未マウント・記録起動手段を注入しない)で担保**する方針へ統一した。判断根拠は §6.3 の「常時付与の安全性根拠」を参照。
+
 ## 目次
 
 - [1. コンテキスト(Context)](#1-コンテキストcontext)
@@ -101,7 +103,7 @@ tasks-webapi は実行バイナリとして GraalVM Native Image を採用し([A
 
 - **JVM モード**: Micrometer の JVM メトリクス(ヒープ・GC・スレッド)をフルに取得できる。加えて JFR(Java Flight Recorder)・ヒープダンプ(`jmap` / `-XX:+HeapDumpOnOutOfMemoryError`)・Eclipse MAT による解析を標準手段とする。
 - **Native Image モード**: JVM 管理 Bean が無くヒープ・GC メトリクスは取得できない。代替として **(1) コンテナの RSS トレンド(ECS Container Insights)を第一線の継続観測**、**(2) `--enable-monitoring=heapdump` によるヒープダンプ取得 → Eclipse MAT で確定診断**、**(3) `--enable-monitoring=jfr` による GC・アロケーションのトレンド把握(リーク専用機能は制限あり)**、必要に応じて NMT(Native Memory Tracking)を用いる。
-- `--enable-monitoring=...` は **ビルド時フラグ**(closed-world)であり、診断ビルドバリアントとして整備する(§6.3 / [ADR-0018](0018-container-image-build-with-boot-build-image.md))。
+- `--enable-monitoring=heapdump,jfr` は **ビルド時フラグ**(closed-world)で環境別 ON/OFF ができない。全環境共通イメージ(infra ADR-0004)を維持するため、**単一イメージに常時付与**し、**本番での安全性はインフラ制御で担保**する(§6.3「常時付与の安全性根拠」/ [ADR-0018](0018-container-image-build-with-boot-build-image.md))。
 - **リーク検知**は、詳細なヒープ・GC を要するソークテスト(soak test / ヒートラン)を **JVM ビルドで実施**し、Native ビルドでは RSS トレンド + ヒープダンプで確認する二段構えとする(§6.4)。
 
 ## 4. 理由(Rationale)
@@ -127,6 +129,7 @@ tasks-webapi は実行バイナリとして GraalVM Native Image を採用し([A
 - メトリクスのネイティブ OTLP 受信は CloudWatch では東京リージョンが現状プレビュー対象外のため、メトリクスは EMF 経由になる(infra ADR-0007)。
 - ログシグナルの OTLP 送出は本 ADR では見送り(alpha 依存 + #451 整合)。トレースとログの統合 UI 表示は将来課題。
 - 公式スターターは新しく、セマンティック規約名対応など一部に追加設定・将来改善待ちの箇所がある。
+- 全環境共通イメージに `--enable-monitoring=heapdump,jfr` を常時含めるため、(a) バイナリ / イメージサイズが微増し、(b) 本番安全性が**インフラ制御(ECS Exec 無効・永続ボリューム未マウント)に依存**する。インフラ制御が崩れると本番でヒープダンプ / JFR 経由の情報漏えい面が露出するため、本番タスク定義の `enable_execute_command` とボリューム設定はレビュー必須事項とする(§6.3)。
 
 ### 既存ドキュメント・規約・コードへの波及
 
@@ -168,7 +171,19 @@ tasks-webapi は実行バイナリとして GraalVM Native Image を採用し([A
 | フライトレコーダ(JFR) | フル機能 | `--enable-monitoring=jfr`(**制限あり**: スタックトレース・リーク検知 `jdk.OldObjectSample` は未成熟・進行中) |
 | ネイティブメモリ追跡(NMT) | — | Native Image の NMT で Java ヒープ外の増加を切り分け |
 
-- Native の `--enable-monitoring=...` はビルド時フラグ(closed-world)。**非本番の Native ビルドに `heapdump` を常時付与**(トリガーされるまでオーバーヘッドほぼ無し)し、**ソークテスト用ビルドに `jfr` を追加**する。bootBuildImage([ADR-0018](0018-container-image-build-with-boot-build-image.md))の診断バリアントとして整備する。
+- Native の `--enable-monitoring=...` はビルド時フラグ(closed-world)で、環境別に抜き差しできない。全環境共通イメージ(infra ADR-0004 確定前提)を維持するため、**単一イメージに `heapdump,jfr` を常時付与**する。bootBuildImage([ADR-0018](0018-container-image-build-with-boot-build-image.md))の `BP_NATIVE_IMAGE_BUILD_ARGUMENTS` に追加する(診断バリアントの別ビルドは作らない)。
+
+#### 常時付与の安全性根拠(2026-06-22 #587 改訂)
+
+`heapdump` / `jfr` をバイナリに含めること自体は実行時オーバーヘッドをほぼ生まない(`heapdump` は SIGUSR1 / OOM までゼロ、`jfr` は `JFR.start` で記録を開始するまでゼロ)。両者の本質的リスクは「機微情報を含む成果物(ヒープダンプ・JFR 記録)を**起動でき、かつ取り出せる**」ことであり、これは**フラグの有無ではなく実行環境の制御で決まる**。したがって本番では以下のインフラ制御で起動・取得経路を塞ぎ、フラグが入っていても実質無害とする。
+
+- **ECS Exec を無効化**(`enable_execute_command = false`)— シェル / シグナル送出 / `jcmd` 相当の侵入経路を断つ。run image は distroless 同等(shell なし、[ADR-0018](0018-container-image-build-with-boot-build-image.md))のため二重に塞がる。
+- **ヒープダンプ / JFR 出力先の永続ボリュームをマウントしない** — OOM 自動ダンプは ephemeral ストレージに書かれ、タスク再起動で消滅し外部へ持ち出せない。
+- **記録起動手段(`-XX:StartFlightRecording` 等の env / 引数)を本番タスク定義に注入しない**。
+
+非本番(dev / stg)は上記制御を緩めて(ECS Exec 有効化 + ヘルパーサイドカー)診断を実施する。詳細手順は [soak-test runbook](../runbook/soak-test.md) を参照。
+
+JFR の Native での機能制限(`jdk.OldObjectSample` 等が未成熟)は「Native で JFR をリーク確定診断に使えない」という**有用性の制限**であって、ビルド失敗・起動失敗を招くものではなく、本番に含める可否とは独立した論点である。Native のリーク確定診断は JFR ではなくヒープダンプ + Eclipse MAT で行う(§6.4)。
 
 ### 6.4 リーク検知の運用戦略
 
