@@ -7,6 +7,8 @@
 
 > **2026-06-08 注記(infra ADR-0006)**: stg/prd の ALB に WAF(REGIONAL Web ACL)を導入する決定に伴い、§3 platform スコープのログカタログに WAF アクセスログ行を追加した(下表)。ログ基盤選定の技術決定は不変。
 
+> **2026-06-21 注記(infra ADR-0007)**: ADOT Collector サイドカー導入に伴い、§3 の single pane of glass に APM(CloudWatch Application Signals / トレース・メトリクス)を含める。ログ基盤選定の技術決定は不変。
+
 ## 目次
 
 - [1. コンテキスト(Context)](#1-コンテキストcontext)

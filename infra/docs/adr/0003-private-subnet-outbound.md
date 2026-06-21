@@ -174,6 +174,7 @@ Private Subnet の default route(`0.0.0.0/0`)を NAT Gateway に向け、S3 向�
 | Parameter Store(`ssm`)/ KMS | NAT Gateway |
 | SES SMTP(Keycloak メール) | NAT Gateway |
 | 一般 S3 | S3 Gateway Endpoint(無料) |
+| X-Ray OTLP(`xray.ap-northeast-1.amazonaws.com`) | NAT Gateway |
 | 外部 IdP / Webhook / API(Phase 2) | NAT Gateway |
 
 ### Terraform 雛形(`network` module 内、例)
