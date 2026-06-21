@@ -1,5 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.ObservationKeyValue;
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,8 +24,10 @@ public class ChangeTaskStatusUseCase {
   private final TaskAuthorizationDomainService taskAuthorizationDomainService;
   private final Clock clock;
 
+  @Observed(name = "task.change-status")
   @Transactional
-  public Task execute(Long taskId, Long userId, TaskStatus newStatus) {
+  public Task execute(
+      Long taskId, Long userId, @ObservationKeyValue("task.new-status") TaskStatus newStatus) {
     Task task =
         taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException(taskId));
     List<Long> stakeholderUserIds =

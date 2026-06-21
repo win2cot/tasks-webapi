@@ -51,5 +51,22 @@ services:
       retries: 15
       start_period: 60s
 
+  # otel-lgtm: ローカル計測用 OTLP レシーバ + Grafana + Tempo + Prometheus (ADR-0029 §3.1)
+  # Grafana UI: http://localhost:3000 (admin/admin)
+  # OTLP HTTP:  http://localhost:4318  ← webapi の OTLP エンドポイントに指定する
+  otel-lgtm:
+    image: grafana/otel-lgtm:0.8.2
+    ports:
+      - "3000:3000"   # Grafana
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    healthcheck:
+      # otel-lgtm は起動完了時に /tmp/ready を作成する
+      test: ["CMD", "test", "-f", "/tmp/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 20s
+
 volumes:
   mysql-data:

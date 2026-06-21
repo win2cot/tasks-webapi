@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.PlatformMetricsPort;
 
 /** {@link PlatformMetricsPort} の JPA 実装。 */
+@Observed(name = "tenant.repository")
 @Component
 @RequiredArgsConstructor
 class PlatformMetricsPersistenceAdapter implements PlatformMetricsPort {

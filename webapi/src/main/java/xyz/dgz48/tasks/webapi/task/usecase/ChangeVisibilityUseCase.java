@@ -1,5 +1,7 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.ObservationKeyValue;
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,11 +31,12 @@ public class ChangeVisibilityUseCase {
   private final AuditLogPort auditLogPort;
   private final Clock clock;
 
+  @Observed(name = "task.change-visibility")
   @Transactional
   public Task execute(
       Long taskId,
       Long userId,
-      Visibility newVisibility,
+      @ObservationKeyValue("task.new-visibility") Visibility newVisibility,
       @Nullable List<Long> stakeholderUserIds,
       Long ifMatchVersion) {
 

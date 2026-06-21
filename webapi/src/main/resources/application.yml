@@ -35,11 +35,21 @@ spring:
 server:
   port: 8080
 
+# Observability: OFF by default; enable per-env via environment variables / Parameter Store (ADR-0029 §3.2 / §6.2).
+# Traces : MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT=http://<collector>:4318/v1/traces
+#          MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0
+# Metrics: MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=true
+#          MANAGEMENT_OTLP_METRICS_EXPORT_URL=http://<collector>:4318/v1/metrics
+# endpoint/url キーをここに書かない理由: 空文字列でも @ConditionalOnProperty を通過し
+# OtlpHttpSpanExporter / OTLP metrics exporter が起動失敗する。
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  observations:
+    annotations:
+      enabled: true   # @Observed / @ObservationKeyValue AOP を有効化(ADR-0029 §6.1)
   tracing:
     sampling:
       probability: 0

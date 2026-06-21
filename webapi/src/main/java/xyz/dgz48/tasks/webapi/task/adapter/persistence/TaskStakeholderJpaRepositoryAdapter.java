@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Component;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStakeholder;
 import xyz.dgz48.tasks.webapi.task.usecase.StakeholderRepository;
 
+@Observed(name = "task.stakeholder.repository")
 @Component
 @RequiredArgsConstructor
 class TaskStakeholderJpaRepositoryAdapter implements StakeholderRepository {

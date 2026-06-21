@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,7 @@ public class AddStakeholderUseCase {
   private final AuditLogPort auditLogPort;
   private final Clock clock;
 
+  @Observed(name = "task.stakeholder.add")
   @Transactional
   public TaskStakeholder execute(Long taskId, Long operatorUserId, Long targetUserId) {
     Task task =

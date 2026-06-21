@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.UserTenant;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantManagementPort;
 
+@Observed(name = "tenant.repository")
 @Component
 @RequiredArgsConstructor
 class UserTenantManagementAdapter implements UserTenantManagementPort {

@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class RemoveStakeholderUseCase {
   private final TaskAuthorizationDomainService taskAuthorizationDomainService;
   private final AuditLogPort auditLogPort;
 
+  @Observed(name = "task.stakeholder.remove")
   @Transactional
   public void execute(Long taskId, Long operatorUserId, Long targetUserId) {
     Task task =

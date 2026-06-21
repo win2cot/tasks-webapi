@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.audit.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -12,6 +13,7 @@ import tools.jackson.databind.json.JsonMapper;
 import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 
+@Observed(name = "audit.repository")
 @Component
 class AuditLogPersistenceAdapter implements AuditLogPort {
 

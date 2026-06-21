@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -28,6 +29,7 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
 import xyz.dgz48.tasks.webapi.task.domain.Visibility;
 import xyz.dgz48.tasks.webapi.task.usecase.TaskRepository;
 
+@Observed(name = "task.repository")
 @Component
 @RequiredArgsConstructor
 class TaskJpaRepositoryAdapter implements TaskRepository {

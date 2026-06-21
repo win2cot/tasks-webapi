@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,6 +16,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.AdminTenantRepository;
 
 /** {@link AdminTenantRepository} の JPA 実装。Hibernate Filter 非適用(SaaS Admin 専用経路)。 */
+@Observed(name = "tenant.repository")
 @Component
 @RequiredArgsConstructor
 class AdminTenantPersistenceAdapter implements AdminTenantRepository {
