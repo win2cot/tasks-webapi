@@ -178,7 +178,7 @@ resource "aws_ecs_task_definition" "webapi" {
       # ADOT Collector サイドカー(ADR-0007): SigV4 署名 + X-Ray OTLP + CloudWatch EMF
       # essential=false: ADOT 障害でも webapi コンテナを継続稼働させる
       name      = "adot-collector"
-      image     = "public.ecr.aws/aws-observability/aws-otel-collector:latest"
+      image     = "public.ecr.aws/aws-observability/aws-otel-collector:v0.44.0"
       essential = false
 
       command = ["--config=env:AOT_CONFIG_CONTENT"]
