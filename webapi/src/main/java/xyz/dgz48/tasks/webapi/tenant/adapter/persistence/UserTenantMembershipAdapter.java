@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantSummaryInfo;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 
+@Observed(name = "tenant.repository")
 @Component
 @RequiredArgsConstructor
 class UserTenantMembershipAdapter implements TenantMembershipPort {

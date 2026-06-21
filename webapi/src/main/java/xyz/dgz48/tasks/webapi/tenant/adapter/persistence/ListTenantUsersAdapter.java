@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantUsersPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
+@Observed(name = "tenant.repository")
 @Component
 @RequiredArgsConstructor
 class ListTenantUsersAdapter implements ListTenantUsersPort {
