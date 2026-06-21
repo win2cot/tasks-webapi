@@ -156,11 +156,20 @@ bootBuildImage {
     // downloads BellSoft Liberica NIK 25 to compile the native image.
     environment = [
         'BP_JVM_VERSION': '25',
-        // Password$ConsoleHolder has a static final field set to System.console() at class-init time.
-        // On Java 25 that returns java.io.ProxyingConsole (new in JDK 25), which GraalVM cannot
-        // store in the image heap because ProxyingConsole defaults to run-time initialization.
-        // Deferring Password$ConsoleHolder to run time prevents the heap-object conflict.
-        'BP_NATIVE_IMAGE_BUILD_ARGUMENTS': '--initialize-at-run-time=sun.security.util.Password$ConsoleHolder'
+        // Native Image build-time flags (closed-world, cannot be toggled per environment):
+        // 1. --initialize-at-run-time: Password$ConsoleHolder has a static final field set to
+        //    System.console() at class-init time. On Java 25 that returns java.io.ProxyingConsole
+        //    (new in JDK 25), which GraalVM cannot store in the image heap because ProxyingConsole
+        //    defaults to run-time initialization. Deferring to run time prevents the heap conflict.
+        // 2. --enable-monitoring=heapdump,jfr: bundle diagnostic capabilities in the single
+        //    all-environments image (ADR-0029 §6.3, #587). Including the flags adds ~zero runtime
+        //    overhead until a heap dump (SIGUSR1/OOM) or JFR recording (JFR.start) is triggered.
+        //    Production safety is enforced by infra controls (ECS Exec disabled, no persistent
+        //    dump volume) — the flag presence is harmless without a trigger/extraction path.
+        'BP_NATIVE_IMAGE_BUILD_ARGUMENTS': [
+            '--initialize-at-run-time=sun.security.util.Password$ConsoleHolder',
+            '--enable-monitoring=heapdump,jfr'
+        ].join(' ')
     ]
 }
 
