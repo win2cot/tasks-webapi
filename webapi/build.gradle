@@ -58,6 +58,9 @@ dependencies {
     // OpenTelemetry (traces + metrics via OTLP; OFF by default — ADR-0029 §3.2)
     implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
 
+    // JDBC observation: DataSource をラップし SQL クエリ単位のスパンを生成(ADR-0029 §3.1 / §6.1)
+    implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.1'
+
     // Testcontainers
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-mysql'

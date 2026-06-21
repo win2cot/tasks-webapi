@@ -143,6 +143,7 @@ tasks-webapi は実行バイナリとして GraalVM Native Image を採用し([A
 
 - 依存: `org.springframework.boot:spring-boot-starter-opentelemetry`(`micrometer-tracing-bridge-otel` と `micrometer-registry-otlp` を同梱)。`micrometer-registry-prometheus` は削除。
 - 自動計装: HTTP サーバ、JDBC、`RestClient` / `RestClientBuilder` 等。クライアントは必ずビルダー経由で生成する(自前 `new` は trace-context 伝播が効かない)。
+  - JDBC 計装は `net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.1` を採用する。Spring Boot 4 の Micrometer Observation API と統合し、DataSource を透過ラップして `connection` / `query` / `result-set` / `commit` 単位のスパンを生成する。OTel Java Agent(バイトコード書き換え)は ADR-0008 の GraalVM Native Image 非互換制約により採用不可であるが、本ライブラリは Spring Boot Auto-configuration 経由で機能し Native Image と両立する。
 - 手動計装: 処理時間を測りたいメソッドに `@Observed(name = "...")`、引数の記録に `@SpanTag`。テナント識別子等の機微情報を span 属性に載せない(#451 整合)。
 - スレッド跨ぎ(`@Async` / `AsyncTaskExecutor`)では `ContextPropagatingTaskDecorator` を Bean 定義し trace-context を伝播させる。
 
