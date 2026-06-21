@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,6 +33,7 @@ public class ListTasksUseCase {
    * @param pageable ページング / ソート指定
    * @return ページ結果と期限切れ未完了タスク件数
    */
+  @Observed(name = "task.list")
   @Transactional(readOnly = true)
   public Result execute(
       Long userId,

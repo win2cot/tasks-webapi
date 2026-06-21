@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ public class GetTaskUseCase {
   private final StakeholderRepository stakeholderRepository;
   private final TaskAuthorizationDomainService taskAuthorizationDomainService;
 
+  @Observed(name = "task.get")
   @Transactional(readOnly = true)
   public Task execute(Long taskId, Long userId) {
     Task task =

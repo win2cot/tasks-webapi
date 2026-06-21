@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class UpdateTaskUseCase {
   private final TaskAuditDiffDomainService taskAuditDiffDomainService;
   private final AuditLogPort auditLogPort;
 
+  @Observed(name = "task.update")
   @Transactional(readOnly = false)
   public Task execute(Long taskId, Long userId, TaskPatchCommand cmd, Long ifMatchVersion) {
     Task task =

@@ -35,11 +35,22 @@ spring:
 server:
   port: 8080
 
+# Observability: OFF by default; enable per-env via environment variables / Parameter Store (ADR-0029 §3.2 / §6.2).
+# To activate:
+#   MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT=http://<collector>:4318/v1/traces
+#   MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0
+#   MANAGEMENT_OTLP_METRICS_EXPORT_URL=http://<collector>:4318/v1/metrics
+#   MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED=true
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: # not set → OTLP trace export disabled
   tracing:
     sampling:
       probability: 0
@@ -47,6 +58,7 @@ management:
     metrics:
       export:
         enabled: false
+        url: # not set → OTLP metrics export disabled
 
 logging:
   level:

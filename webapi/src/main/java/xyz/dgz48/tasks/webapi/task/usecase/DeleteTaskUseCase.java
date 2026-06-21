@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +28,7 @@ public class DeleteTaskUseCase {
   private final AuditLogPort auditLogPort;
   private final Clock clock;
 
+  @Observed(name = "task.delete")
   @Transactional
   public void execute(Long taskId, Long userId, Long ifMatchVersion) {
     Task task =

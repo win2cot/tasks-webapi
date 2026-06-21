@@ -1,5 +1,6 @@
 package xyz.dgz48.tasks.webapi.task.usecase;
 
+import io.micrometer.observation.annotation.Observed;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +42,7 @@ public class CreateTaskUseCase {
    * @param stakeholderUserIds 関係者 ID リスト(visibility=STAKEHOLDERS 時に反映)
    * @return 作成されたタスク
    */
+  @Observed(name = "task.create")
   @Transactional
   public Task execute(
       Long tenantId,
