@@ -55,3 +55,22 @@ resource "aws_cloudwatch_log_group" "keycloak" {
     Name = "/ecs/tasks-${var.env}/keycloak"
   }
 }
+
+resource "aws_cloudwatch_log_group" "adot" {
+  name              = "/ecs/tasks-${var.env}/adot"
+  retention_in_days = 7
+
+  tags = {
+    Name = "/ecs/tasks-${var.env}/adot"
+  }
+}
+
+# EMF ログから CloudWatch メトリクスが自動抽出されるロググループ(ADOT awsemf exporter)
+resource "aws_cloudwatch_log_group" "webapi_metrics" {
+  name              = "/ecs/tasks-${var.env}/webapi-metrics"
+  retention_in_days = 30
+
+  tags = {
+    Name = "/ecs/tasks-${var.env}/webapi-metrics"
+  }
+}

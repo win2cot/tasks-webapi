@@ -44,6 +44,50 @@ resource "aws_iam_role_policy" "webapi_rds_connect" {
   })
 }
 
+# ADOT Collector サイドカー用権限 (ADR-0007)
+# X-Ray OTLP エンドポイント(Application Signals)+ CloudWatch EMF(awsemf exporter)
+resource "aws_iam_role_policy" "webapi_adot" {
+  name = "tasks-${var.env}-webapi-adot"
+  role = aws_iam_role.webapi_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # X-Ray OTLP エンドポイント(POST /v1/traces)への送出
+        # otlphttp/xray exporter は X-Ray SDK を使わないため PutTelemetryRecords / GetSampling* 不要
+        # xray:PutTraceSegments は resource-level permissions 非対応のため Resource:"*"
+        Sid      = "XrayTraces"
+        Effect   = "Allow"
+        Action   = "xray:PutTraceSegments"
+        Resource = "*"
+      },
+      {
+        # awsemf exporter — EMF ログストリームへの書き込み
+        Sid    = "EmfLogStreamWrite"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = [
+          "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/ecs/tasks-${var.env}/webapi-metrics",
+          "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/ecs/tasks-${var.env}/webapi-metrics:log-stream:*",
+        ]
+      },
+      {
+        # logs:DescribeLogGroups は resource-level permissions 非対応のため Resource:"*"
+        Sid      = "EmfDescribeLogGroups"
+        Effect   = "Allow"
+        Action   = "logs:DescribeLogGroups"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
 # SSM read — Parameter Store から設定値を取得する権限
 resource "aws_iam_role_policy" "webapi_ssm" {
   name = "tasks-${var.env}-webapi-ssm"
