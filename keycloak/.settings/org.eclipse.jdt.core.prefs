@@ -1,0 +1,18 @@
+eclipse.preferences.version=1
+# Disable the IDE (Eclipse JDT) annotation-based null analysis for THIS subproject only.
+#
+# Why: keycloak/ implements Keycloak User Storage SPI interfaces (UserLookupProvider,
+# UserQueryMethodsProvider, UserRegistrationProvider, AbstractInMemoryUserAdapter, ...).
+# Those SPI types ship with NO null annotations (verified: keycloak-server-spi 26.6.3 carries
+# zero nullness annotations; nullness is documented only in Javadoc). Under the project-wide
+# JSpecify @NullMarked default, our overrides become @NonNull, and JDT's *legacy* null analysis
+# then reports "Illegal redefinition of parameter ... does not constrain this parameter" for every
+# overridden parameter. This is a false positive: JSpecify (and NullAway, our build-time SSOT for
+# null safety) correctly accept @NonNull overrides of null-unspecified supertypes.
+#
+# This specific diagnostic is hard-wired in JDT and cannot be downgraded via any problem-severity
+# key or @SuppressWarnings (verified against ecj from redhat.java 1.54.0 / JDT 3.46.0). The only
+# lever that removes it is turning the annotation null analysis off, scoped here to this boundary
+# module. webapi/ keeps full IDE null analysis (Spring 7 is JSpecify-annotated, so it is clean).
+# Null safety for keycloak/ is still enforced at build time by NullAway.
+org.eclipse.jdt.core.compiler.annotation.nullanalysis=disabled

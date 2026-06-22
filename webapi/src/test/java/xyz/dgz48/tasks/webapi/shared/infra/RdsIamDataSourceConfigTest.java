@@ -110,7 +110,7 @@ class RdsIamDataSourceConfigTest {
       setField(config, "region", region);
       return config;
     } catch (ReflectiveOperationException e) {
-      throw new AssertionError("Test setup failed", e);
+      throw new LinkageError("Test setup failed", e);
     }
   }
 

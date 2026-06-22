@@ -24,6 +24,7 @@ class NativeImageHintsConfig {
         try {
           hints.reflection().registerType(Class.forName(cls), MemberCategory.values());
         } catch (ClassNotFoundException ignored) {
+          // Class absent on this classpath; nothing to register, skip intentionally.
         }
       }
       // Flyway classpath scanner cannot enumerate directories under the native-image resource:
