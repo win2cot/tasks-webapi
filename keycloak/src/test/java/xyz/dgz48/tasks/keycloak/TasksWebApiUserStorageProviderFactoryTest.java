@@ -16,7 +16,6 @@ class TasksWebApiUserStorageProviderFactoryTest {
   }
 
   @Test
-  @SuppressWarnings("rawtypes")
   void serviceLoader_registersProvider() {
     var loader =
         ServiceLoader.load(

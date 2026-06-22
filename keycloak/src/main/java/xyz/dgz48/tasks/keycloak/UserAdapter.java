@@ -14,7 +14,7 @@ import org.keycloak.storage.adapter.AbstractInMemoryUserAdapter;
  * Email is the only writable attribute; updates are written back to {@code users.email} by the
  * Keycloak Update-Email flow (ADR-0006 §3.1).
  */
-public class UserAdapter extends AbstractInMemoryUserAdapter {
+public final class UserAdapter extends AbstractInMemoryUserAdapter {
 
   public UserAdapter(
       KeycloakSession session,
