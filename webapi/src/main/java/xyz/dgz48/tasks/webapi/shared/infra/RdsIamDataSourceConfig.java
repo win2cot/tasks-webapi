@@ -43,7 +43,7 @@ class RdsIamDataSourceConfig {
   RdsUtilities rdsUtilities() {
     return RdsUtilities.builder()
         .region(Region.of(region))
-        .credentialsProvider(DefaultCredentialsProvider.create())
+        .credentialsProvider(DefaultCredentialsProvider.builder().build())
         .build();
   }
 

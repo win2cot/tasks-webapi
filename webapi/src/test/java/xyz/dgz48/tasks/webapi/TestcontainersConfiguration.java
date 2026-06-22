@@ -8,6 +8,9 @@ import org.testcontainers.mysql.MySQLContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
+  // Spring manages this bean's lifecycle (start/stop), so the container is never explicitly closed
+  // here; suppress the false-positive resource-leak diagnostic.
+  @SuppressWarnings("resource")
   @Bean
   @ServiceConnection
   MySQLContainer mysqlContainer() {

@@ -13,9 +13,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.aot.DisabledInAotMode;
-import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mysql.MySQLContainer;
 import software.amazon.awssdk.services.rds.RdsUtilities;
 import software.amazon.awssdk.services.rds.model.GenerateAuthenticationTokenRequest;
 
@@ -50,9 +50,12 @@ import software.amazon.awssdk.services.rds.model.GenerateAuthenticationTokenRequ
 class RdsIamAuthIntegrationTest {
 
   // Use tasks_webapi / tasks_webapi so the mock token equals the actual MySQL password.
+  // @Container manages the container lifecycle (start/stop), so it is never explicitly closed here;
+  // suppress the false-positive resource-leak diagnostic.
+  @SuppressWarnings("resource")
   @Container
-  static MySQLContainer<?> mysql =
-      new MySQLContainer<>("mysql:8.4")
+  static MySQLContainer mysql =
+      new MySQLContainer("mysql:8.4")
           .withDatabaseName("tasks")
           .withUsername("tasks_webapi")
           .withPassword("tasks_webapi")
