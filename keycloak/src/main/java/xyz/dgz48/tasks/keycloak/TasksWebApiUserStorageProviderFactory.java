@@ -26,6 +26,10 @@ public class TasksWebApiUserStorageProviderFactory
   static final String CONFIG_DB_USERNAME = "dbUsername";
   static final String CONFIG_DB_PASSWORD = "dbPassword";
 
+  // Admin Console は getHelpText / 各 config プロパティの label・helpText を i18n メッセージキーとして解決する。
+  // 対応する翻訳はカスタム admin テーマ tasks-admin の message bundle(messages_ja/en.properties、#729)で定義する。
+  static final String MSG_PREFIX = PROVIDER_ID + ".";
+
   @Override
   public TasksWebApiUserStorageProvider create(KeycloakSession session, ComponentModel model) {
     UserRepository repository =
@@ -49,14 +53,11 @@ public class TasksWebApiUserStorageProviderFactory
     return PROVIDER_ID;
   }
 
-  // TODO(#729): getHelpText / 下記 getConfigProperties の label・helpText は Admin Console 上で i18n キーとして
-  // 扱われ、対応する翻訳が無ければリテラル(英語)がそのまま全ロケールで表示される。ロケール連動させるにはカスタム admin テーマの
-  // message bundle(messages_ja/en.properties)へキーと翻訳を登録する。当面は英語リテラルのまま運用し、テーマ/realm 整備
-  // (#729)で message キー化と翻訳をまとめて行う。
+  // label・helpText は tasks-admin テーマ(messages_ja/en.properties)の i18n キー。翻訳が無いロケールでは
+  // キー文字列がそのまま表示されるため、キーを追加したら必ず両 properties へ翻訳を登録する(#729)。
   @Override
   public String getHelpText() {
-    return "Federates tasks-webapi users table (read-only profile, email writable via"
-        + " Update-Email)";
+    return MSG_PREFIX + "helpText";
   }
 
   @Override
@@ -64,20 +65,20 @@ public class TasksWebApiUserStorageProviderFactory
     return ProviderConfigurationBuilder.create()
         .property()
         .name(CONFIG_JDBC_URL)
-        .label("JDBC URL")
-        .helpText("JDBC URL of the tasks-webapi database (e.g. jdbc:mysql://host:3306/tasks)")
+        .label(MSG_PREFIX + CONFIG_JDBC_URL)
+        .helpText(MSG_PREFIX + CONFIG_JDBC_URL + ".help")
         .type(ProviderConfigProperty.STRING_TYPE)
         .add()
         .property()
         .name(CONFIG_DB_USERNAME)
-        .label("DB username")
-        .helpText("Database username for the tasks-webapi users table")
+        .label(MSG_PREFIX + CONFIG_DB_USERNAME)
+        .helpText(MSG_PREFIX + CONFIG_DB_USERNAME + ".help")
         .type(ProviderConfigProperty.STRING_TYPE)
         .add()
         .property()
         .name(CONFIG_DB_PASSWORD)
-        .label("DB password")
-        .helpText("Database password for the tasks-webapi users table")
+        .label(MSG_PREFIX + CONFIG_DB_PASSWORD)
+        .helpText(MSG_PREFIX + CONFIG_DB_PASSWORD + ".help")
         .type(ProviderConfigProperty.PASSWORD)
         .secret(true)
         .add()
