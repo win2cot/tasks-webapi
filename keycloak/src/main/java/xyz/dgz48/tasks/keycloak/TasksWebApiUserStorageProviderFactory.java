@@ -49,6 +49,10 @@ public class TasksWebApiUserStorageProviderFactory
     return PROVIDER_ID;
   }
 
+  // TODO(#729): getHelpText / 下記 getConfigProperties の label・helpText は Admin Console 上で i18n キーとして
+  // 扱われ、対応する翻訳が無ければリテラル(英語)がそのまま全ロケールで表示される。ロケール連動させるにはカスタム admin テーマの
+  // message bundle(messages_ja/en.properties)へキーと翻訳を登録する。当面は英語リテラルのまま運用し、テーマ/realm 整備
+  // (#729)で message キー化と翻訳をまとめて行う。
   @Override
   public String getHelpText() {
     return "Federates tasks-webapi users table (read-only profile, email writable via"
