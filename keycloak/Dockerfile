@@ -43,6 +43,12 @@ COPY --from=kc-builder /opt/keycloak/ /opt/keycloak/
 # overriding this layer. See docs/dev/keycloak-realm-import.md for full import procedure.
 COPY keycloak/realm-export/ /opt/keycloak/data/import/
 
+# Bake the custom admin theme (tasks-admin) referenced by the realm's adminTheme.
+# It carries the i18n message bundle for the User Storage SPI config labels and the
+# Custom User Profile attribute (full_name_kana) display names (#729). Themes are
+# read from /opt/keycloak/themes/ at startup, so no kc.sh build step is required.
+COPY keycloak/themes/ /opt/keycloak/themes/
+
 # Runtime configuration is injected via environment variables at container start.
 # Production service credentials (DB password, admin password) must never be baked
 # into the image — they are sourced from AWS Parameter Store / Secrets Manager at runtime.
