@@ -46,9 +46,9 @@ ADR-0029 §6.3(2026-06-22 #587 改訂)により、`--enable-monitoring=heapdump,
 
 | 制御 | dev(ソークテスト時) | prd |
 |---|---|---|
-| ECS Exec | **有効化**(`--enable-execute-command`) | 無効(既定) |
-| ヘルパーサイドカー | 追加する | 追加しない |
-| ダンプ出力先の永続ボリューム | マウントしない(ephemeral で可) | マウントしない |
+| ECS Exec | **使わない**(command 駆動ダンプ。後述の理由で exec は pidMode 共有下で不可) | 無効(既定) |
+| ヘルパーサイドカー | 追加する(自律スクリプトでダンプ取得) | 追加しない |
+| ダンプ出力先 | 共有ボリューム `/dump`(ephemeral) | マウントしない |
 
 ---
 
@@ -260,137 +260,133 @@ jcmd ${WEBAPI_PID} GC.heap_dump $(pwd)/heap-$(date +%Y%m%d-%H%M).hprof
 # Reports > Leak Suspects で確定診断
 ```
 
-### Native Image モード(AWS dev) — distroless 制約と対処
+### Native Image モード(AWS dev) — command 駆動ダンプ(ECS Exec を使わない)
 
-> **制約**: run image(`ubuntu-noble-run-tiny`)は scratch + 8 deb のみの distroless 構成で、
-> シェル・`kill` コマンドが存在しない。ECS Exec でシェルに入れないため、
-> SIGUSR1 を直接送る通常手順は使用できない。
+> **なぜ ECS Exec を使わないか(2026-06-22 実機検証で確定)**:
+> webapi の run image は distroless 同等(shell なし)のため、ヒープダンプの SIGUSR1 は
+> **別コンテナ(helper)から `pidMode=task` で PID 名前空間を共有して送る**必要がある。
+> ところが **ECS Exec は共有 PID 名前空間下では 1 タスクにつき 1 コンテナにしか接続できない**
+> (AWS documented な制約)。実際 dev で helper へ `execute-command` すると IAM・SG・NAT・
+> Platform Version すべて正常でも `TargetNotConnectedException` になり接続できなかった。
+> したがって **exec で手動 kill するのではなく、helper の `command` 自体にシグナル送出と
+> ダンプ確認を仕込み、結果を CloudWatch Logs に出して証跡化する**(exec を完全に回避)。
+> この方式なら ECS Exec も `ssmmessages` 一時 IAM も不要。
 
-#### 対処 A: ヘルパーサイドカーを使った診断タスク定義(推奨)
+#### 実測で確定した要件(2026-06-22 dev 検証)
 
-PID 名前空間をコンテナ間で共有し、`busybox` サイドカーから SIGUSR1 を送る。
+実際に dev で end-to-end 成功した構成。以下が**揃って初めて**ダンプが取れる。
+
+| 要件 | 理由(実測) |
+|---|---|
+| webapi に `command: ["-XX:HeapDumpPath=/dump"]` | 既定の出力先は CWD `/workspace` だが **runtime ユーザーが書けず IOException**(`Could not create the heap dump file`)。書き込み可能な共有ボリュームへ向ける |
+| webapi に `/dump` 共有ボリュームをマウント | ダンプを helper と共有して回収するため |
+| helper に `SYS_PTRACE` capability | 無いと別コンテナの `/proc/<pid>/cwd` を辿れない(Fargate は helper への SYS_PTRACE 付与を許可) |
+| helper が起動直後に `chmod 777 /dump` | ephemeral ボリュームは root:root 755 で、非 root の webapi が書けないため world-writable 化 |
+| `pidMode = task` | helper から webapi へシグナルを送るため PID 名前空間を共有 |
+| native プロセスの cmdline = `./xyz.dgz48.tasks.webapi.TasksWebapiApplication` | helper の PID 特定パターン(`*TasksWebapi*` / `*webapi*` でマッチ) |
+
+#### 診断タスク定義(helper が自律的にダンプ取得 → S3 退避)
+
+**手順 1**: helper 自律スクリプトを `/tmp/helper.sh` に作成する
+(chmod → 待機 → PID 特定 → SIGUSR1 を 1 発 → `/dump` 確認 → S3 退避)。
+
+```sh
+# /tmp/helper.sh
+set -e
+echo "[helper] chmod 777 /dump"; chmod 777 /dump 2>&1 || true
+echo "[helper] waiting for webapi..."; sleep 75
+SELF=$$; PID=""
+for p in $(ls /proc 2>/dev/null | grep -E '^[0-9]+$'); do
+  [ "$p" = "$SELF" ] && continue
+  cmd=$(tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null || true)
+  case "$cmd" in *TasksWebapi*|*webapi*) PID="$p"; echo "[helper] webapi PID=$p"; break;; esac
+done
+[ -z "$PID" ] && { echo "[helper] PID 特定失敗"; sleep 3600; exit 0; }
+# SIGUSR1 は 1 発のみ(G1 GC の 2 回目 SIGUSR1 segfault 報告 oracle/graal#9894 回避)
+echo "[helper] SIGUSR1 送出"; kill -USR1 "$PID"; sleep 25
+F=$(ls /dump/*.hprof 2>/dev/null | head -1)
+[ -z "$F" ] && { echo "[helper] dump 未生成"; sleep 3600; exit 0; }
+echo "[helper] dump: $(ls -lh "$F" | awk '{print $5, $NF}')"
+command -v aws >/dev/null 2>&1 || dnf install -y awscli >/dev/null 2>&1 || true
+aws s3 cp "$F" "s3://tasks-dev-frontend/diag/$(basename "$F")" --region ap-northeast-1 \
+  && echo "[helper] UPLOADED" || echo "[helper] upload 失敗"
+echo "[helper] DONE"; sleep 3600
+```
+
+**手順 2**: クリーン TD をベースに診断 TD を組み立てて登録・デプロイする。
 
 ```bash
-# 現在の Task Definition をベースに診断用に変更する
-TASK_DEF=$(aws ecs describe-task-definition \
-  --task-definition tasks-dev-webapi \
-  --query taskDefinition --output json)
+# クリーンな直近リリース revision をベースにする(例: tasks-dev-webapi:23 = v0.1.21)
+aws ecs describe-task-definition --task-definition tasks-dev-webapi:23 \
+  --region ap-northeast-1 --query taskDefinition --output json > /tmp/td_base.json
 
-# サイドカーを追加し pidMode=task を設定した診断用 Task Definition を登録
-DIAG_TASK_DEF=$(echo "${TASK_DEF}" | jq '
+# webapi に -XX:HeapDumpPath=/dump + /dump マウント、helper(SYS_PTRACE 付き)を追加
+jq --rawfile script /tmp/helper.sh '
   .pidMode = "task" |
+  .volumes = ((.volumes // []) + [{"name":"dump"}]) |
+  (.containerDefinitions[] | select(.name=="webapi") | .mountPoints) = [{"sourceVolume":"dump","containerPath":"/dump"}] |
+  (.containerDefinitions[] | select(.name=="webapi") | .command) = ["-XX:HeapDumpPath=/dump"] |
   .containerDefinitions += [{
-    "name": "helper",
-    "image": "busybox:stable",
-    "essential": false,
-    "command": ["sh", "-c", "tail -f /dev/null"],
-    "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
-        "awslogs-group": "/ecs/tasks-dev/webapi",
-        "awslogs-region": "ap-northeast-1",
-        "awslogs-stream-prefix": "helper"
-      }
-    }
+    "name":"helper","image":"public.ecr.aws/amazonlinux/amazonlinux:2023","essential":false,
+    "command":["sh","-c",$script],
+    "linuxParameters":{"capabilities":{"add":["SYS_PTRACE"]}},
+    "mountPoints":[{"sourceVolume":"dump","containerPath":"/dump"}],
+    "logConfiguration":{"logDriver":"awslogs","options":{
+      "awslogs-group":"/ecs/tasks-dev/webapi","awslogs-region":"ap-northeast-1","awslogs-stream-prefix":"helper"}}
   }] |
-  del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-      .compatibilities, .registeredAt, .registeredBy)')
+  del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
+' /tmp/td_base.json > /tmp/td_diag.json
 
-DIAG_REVISION=$(aws ecs register-task-definition \
-  --cli-input-json "${DIAG_TASK_DEF}" \
-  --query 'taskDefinition.taskDefinitionArn' --output text)
+DIAG_ARN=$(aws ecs register-task-definition --region ap-northeast-1 \
+  --cli-input-json file:///tmp/td_diag.json --query 'taskDefinition.taskDefinitionArn' --output text)
 
-# enable_execute_command を有効にしてサービスを更新
-aws ecs update-service \
-  --cluster tasks-dev-cluster \
-  --service tasks-dev-webapi \
-  --task-definition ${DIAG_REVISION} \
-  --enable-execute-command \
-  --force-new-deployment
+# S3 退避用の一時 IAM(Task Role に s3:PutObject 限定で付与。検証後に撤去)
+aws iam put-role-policy --role-name tasks-dev-webapi-task-role --policy-name soak-dump-s3-temp \
+  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:PutObject","Resource":"arn:aws:s3:::tasks-dev-frontend/diag/*"}]}'
 
-echo "diagnostic task definition deployed: ${DIAG_REVISION}"
+# 診断 TD へ切替(ECS Exec は使わないので有効化しない)
+aws ecs update-service --cluster tasks-dev-cluster --service tasks-dev-webapi \
+  --task-definition "${DIAG_ARN}" --desired-count 1 --force-new-deployment --region ap-northeast-1
 ```
 
-> **IAM 権限(一時付与・Terraform には残さない)**: ECS Exec は dev でも常時開かない方針のため、
-> 検証中だけ Task Role にインラインポリシーを**ローカルから一時付与**し、終了後に撤去する
-> (Terraform 管理外のため state drift も発生しない)。本番では付与しない。
->
-> ```bash
-> TASK_ROLE=tasks-dev-webapi-task-role
->
-> # 一時付与
-> aws iam put-role-policy \
->   --role-name ${TASK_ROLE} \
->   --policy-name soak-ecs-exec-temp \
->   --policy-document '{
->     "Version": "2012-10-17",
->     "Statement": [{
->       "Sid": "EcsExecSsmMessages",
->       "Effect": "Allow",
->       "Action": [
->         "ssmmessages:CreateControlChannel",
->         "ssmmessages:CreateDataChannel",
->         "ssmmessages:OpenControlChannel",
->         "ssmmessages:OpenDataChannel"
->       ],
->       "Resource": "*"
->     }]
->   }'
-> ```
->
-> 撤去は「[ソークテスト後の後片付け](#ソークテスト後の後片付け)」を参照。
+> **前提**: 稼働イメージが `--enable-monitoring=heapdump` を含むこと(本リポジトリは [build.gradle](../../webapi/build.gradle) で常時付与済み)。
+> 含まないイメージでは SIGUSR1 を送っても `dumpHeap` が起動しない。
 
-タスクが起動したら `helper` サイドカーから SIGUSR1 を送る:
+#### ダンプ生成・取り出しの確認(CloudWatch Logs + S3)
 
 ```bash
-TASK_ARN=$(aws ecs list-tasks \
-  --cluster tasks-dev-cluster \
-  --service-name tasks-dev-webapi \
-  --query 'taskArns[0]' --output text)
+# helper の進捗を確認(SIGUSR1 → dump サイズ → UPLOADED)
+aws logs tail /ecs/tasks-dev/webapi --log-stream-name-prefix helper \
+  --since 10m --follow --region ap-northeast-1
 
-# helper サイドカーから webapi プロセス(PID=1)に SIGUSR1 を送信
-# → --enable-monitoring=heapdump により /tmp/heapdump-<pid>.hprof が生成される
-aws ecs execute-command \
-  --cluster tasks-dev-cluster \
-  --task ${TASK_ARN} \
-  --container helper \
-  --interactive \
-  --command "kill -USR1 1"
+# S3 からローカルへ取得し HPROF フォーマットを検証(Eclipse MAT で開ける)
+aws s3 cp s3://tasks-dev-frontend/diag/<dump>.hprof ./native-dump.hprof --region ap-northeast-1
+head -c 13 ./native-dump.hprof   # => "JAVA PROFILE 1.0.2" なら正当(MAT 解析可)
 ```
 
-#### 対処 B: OOM を意図的に発生させてダンプを取得
+`[helper] UPLOADED` が出て、ダウンロードした hprof が `JAVA PROFILE 1.0.x` で始まれば
+**Native でヒープダンプ取得 = 条件 1 達成**。Eclipse MAT の Leak Suspects / dominator tree で確定診断する。
 
-`--enable-monitoring=heapdump` は OOM 時にも自動でヒープダンプを書き出す。
-リーク確認済みの場合は負荷を増やして OOM を誘発し、ダンプを取得する方法もある。
-ただしサービス断が発生するため、本番同等トラフィックがある場合は使用しない。
+#### ダンプの取り出し(任意・S3 経由)
 
-#### ヒープダンプの取り出し(共有ボリューム必須)
+確定診断(Eclipse MAT)のためローカルへ持ち出す場合は、helper(amazonlinux:2023 は dnf で aws-cli 導入可)から S3 へ。
+S3 書き込みには Task Role への一時 IAM(`s3:PutObject` 対象バケット限定)が別途必要。
+helper スクリプト末尾に `dnf install -y awscli && aws s3 cp /dump/<file>.hprof s3://<bucket>/...` を足す。
 
-> **重要**: `pidMode=task` はプロセス名前空間を共有するだけで、**コンテナ間のファイルシステムは共有されない**。
-> webapi が書いたダンプを helper から読むには、両コンテナに**共有ボリュームをマウント**する必要がある。
-> 上記「対処 A」の診断 task definition に以下を追加する(Fargate の ephemeral ボリューム)。
->
-> ```jsonc
-> // DIAG_TASK_DEF の jq に追記:
-> //   .volumes += [{"name": "dump"}] |
-> //   (.containerDefinitions[] | select(.name=="webapi") | .mountPoints) += [{"sourceVolume":"dump","containerPath":"/dump"}] |
-> //   (.containerDefinitions[] | select(.name=="helper") | .mountPoints) += [{"sourceVolume":"dump","containerPath":"/dump"}]
-> ```
->
-> ダンプの出力先(SIGUSR1 トリガ時)は GraalVM のデフォルトで対象プロセスの作業ディレクトリになる。
-> **共有ボリューム `/dump` に確実に書かせる方法(作業ディレクトリ指定 or `-XX:HeapDumpPath` 相当)は
-> 初回の AWS dev 検証で実測して確定する**(#587 の検証タスク)。確定後、本節を実コマンドで更新する。
+#### 代替: OOM 起因の自動ダンプ
 
-```bash
-# 共有ボリュームマウント後、helper から確認(パスは実測で確定)
-aws ecs execute-command \
-  --cluster tasks-dev-cluster --task ${TASK_ARN} --container helper \
-  --interactive --command "ls -lh /dump/"
+`--enable-monitoring=heapdump` は OOM 時にも自動でダンプを書く。リーク確証後に負荷で OOM を
+誘発する手もあるが、サービス断が発生するため通常は上記 command 駆動を使う。
 
-# 取り出しは helper(aws-cli 同梱イメージ)から S3 へ:
-#   helper image を amazonlinux:2023 にし `aws s3 cp /dump/<file>.hprof s3://...` を実行
-#   busybox には aws-cli が無いため、取り出しが必要なら amazonlinux:2023 を使う
-```
+#### 補足: どうしても ECS Exec をデバッグしたい場合
+
+`pidMode=task` を**外した**通常タスクなら ECS Exec は 1 コンテナに接続できる(ただし distroless の
+webapi には shell が無いため helper 等のサイドカーが必要で、その場合 pidMode 共有が無く webapi へ
+シグナルを送れない=ダンプ用途には使えない)。exec の接続失敗自体を切り分けるには:
+
+- クラスタ/サービスの `executeCommandConfiguration.logConfiguration` で SSM agent ログを
+  CloudWatch/S3 に出すと、コンテナに入らず接続失敗理由を読める。
+- NACL のエフェメラルポート(1024-65535)の inbound 戻りが塞がれていないか(SG は stateful だが NACL は stateless)。
 
 ---
 
@@ -417,33 +413,37 @@ ls -lh *.hprof *.jfr soak-jvm-*.csv 2>/dev/null
 
 ### Native Image モード
 
-検証で開いた経路をすべて閉じる(helper サイドカー除去・ECS Exec 無効化・一時 IAM 撤去)。
+検証で投入した診断構成を撤去する(helper サイドカー除去・クリーン TD 復帰・手動起動分の停止)。
 
 ```bash
-# 1. 通常構成へ戻す + ECS Exec を無効化
-#    helper サイドカー無し / pidMode 無しの通常イメージへ。最も確実なのは通常デプロイの再実行:
-#      gh workflow run deploy.yml -f version=vX.Y.Z -f environment=dev
-#    deploy.yml は診断 revision より高い新 revision を登録するため、ADR-0028 の
-#    max(revision) ロジックでも通常構成が選択される。
-#    ECS Exec も明示的に無効化する:
+# 1. 通常構成(helper / pidMode なしのクリーン TD)へ戻す。
+#    クリーンな直近リリース revision に re-point する(例: tasks-dev-webapi:23 = v0.1.21)。
+#    revision 番号は `aws ecs list-task-definitions --family-prefix tasks-dev-webapi` で確認。
+CLEAN_REV=tasks-dev-webapi:23   # ← 実際のクリーン revision に置換
 aws ecs update-service \
-  --cluster tasks-dev-cluster \
-  --service tasks-dev-webapi \
-  --no-enable-execute-command \
-  --force-new-deployment
+  --cluster tasks-dev-cluster --service tasks-dev-webapi \
+  --task-definition "${CLEAN_REV}" \
+  --disable-execute-command \
+  --force-new-deployment \
+  --region ap-northeast-1
 
-# 2. 一時付与した ECS Exec 用 IAM ポリシーを撤去
-aws iam delete-role-policy \
-  --role-name tasks-dev-webapi-task-role \
-  --policy-name soak-ecs-exec-temp
+# 2. off-hours に手動起動していた場合はコスト最適化状態へ戻す(スケジューラ運用に復帰)
+aws ecs update-service --cluster tasks-dev-cluster --service tasks-dev-webapi \
+  --desired-count 0 --region ap-northeast-1            # 検証で手動起動した場合のみ
+aws rds stop-db-instance --db-instance-identifier tasks-dev-mysql --region ap-northeast-1
 
-# 3. 撤去確認(soak-ecs-exec-temp が出ないこと)
-aws iam list-role-policies --role-name tasks-dev-webapi-task-role
+# 3. S3 退避用の一時 IAM(s3:PutObject)を撤去
+aws iam delete-role-policy --role-name tasks-dev-webapi-task-role --policy-name soak-dump-s3-temp
+aws iam list-role-policies --role-name tasks-dev-webapi-task-role   # soak-* が出ないこと
+
+# 4. S3 に退避したダンプを削除(ローカルへ取得済みなら)
+aws s3 rm s3://tasks-dev-frontend/diag/<dump>.hprof --region ap-northeast-1
 ```
 
-> **注**: helper サイドカー入りの診断 task definition revision は登録されたまま残るが、
-> サービスが参照していなければ無害。気になる場合は `aws ecs deregister-task-definition` で
-> 当該 revision を無効化する。
+> **注1**: command 駆動方式では ECS Exec も `ssmmessages` 一時 IAM も使わない。撤去対象は
+> S3 退避用の `s3:PutObject` 一時ポリシー(`soak-dump-s3-temp`)のみ。
+> **注2**: helper サイドカー入りの診断 task definition revision は登録されたまま残るが、
+> サービスが参照していなければ無害。気になる場合は `aws ecs deregister-task-definition` で無効化する。
 
 ---
 
