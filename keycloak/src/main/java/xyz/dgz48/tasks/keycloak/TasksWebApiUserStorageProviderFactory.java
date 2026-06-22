@@ -11,12 +11,11 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.provider.ProviderConfigurationBuilder;
 
 /**
- * Registers {@link TasksWebApiUserStorageProvider} as a Keycloak User Federation component.
+ * {@link TasksWebApiUserStorageProvider} を Keycloak の User Federation コンポーネントとして登録する。
  *
- * <p>Registered via {@code META-INF/services/org.keycloak.component.ComponentFactory}. The JDBC
- * connection to the tasks-webapi {@code users} database is supplied per-component through the
- * config properties below (set when the federation provider is created in the realm — realm-side
- * wiring is a separate sub-issue).
+ * <p>{@code META-INF/services/org.keycloak.component.ComponentFactory} 経由で登録される。tasks-webapi の
+ * {@code users} データベースへの JDBC 接続は、下記の config プロパティでコンポーネントごとに与える(realm で federation provider
+ * を作成する際に設定する。 realm 側の配線は別 sub-issue)。
  */
 public class TasksWebApiUserStorageProviderFactory
     implements ComponentFactory<TasksWebApiUserStorageProvider, TasksWebApiUserStorageProvider> {

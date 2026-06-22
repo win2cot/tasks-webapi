@@ -13,27 +13,24 @@ import org.jspecify.annotations.Nullable;
 import org.keycloak.models.ModelException;
 
 /**
- * JDBC data-access for the tasks-webapi {@code users} table (ADR-0006 §3.5).
+ * tasks-webapi の {@code users} テーブルへの JDBC データアクセス(ADR-0006 §3.5)。
  *
- * <p>The SPI federates {@code users} as a read-only profile directory; reads always filter {@code
- * deleted_at IS NULL} so anonymized rows (§3.4) are never resolved (authentication for a deleted
- * user is therefore refused). Per the {@code NO_CACHE} cache policy each operation hits the DB
- * directly. A single {@link Connection} is opened lazily and reused for the lifetime of the owning
- * provider instance (one Keycloak request), then closed in {@link #close()}.
+ * <p>SPI は {@code users} を read-only の profile ディレクトリとして federate する。read は常に {@code deleted_at IS
+ * NULL} で絞るため、匿名化済み行(§3.4)は解決されない(=削除済み user の認証は拒否される)。{@code NO_CACHE} 方針に従い、各操作は都度 DB を hit
+ * する。{@link Connection} は遅延生成し、所有元 provider インスタンスの生存期間(Keycloak の 1 リクエスト)中だけ再利用したのち {@link
+ * #close()} で破棄する。
  *
- * <p>Writes are limited to ADR-0006 §3.1's writable scope: {@code email} write-back (Update-Email
- * reach verification), {@code full_name_kana} / {@code department_name} via the Custom User Profile
- * attribute path (§3.1 Console-create), the {@code addUser} insert (admin / recovery), and the
- * {@code removeUser} anonymization (§3.4). All updates use optimistic locking on the {@code
- * version} column (JPA {@code @Version} equivalent); a lost update surfaces as a {@link
- * ModelException}.
+ * <p>write は ADR-0006 §3.1 の writable 範囲に限定する: {@code email} の書き戻し(Update-Email の到達検証)、Custom User
+ * Profile attribute 経路での {@code full_name_kana} / {@code department_name}(§3.1 Console 作成)、{@code
+ * addUser} の insert(admin / リカバリ)、{@code removeUser} の匿名化(§3.4)。すべての update は {@code version} 列(JPA
+ * {@code @Version} 相当)で楽観排他し、lost update は {@link ModelException} として表面化する。
  */
 final class UserRepository implements AutoCloseable {
 
   /**
-   * Immutable carrier for a non-deleted {@code users} row.
+   * 削除されていない {@code users} 行の不変キャリア。
    *
-   * @param departmentName nullable per the {@code users.department_name} schema
+   * @param departmentName {@code users.department_name} スキーマに合わせて null 許容
    */
   record UserRow(
       long id,
@@ -60,7 +57,7 @@ final class UserRepository implements AutoCloseable {
     this.password = password;
   }
 
-  // --- reads (deleted_at IS NULL only) ---
+  // --- read(deleted_at IS NULL のみ) ---
 
   Optional<UserRow> findById(long id) {
     String sql = "SELECT " + SELECT_COLUMNS + " FROM users WHERE id = ? AND deleted_at IS NULL";
@@ -83,9 +80,8 @@ final class UserRepository implements AutoCloseable {
   }
 
   /**
-   * Paginated search for the Admin Console user list. A blank or {@code "*"} term returns all
-   * non-deleted users; otherwise matches {@code email} or {@code full_name} (case-insensitive
-   * substring).
+   * Admin Console の user 一覧向けページング検索。空文字または {@code "*"} の場合は削除されていない全 user を返す。それ以外は {@code email}
+   * または {@code full_name} の部分一致(大文字小文字区別なし)。
    */
   List<UserRow> search(@Nullable String term, int firstResult, int maxResults) {
     boolean matchAll = term == null || term.isBlank() || "*".equals(term);
@@ -128,15 +124,14 @@ final class UserRepository implements AutoCloseable {
     }
   }
 
-  // --- writes ---
+  // --- write ---
 
   /**
-   * Inserts a tenant-unassigned row for the admin / recovery create path (ADR-0006 §3.1). {@code
-   * full_name_kana} starts blank and is filled via the Custom User Profile attribute write-back;
-   * {@code oidc_sub} gets a unique {@code pending:} placeholder until first-login correlation
-   * (§3.2) assigns the real Keycloak {@code sub}.
+   * admin / リカバリの作成経路向けに tenant 未所属の行を insert する(ADR-0006 §3.1)。{@code full_name_kana} は空で開始し
+   * Custom User Profile attribute の書き戻しで埋める。{@code oidc_sub} は初回ログインの correlation(§3.2)が本物の
+   * Keycloak {@code sub} を割り当てるまで、一意な {@code pending:} placeholder を入れておく。
    *
-   * @return the inserted row (re-read to obtain the generated id and version)
+   * @return insert した行(生成 id と version を取得するため再 read する)
    */
   UserRow insert(String email) {
     String sql =
@@ -161,17 +156,17 @@ final class UserRepository implements AutoCloseable {
     }
   }
 
-  /** Email write-back with optimistic lock (ADR-0006 §3.4); returns the new version. */
+  /** email の書き戻し(楽観排他、ADR-0006 §3.4)。更新後の version を返す。 */
   long updateEmail(long id, String email, long expectedVersion) {
     return updateColumn("email", email, id, expectedVersion);
   }
 
-  /** {@code full_name_kana} write-back (Custom User Profile path); returns the new version. */
+  /** {@code full_name_kana} の書き戻し(Custom User Profile 経路)。更新後の version を返す。 */
   long updateFullNameKana(long id, String value, long expectedVersion) {
     return updateColumn("full_name_kana", value, id, expectedVersion);
   }
 
-  /** {@code department_name} write-back (nullable); returns the new version. */
+  /** {@code department_name} の書き戻し(null 許容)。更新後の version を返す。 */
   long updateDepartmentName(long id, @Nullable String value, long expectedVersion) {
     return updateColumn("department_name", value, id, expectedVersion);
   }
@@ -202,15 +197,14 @@ final class UserRepository implements AutoCloseable {
   }
 
   /**
-   * Logical-delete + PII anonymization (ADR-0006 §3.4 steps 1-7), mirroring webapi's {@code
-   * UserAnonymizationDomainService} / {@code User#anonymize}. The cross-module boundary (the
-   * keycloak SPI plugin builds without the webapi project, see {@code keycloak/Dockerfile})
-   * prevents reusing that domain service directly, so the identical placeholder logic is applied
-   * here in one SQL statement. Uses the DB clock ({@code NOW()}) for {@code deleted_at} to avoid an
-   * ambient time-zone. Idempotent: re-deleting an already-anonymized row is a no-op.
+   * 論理削除 + 個人情報匿名化(ADR-0006 §3.4 step 1〜7)。webapi の {@code UserAnonymizationDomainService} / {@code
+   * User#anonymize} と同一ロジック。モジュール境界(keycloak SPI プラグインは webapi プロジェクト無しでビルドされる。{@code
+   * keycloak/Dockerfile} 参照)のためその domain service を直接再利用できないので、同一の placeholder ロジックをここで 1 つの SQL
+   * として適用する。{@code deleted_at} は ambient なタイムゾーンを避けるため DB クロック({@code NOW()})を使う。冪等: 匿名化済み行の再削除は
+   * no-op。
    *
-   * <p>TODO(#144): step 8 — record an {@code audit_logs} {@code action='ANONYMIZE'} entry (deferred
-   * here exactly as in {@code UserAnonymizationDomainService}, pending the auditing mechanism).
+   * <p>TODO(#144): step 8 — {@code audit_logs} に {@code action='ANONYMIZE'} を記録する(監査機構の整備待ちで、{@code
+   * UserAnonymizationDomainService} と同様にここでも保留)。
    */
   void anonymize(long id) {
     String sql =
@@ -230,7 +224,7 @@ final class UserRepository implements AutoCloseable {
     }
   }
 
-  // --- helpers ---
+  // --- ヘルパー ---
 
   private Connection connection() {
     Connection c = connection;
@@ -270,7 +264,7 @@ final class UserRepository implements AutoCloseable {
       try {
         c.close();
       } catch (SQLException e) {
-        // best-effort close; nothing actionable on a failed close.
+        // close 失敗時に取れる対処はないためベストエフォートで握りつぶす。
       } finally {
         connection = null;
       }

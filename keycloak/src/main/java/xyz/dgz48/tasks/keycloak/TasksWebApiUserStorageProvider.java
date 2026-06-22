@@ -17,17 +17,15 @@ import org.keycloak.storage.user.UserQueryProvider;
 import org.keycloak.storage.user.UserRegistrationProvider;
 
 /**
- * Keycloak User Storage provider (ADR-0006).
+ * Keycloak User Storage provider(ADR-0006)。
  *
- * <p>Federates the tasks-webapi {@code users} table as a read-only profile directory. Email is the
- * only writable profile attribute (via Keycloak Update-Email); {@code full_name_kana} / {@code
- * department_name} are writable solely through the Custom User Profile attribute path on the admin
- * / recovery create flow (§3.1). Credentials and MFA are owned by Keycloak's native store, so
- * {@code CredentialInputValidator} is intentionally not implemented (§3.3).
+ * <p>tasks-webapi の {@code users} テーブルを read-only の profile ディレクトリとして federate する。writable な
+ * profile 属性は email のみ(Keycloak Update-Email 経由)。{@code full_name_kana} / {@code department_name} は
+ * admin / リカバリの作成フローにおける Custom User Profile attribute 経路でのみ writable(§3.1)。資格情報・MFA は Keycloak の
+ * native store が所有するため、{@code CredentialInputValidator} は意図的に実装しない(§3.3)。
  *
- * <p>JDBC access goes through a per-provider {@link UserRepository}; the connection is configured
- * by the federation component (see {@link TasksWebApiUserStorageProviderFactory}) and closed in
- * {@link #close()}.
+ * <p>JDBC アクセスは provider ごとの {@link UserRepository} を経由する。接続は federation コンポーネント({@link
+ * TasksWebApiUserStorageProviderFactory} 参照)で設定し、{@link #close()} で破棄する。
  */
 public class TasksWebApiUserStorageProvider
     implements Provider, UserLookupProvider, UserQueryProvider, UserRegistrationProvider {
@@ -50,7 +48,7 @@ public class TasksWebApiUserStorageProvider
     repository.close();
   }
 
-  // --- UserLookupProvider (read-only federation) ---
+  // --- UserLookupProvider(read-only federation) ---
 
   @Override
   public @Nullable UserModel getUserById(RealmModel realm, String id) {
@@ -65,7 +63,7 @@ public class TasksWebApiUserStorageProvider
 
   @Override
   public @Nullable UserModel getUserByUsername(RealmModel realm, String username) {
-    // email is the login-ID in Keycloak (username == email per ADR-0006 §3.1)
+    // Keycloak では email が login-ID(ADR-0006 §3.1 より username == email)
     return repository.findByEmail(username).map(row -> adapt(realm, row)).orElse(null);
   }
 
@@ -74,7 +72,7 @@ public class TasksWebApiUserStorageProvider
     return repository.findByEmail(email).map(row -> adapt(realm, row)).orElse(null);
   }
 
-  // --- UserQueryProvider (read-only) ---
+  // --- UserQueryProvider(read-only) ---
 
   @Override
   public Stream<UserModel> searchForUserStream(
@@ -106,32 +104,31 @@ public class TasksWebApiUserStorageProvider
       GroupModel group,
       @Nullable Integer firstResult,
       @Nullable Integer maxResults) {
-    // Group membership is not federated; the SPI returns only users attributes (ADR-0006 §3.7).
+    // group membership は federate しない。SPI は users 属性のみを返す(ADR-0006 §3.7)。
     return Stream.empty();
   }
 
   @Override
   public Stream<UserModel> searchForUserByUserAttributeStream(
       RealmModel realm, String attrName, String attrValue) {
-    // Custom attribute search is not federated; users is keyed by id / email only.
+    // カスタム属性検索は federate しない。users は id / email のみで引く。
     return Stream.empty();
   }
 
-  // --- UserRegistrationProvider (admin / disaster-recovery path only; main path is tasks API) ---
+  // --- UserRegistrationProvider(admin / 障害時リカバリ経路のみ。主経路は tasks API) ---
 
   @Override
   public UserModel addUser(RealmModel realm, String username) {
-    // Admin Console / recovery path (ADR-0006 §3.1): insert a tenant-unassigned users row.
-    // username is the email/login-ID; full_name_kana and other Custom User Profile attributes are
-    // written back afterwards via UserAdapter#setSingleAttribute. Tenant assignment is NOT done
-    // here.
+    // Admin Console / リカバリ経路(ADR-0006 §3.1): tenant 未所属の users 行を insert する。
+    // username は email/login-ID。full_name_kana 等の Custom User Profile attribute は後続の
+    // UserAdapter#setSingleAttribute で書き戻す。tenant 割当てはここでは行わない。
     return adapt(realm, repository.insert(username));
   }
 
   @Override
   public boolean removeUser(RealmModel realm, UserModel user) {
-    // Convert delete to logical-delete + anonymization (ADR-0006 §3.4) and return true so Keycloak
-    // performs its standard cleanup (credentials / sessions). No-op if already anonymized.
+    // delete を論理削除 + 匿名化(ADR-0006 §3.4)に変換し、Keycloak 標準の cleanup(資格情報 / セッション)に
+    // 委ねるため true を返す。匿名化済みなら no-op。
     long userId;
     try {
       userId = Long.parseLong(StorageId.externalId(user.getId()));
