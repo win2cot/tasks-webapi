@@ -238,6 +238,10 @@ final class UserRepository implements AutoCloseable {
 
   // --- ヘルパー ---
 
+  // スレッド安全性: 本インスタンスは KeycloakSession ごとに生成され(factory#create 参照)、
+  // KeycloakSession と provider は 1 リクエスト=1 スレッドに閉じる(JDBC Connection 自体が非スレッドセーフ
+  // なため Keycloak がそう保証する)。複数スレッドからの同時アクセスは発生しないため、この遅延生成に
+  // 同期や volatile は不要。
   private Connection connection() {
     Connection c = connection;
     if (c == null) {
