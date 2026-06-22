@@ -171,6 +171,9 @@ final class UserRepository implements AutoCloseable {
     return updateColumn("department_name", value, id, expectedVersion);
   }
 
+  // SQL インジェクション不変条件: 値(value/id/expectedVersion)は全て ? でバインドする。識別子 column のみ SQL 文字列へ連結するが、
+  // 呼び出し元は本クラス内の updateEmail/updateFullNameKana/updateDepartmentName のみで、渡る値は固定リテラル
+  // ("email"/"full_name_kana"/"department_name")に限られる。ユーザー入力は column へ流入しない。
   private long updateColumn(String column, @Nullable String value, long id, long expectedVersion) {
     String sql =
         "UPDATE users SET "
