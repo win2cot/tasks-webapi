@@ -79,24 +79,33 @@ final class UserRepository implements AutoCloseable {
     }
   }
 
+  /** LIKE のメタ文字をエスケープする際の ESCAPE 文字。MySQL の文字列リテラルでは特別扱いされない {@code |} を使う。 */
+  private static final char LIKE_ESCAPE = '|';
+
   /**
    * Admin Console の user 一覧向けページング検索。空文字または {@code "*"} の場合は削除されていない全 user を返す。それ以外は {@code email}
-   * または {@code full_name} の部分一致(大文字小文字区別なし)。
+   * または {@code full_name} の部分一致(大文字小文字区別なし)。入力中の LIKE メタ文字({@code %} {@code _} とエスケープ文字自身)は {@link
+   * #escapeLike} で無効化し、リテラルとして部分一致させる。
    */
   List<UserRow> search(@Nullable String term, int firstResult, int maxResults) {
-    boolean matchAll = term == null || term.isBlank() || "*".equals(term);
+    String trimmed = term == null ? "" : term;
+    boolean matchAll = trimmed.isBlank() || "*".equals(trimmed);
     StringBuilder sql =
         new StringBuilder("SELECT ")
             .append(SELECT_COLUMNS)
             .append(" FROM users WHERE deleted_at IS NULL");
     if (!matchAll) {
-      sql.append(" AND (email LIKE ? OR full_name LIKE ?)");
+      sql.append(" AND (email LIKE ? ESCAPE '")
+          .append(LIKE_ESCAPE)
+          .append("' OR full_name LIKE ? ESCAPE '")
+          .append(LIKE_ESCAPE)
+          .append("')");
     }
     sql.append(" ORDER BY id LIMIT ? OFFSET ?");
     try (PreparedStatement ps = connection().prepareStatement(sql.toString())) {
       int idx = 1;
       if (!matchAll) {
-        String like = "%" + term + "%";
+        String like = "%" + escapeLike(trimmed) + "%";
         ps.setString(idx++, like);
         ps.setString(idx++, like);
       }
@@ -240,6 +249,15 @@ final class UserRepository implements AutoCloseable {
       connection = c;
     }
     return c;
+  }
+
+  /**
+   * LIKE のメタ文字({@code %} {@code _})とエスケープ文字自身を {@link #LIKE_ESCAPE} で前置エスケープし、入力をリテラルとして部分一致させる。
+   * エスケープ文字自身の二重化を先に行う。
+   */
+  static String escapeLike(String value) {
+    String esc = String.valueOf(LIKE_ESCAPE);
+    return value.replace(esc, esc + esc).replace("%", esc + "%").replace("_", esc + "_");
   }
 
   private static Optional<UserRow> single(PreparedStatement ps) throws SQLException {
