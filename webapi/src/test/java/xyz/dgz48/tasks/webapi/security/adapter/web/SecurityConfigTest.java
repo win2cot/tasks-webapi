@@ -112,7 +112,7 @@ class SecurityConfigTest {
         .willReturn(Optional.of(new TenantMembership(1L, TenantRole.MEMBER)));
     given(
             listTasksUseCase.execute(
-                any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+                any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
         .willReturn(new ListTasksUseCase.Result(Page.empty(PageRequest.of(0, 50)), 0));
   }
 

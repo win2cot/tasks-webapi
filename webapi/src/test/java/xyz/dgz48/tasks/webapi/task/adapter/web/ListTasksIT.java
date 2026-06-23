@@ -434,6 +434,48 @@ class ListTasksIT {
     }
 
     @Test
+    void priorityFilter_returnsOnlyMatchingPriority() throws Exception {
+      // #668: priority=HIGH は stakeholderTask(HIGH)のみ返し、MEDIUM / LOW のタスクは除外する。
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("priority", "HIGH")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + stakeholderTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + tenantTaskId + ")]").doesNotExist())
+          .andExpect(jsonPath("$.content[?(@.priority != 'HIGH')]").doesNotExist());
+    }
+
+    @Test
+    void priorityFilter_low_returnsOnlyLowPriority() throws Exception {
+      // #668: priority=LOW は privateTaskOwnedByA(LOW、Aが所有者)を返す。
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("priority", "LOW")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + privateTaskOwnedByAId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + stakeholderTaskId + ")]").doesNotExist())
+          .andExpect(jsonPath("$.content[?(@.priority != 'LOW')]").doesNotExist());
+    }
+
+    @Test
+    void priorityFilter_invalid_returns400() throws Exception {
+      // #668: 不正な priority 値は enum バインド失敗で 400。
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("priority", "URGENT")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void keywordFilter_matchesTitlePartial() throws Exception {
       // "STAKEHOLDERS" は stakeholderTask のタイトルにのみ含まれる(#669)
       mockMvc

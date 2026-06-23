@@ -4,6 +4,7 @@ let currentSort = 'dueDate,asc';
 let totalPages = 1;
 let totalElements = 0;
 let currentKeyword = ''; // タスク検索キーワード(タイトル・説明部分一致、#669)
+let currentPriority = ''; // 優先度絞込 ('' = すべて, HIGH / MEDIUM / LOW, #668)
 let overdueTotal = 0;
 let currentTargetDate = ''; // 表示対象日 (YYYY-MM-DD, JST)
 const PAGE_SIZE = 50;
@@ -286,6 +287,7 @@ async function loadTasks() {
       size: PAGE_SIZE,
       sort: currentSort,
       keyword: currentKeyword || undefined,
+      priority: currentPriority || undefined,
       targetDate: currentTargetDate,
       includeOverdue: true,
     });
@@ -304,6 +306,15 @@ async function loadTasks() {
     /** @type {HTMLElement} */ (mustQuery(document, '#loading-skeleton')).classList.add('d-none');
     errorBanner.show(/** @type {any} */ (err).message || 'タスクの取得に失敗しました');
   }
+}
+
+// ---- Priority filter (#668, GET /api/tasks?priority=) ----
+/** @param {string} value — '' | HIGH | MEDIUM | LOW */
+function onPriorityFilterChange(value) {
+  if (value === currentPriority) return;
+  currentPriority = value;
+  currentPage = 0;
+  loadTasks();
 }
 
 // ---- Sort ----
@@ -449,6 +460,10 @@ pager.addEventListener('page-change', (e) => {
 );
 /** @type {HTMLElement} */ (mustQuery(document, '#sortSel')).addEventListener('change', (e) =>
   onSortChange(/** @type {HTMLSelectElement} */ (e.target).value),
+);
+/** @type {HTMLElement} */ (mustQuery(document, '#priorityFilter')).addEventListener(
+  'change',
+  (e) => onPriorityFilterChange(/** @type {HTMLSelectElement} */ (e.target).value),
 );
 /** @type {HTMLElement} */ (mustQuery(document, '#btn-new-task')).addEventListener('click', () =>
   // 新規タスクの期限初期値は表示中の日付(基本設計書 §3.3.1)。

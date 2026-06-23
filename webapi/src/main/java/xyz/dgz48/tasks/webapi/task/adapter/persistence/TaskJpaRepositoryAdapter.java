@@ -97,6 +97,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable Priority priority,
       @Nullable String keyword,
       LocalDate targetDate,
       LocalDate today,
@@ -113,6 +114,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
             ownerId,
             assigneeId,
             visibility,
+            priority,
             keyword,
             targetDate,
             today,
@@ -133,6 +135,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
             ownerId,
             assigneeId,
             visibility,
+            priority,
             keyword,
             targetDate,
             today,
@@ -175,6 +178,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable Priority priority,
       @Nullable String keyword,
       LocalDate targetDate,
       LocalDate today,
@@ -194,6 +198,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
                 ownerId,
                 assigneeId,
                 visibility,
+                priority,
                 keyword,
                 targetDate,
                 today,
@@ -211,6 +216,7 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable Priority priority,
       @Nullable String keyword,
       LocalDate targetDate,
       LocalDate today,
@@ -232,6 +238,9 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
     }
     if (visibility != null) {
       predicates.add(cb.equal(task.get("visibility"), visibility));
+    }
+    if (priority != null) {
+      predicates.add(cb.equal(task.get("priority"), priority));
     }
     Predicate keywordPredicate = buildKeywordPredicate(cb, task, keyword);
     if (keywordPredicate != null) {

@@ -354,6 +354,7 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
                 ArgumentMatchers.eq(true),
                 ArgumentMatchers.any()))
         .willReturn(result);
@@ -386,6 +387,7 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
                 ArgumentMatchers.eq(LocalDate.of(2026, 6, 7)),
                 ArgumentMatchers.eq(false),
                 ArgumentMatchers.any()))
@@ -397,6 +399,40 @@ class TaskControllerWebMvcTest {
         .perform(
             get("/api/tasks").param("targetDate", "2026-06-07").param("includeOverdue", "false"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  @WithMockMember
+  void listTasks_bindsPriorityFilter() throws Exception {
+    // #668: ?priority=HIGH が usecase の priority 引数へバインドされること。
+    Page<Task> taskPage = new PageImpl<>(List.of(), PageRequest.of(0, 50), 0);
+    ListTasksUseCase.Result result = new ListTasksUseCase.Result(taskPage, 0);
+    BDDMockito.given(
+            listTasksUseCase.execute(
+                ArgumentMatchers.eq(USER_ID),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.eq(Priority.HIGH),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.eq(true),
+                ArgumentMatchers.any()))
+        .willReturn(result);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
+
+    mockMvc.perform(get("/api/tasks").param("priority", "HIGH")).andExpect(status().isOk());
+  }
+
+  @Test
+  @WithMockMember
+  void listTasks_returns400_whenPriorityInvalid() throws Exception {
+    // #668: 不正な priority 値は enum バインド失敗で 400。
+    mockMvc
+        .perform(get("/api/tasks").param("priority", "URGENT"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -430,6 +466,7 @@ class TaskControllerWebMvcTest {
     BDDMockito.given(
             listTasksUseCase.execute(
                 ArgumentMatchers.anyLong(),
+                ArgumentMatchers.any(),
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any(),

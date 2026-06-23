@@ -47,6 +47,7 @@ public interface TaskRepository {
    *   <li>{@code includeOverdue == false}: {@code due_date = targetDate} のタスクのみ
    * </ul>
    *
+   * @param priority 絞込優先度(null = 全優先度、#668)
    * @param keyword タイトル・説明の部分一致検索キーワード(null / 空白のみ = 検索しない、#669)
    * @param targetDate 表示対象日(選択日)。{@code null} 不可(usecase で当日に解決済み)。
    * @param today 期限切れ判定の基準となる当日(JST、ADR-0009)。{@code null} 不可。
@@ -58,6 +59,7 @@ public interface TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable Priority priority,
       @Nullable String keyword,
       LocalDate targetDate,
       LocalDate today,
