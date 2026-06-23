@@ -46,6 +46,7 @@ import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskListItemResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskPageResponse;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskPatchRequest;
 import xyz.dgz48.tasks.webapi.task.adapter.web.dto.TaskResponse;
+import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskPatchCommand;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStakeholder;
@@ -114,7 +115,7 @@ public class TaskController {
    * タスク一覧取得(operationId: listTasks)。
    *
    * <p>表示対象日(targetDate、省略時は当日 TODAY)を基準に、当日 + 期限切れ未完了(includeOverdue=true、デフォルト)の タスクを返す(S-04 /
-   * 基本設計書 §3.3.1、#665 / #666 共通)。keyword 絞込(タイトル・説明部分一致)は #669 で実装済。priority 絞込は別 Issue で実装予定。
+   * 基本設計書 §3.3.1、#665 / #666 共通)。keyword 絞込(タイトル・説明部分一致)は #669、priority 絞込は #668 で実装済。
    */
   @GetMapping
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
@@ -129,7 +130,7 @@ public class TaskController {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           @Nullable LocalDate targetDate,
       @RequestParam(defaultValue = "true") boolean includeOverdue,
-      @RequestParam(required = false) @Nullable String priority,
+      @RequestParam(required = false) @Nullable Priority priority,
       @RequestParam(required = false) @Nullable String keyword,
       TasksAuthenticationToken token) {
 
@@ -143,6 +144,7 @@ public class TaskController {
             ownerId,
             assigneeId,
             visibility,
+            priority,
             keyword,
             targetDate,
             includeOverdue,

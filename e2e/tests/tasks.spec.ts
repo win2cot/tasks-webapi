@@ -71,6 +71,47 @@ test.describe('タスク一覧 + CRUD', () => {
     await expect(page.locator('#task-tbody')).not.toContainText(taskTitle, { timeout: 10_000 });
   });
 
+  // #668 — 優先度フィルタ
+  test('優先度フィルタで該当優先度のタスクのみ表示される', async ({ page }) => {
+    const taskTitle = `E2E priority ${Date.now()}`;
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+
+    // 期限=当日・優先度=HIGH のタスクを作成
+    await page.click('#btn-new-task');
+    const drawer = page.locator('app-task-drawer .offcanvas');
+    await expect(drawer).toBeVisible({ timeout: 5_000 });
+    await page.fill('#newTitle', taskTitle);
+    await page.fill('#newDue', today);
+    await drawer.locator('label[for="newPri-HIGH"]').click();
+    await drawer.locator('button[type="submit"]').click();
+    await expect(drawer).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#task-tbody')).toContainText(taskTitle, { timeout: 10_000 });
+
+    // 優先度フィルタ=低 → HIGH タスクは消える
+    await page.selectOption('#priorityFilter', 'LOW');
+    await expect(page.locator('#task-tbody')).not.toContainText(taskTitle, { timeout: 10_000 });
+
+    // 優先度フィルタ=高 → 再び表示される
+    await page.selectOption('#priorityFilter', 'HIGH');
+    await expect(page.locator('#task-tbody')).toContainText(taskTitle, { timeout: 10_000 });
+
+    // 後始末: フィルタを戻して作成タスクを削除
+    await page.selectOption('#priorityFilter', '');
+    const taskRow = page.locator('app-task-row').filter({
+      has: page.locator('.task-title', { hasText: taskTitle }),
+    });
+    await taskRow.locator('td.cell-owner').click();
+    await expect(drawer).toBeVisible({ timeout: 5_000 });
+    await drawer.locator('.btn-outline-danger').click();
+    await drawer.locator('button.btn-danger').click();
+    await expect(drawer).not.toBeVisible({ timeout: 5_000 });
+  });
+
   // #666 — 表示基準日の前後切替
   test('表示基準日を切り替えると当該日のタスクが表示される', async ({ page }) => {
     const taskTitle = `E2E datenav ${Date.now()}`;
