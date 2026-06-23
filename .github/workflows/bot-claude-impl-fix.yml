@@ -24,11 +24,16 @@ concurrency:
 jobs:
   impl-fix:
     # 起動条件:
+    # (0) PR に claude:impl-fix ラベルが付いている(opt-in。無ければ起動しない)
+    #     実装 Claude の PR は bot-claude-impl-autolabel.yml が自動付与。手動 PR は付与しない。
     # (1) review が changes_requested で submit された(人 or レビュワ bot どちらでも)
     # (2) PR レビューコメントが投稿された かつ 投稿者が impl bot 自身でない(自己ループ防止)
     if: |
-      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested') ||
-      (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login != 'claude-automation-impl[bot]')
+      contains(github.event.pull_request.labels.*.name, 'claude:impl-fix') &&
+      (
+        (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested') ||
+        (github.event_name == 'pull_request_review_comment' && github.event.comment.user.login != 'claude-automation-impl[bot]')
+      )
     uses: win2cot/claude-automation/.github/workflows/reusable-impl-fix.yml@v1
     secrets:
       CLAUDE_IMPL_APP_ID: ${{ secrets.CLAUDE_IMPL_APP_ID }}
