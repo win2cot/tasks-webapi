@@ -33,9 +33,12 @@ jobs:
     #     付与され、機械承認 (renovate-approve) が no-op に倒れて詰まるため除外する。
     # (2) issue_comment が PR に投稿された かつ 投稿者が claude-automation-impl[bot] かつ
     #     本文に signal: claude-impl-done を含む(任意のユーザによる起動を防ぐため投稿者を限定)
+    # (3) OWNER/MEMBER/COLLABORATOR が PR に `/review` で始まるコメント → 再レビュー
+    #     local Claude Code の修正 push 後に再レビューを起こす(任意ユーザ起動は author_association で排除)
     if: |
       (github.event_name == 'pull_request' && github.event.pull_request.draft == false && github.event.pull_request.user.login != 'renovate[bot]') ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.login == 'claude-automation-impl[bot]' && contains(github.event.comment.body, 'signal: claude-impl-done'))
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.login == 'claude-automation-impl[bot]' && contains(github.event.comment.body, 'signal: claude-impl-done')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && startsWith(github.event.comment.body, '/review') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     uses: win2cot/claude-automation/.github/workflows/reusable-review.yml@v1
     secrets:
       CLAUDE_REVIEW_APP_ID: ${{ secrets.CLAUDE_REVIEW_APP_ID }}

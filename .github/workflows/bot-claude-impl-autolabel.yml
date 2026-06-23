@@ -1,0 +1,31 @@
+# Claude Impl Auto-Label shim
+# 実装 Claude (claude-automation-impl[bot]) が作成した PR に claude:impl-fix を自動付与する。
+# impl bot 経路は従来どおり impl-fix が稼働、手動(local Claude Code)PR は付与されず起動しない(opt-in / fail-closed)。
+# reusable は呼ばない自己完結ジョブ(GITHUB_TOKEN のみ)。
+
+name: "Claude: Impl Auto-Label"
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: claude-impl-autolabel-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  autolabel:
+    if: github.event.pull_request.user.login == 'claude-automation-impl[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add claude:impl-fix label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR" --add-label "claude:impl-fix"
