@@ -18,6 +18,33 @@ function todayDateStr() {
   }).format(new Date());
 }
 
+// YYYY-MM-DD に delta 日を加算した YYYY-MM-DD を返す。
+// 日付演算は UTC で行い、タイムゾーン依存のずれを避ける(#666)。
+/**
+ * @param {string} dateStr — YYYY-MM-DD
+ * @param {number} delta — 加算する日数(負値で減算)
+ * @returns {string} YYYY-MM-DD
+ */
+function addDays(dateStr, delta) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + delta));
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(dt);
+}
+
+// YYYY-MM-DD を「M月D日(曜)」の和文表記に整形する(表示基準日ラベル用)。
+/** @param {string} dateStr — YYYY-MM-DD */
+function formatDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][dt.getUTCDay()];
+  return `${m}月${d}日(${wd})`;
+}
+
 // ---- Task / user state ----
 const taskMap = new Map(); // taskId(number) → Task object
 const rowMap = new Map(); // taskId(number) → app-task-row element
@@ -35,6 +62,10 @@ const descPopover = /** @type {AppDescPopoverElement} */ (mustQuery(document, '#
 const taskDrawer = /** @type {AppTaskDrawerElement} */ (mustQuery(document, '#task-drawer'));
 const pager = /** @type {AppPagerElement} */ (mustQuery(document, '#task-pager'));
 const tbody = /** @type {HTMLElement} */ (mustQuery(document, '#task-tbody'));
+
+// ---- Date navigation refs (#666) ----
+const datePicker = /** @type {HTMLInputElement} */ (mustQuery(document, '#date-picker'));
+const btnDateToday = /** @type {HTMLButtonElement} */ (mustQuery(document, '#btn-date-today'));
 
 // ETag format per ADR-0012: W/"<version>"
 /** @param {{ version: number }} task */
@@ -55,14 +86,19 @@ function renderTasks(tasks) {
   const list = tasks ?? [];
   const overdue = list.filter((t) => t.dueDate != null && t.dueDate < currentTargetDate);
   const onTarget = list.filter((t) => !(t.dueDate != null && t.dueDate < currentTargetDate));
-  const todayCount = Math.max(0, totalElements - overdueTotal);
+  const targetCount = Math.max(0, totalElements - overdueTotal);
+
+  // 表示基準日が当日なら「本日」、それ以外は選択日のラベルを表示する(#666)。
+  const isToday = currentTargetDate === todayDateStr();
+  const targetLabel = isToday ? '本日' : formatDateLabel(currentTargetDate);
+  const targetEmpty = isToday ? '本日のタスクはありません' : `${targetLabel}のタスクはありません`;
 
   /** @type {Node[]} */
   const nodes = [];
   nodes.push(groupHeadRow('bi-exclamation-triangle-fill text-danger', '期限切れ', overdueTotal));
   nodes.push(...sectionRows(overdue, '期限切れのタスクはありません'));
-  nodes.push(groupHeadRow('bi-calendar-day text-primary', '本日', todayCount));
-  nodes.push(...sectionRows(onTarget, '本日のタスクはありません'));
+  nodes.push(groupHeadRow('bi-calendar-day text-primary', targetLabel, targetCount));
+  nodes.push(...sectionRows(onTarget, targetEmpty));
   tbody.replaceChildren(...nodes);
 }
 
@@ -241,7 +277,6 @@ async function loadTasks() {
   cancelAllEdits();
   showLoading(true);
   try {
-    currentTargetDate = todayDateStr();
     const data = await Api.listTasks({
       page: currentPage,
       size: PAGE_SIZE,
@@ -320,6 +355,23 @@ function applyKeyword() {
   loadTasks();
 }
 
+// ---- Date navigation (#666, 基本設計書 §3.3.1) ----
+// 表示基準日を変更し、ピッカー値・「今日に戻る」ボタンの活性を同期して再取得する。
+/** @param {string} dateStr — YYYY-MM-DD */
+function setTargetDate(dateStr) {
+  if (!dateStr || dateStr === currentTargetDate) return;
+  currentTargetDate = dateStr;
+  datePicker.value = dateStr;
+  btnDateToday.disabled = dateStr === todayDateStr();
+  currentPage = 0;
+  loadTasks();
+}
+
+/** @param {number} delta — 加算する日数(前日 = -1, 翌日 = +1) */
+function shiftTargetDate(delta) {
+  setTargetDate(addDays(currentTargetDate, delta));
+}
+
 // ---- Row click → open detail drawer (S-05) ----
 /** @param {number} id */
 function onRowClick(id) {
@@ -395,8 +447,22 @@ pager.addEventListener('page-change', (e) => {
   onSortChange(/** @type {HTMLSelectElement} */ (e.target).value),
 );
 /** @type {HTMLElement} */ (mustQuery(document, '#btn-new-task')).addEventListener('click', () =>
-  taskDrawer.open(),
+  // 新規タスクの期限初期値は表示中の日付(基本設計書 §3.3.1)。
+  taskDrawer.openNew({ dueDate: currentTargetDate }),
 );
+
+// Date navigation: prev / next / today (#666)
+/** @type {HTMLElement} */ (mustQuery(document, '#btn-date-prev')).addEventListener('click', () =>
+  shiftTargetDate(-1),
+);
+/** @type {HTMLElement} */ (mustQuery(document, '#btn-date-next')).addEventListener('click', () =>
+  shiftTargetDate(1),
+);
+btnDateToday.addEventListener('click', () => setTargetDate(todayDateStr()));
+datePicker.addEventListener('change', () => {
+  // ピッカーが空(クリア)になった場合は当日へ戻す。
+  setTargetDate(datePicker.value || todayDateStr());
+});
 /** @type {HTMLElement} */ (mustQuery(document, '#th-dueDate')).addEventListener('click', () =>
   cycleSort('dueDate'),
 );
@@ -472,6 +538,11 @@ async function main() {
   }
   taskDrawer.setUsers(tenantUsers);
 
+  // 表示基準日の初期値は当日 (JST)。ピッカーへ反映し「今日に戻る」を無効化する(#666)。
+  currentTargetDate = todayDateStr();
+  datePicker.value = currentTargetDate;
+  btnDateToday.disabled = true;
+
   updateSortCarets();
   await loadTasks();
 
@@ -481,7 +552,7 @@ async function main() {
   const editMatch = /\/tasks\/(\d+)\/edit\/?$/.exec(path);
   const detailMatch = /\/tasks\/(\d+)\/?$/.exec(path);
   if (newMatch) {
-    taskDrawer.openNew();
+    taskDrawer.openNew({ dueDate: currentTargetDate });
   } else if (editMatch) {
     await taskDrawer.openEdit(Number(editMatch[1]));
   } else if (detailMatch) {

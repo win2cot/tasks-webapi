@@ -70,4 +70,58 @@ test.describe('タスク一覧 + CRUD', () => {
     await expect(drawer).not.toBeVisible({ timeout: 5_000 });
     await expect(page.locator('#task-tbody')).not.toContainText(taskTitle, { timeout: 10_000 });
   });
+
+  // #666 — 表示基準日の前後切替
+  test('表示基準日を切り替えると当該日のタスクが表示される', async ({ page }) => {
+    const taskTitle = `E2E datenav ${Date.now()}`;
+    const fmt = (d: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(d);
+    const today = fmt(new Date());
+    const tomorrow = fmt(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
+    // 初期状態は当日 (JST) で「今日に戻る」は無効
+    await expect(page.locator('#date-picker')).toHaveValue(today);
+    await expect(page.locator('#btn-date-today')).toBeDisabled();
+
+    // 期限=翌日のタスクを作成
+    await page.click('#btn-new-task');
+    const drawer = page.locator('app-task-drawer .offcanvas');
+    await expect(drawer).toBeVisible({ timeout: 5_000 });
+    await page.fill('#newTitle', taskTitle);
+    await page.fill('#newDue', tomorrow);
+    await drawer.locator('button[type="submit"]').click();
+    await expect(drawer).not.toBeVisible({ timeout: 10_000 });
+
+    // 当日ビューには現れない(未来タスクは当日対象外、#665)
+    await expect(page.locator('#task-tbody')).not.toContainText(taskTitle, { timeout: 10_000 });
+
+    // 翌日へ切替 → 当該タスクが選択日セクションに現れる
+    await page.click('#btn-date-next');
+    await expect(page.locator('#date-picker')).toHaveValue(tomorrow);
+    await expect(page.locator('#btn-date-today')).toBeEnabled();
+    await expect(page.locator('#task-tbody')).toContainText(taskTitle, { timeout: 10_000 });
+
+    // 「今日に戻る」 → 再び消える
+    await page.click('#btn-date-today');
+    await expect(page.locator('#date-picker')).toHaveValue(today);
+    await expect(page.locator('#btn-date-today')).toBeDisabled();
+    await expect(page.locator('#task-tbody')).not.toContainText(taskTitle, { timeout: 10_000 });
+
+    // 後始末: 前日/翌日ボタンで翌日へ戻し、作成したタスクを削除
+    await page.click('#btn-date-next');
+    await expect(page.locator('#task-tbody')).toContainText(taskTitle, { timeout: 10_000 });
+    const taskRow = page.locator('app-task-row').filter({
+      has: page.locator('.task-title', { hasText: taskTitle }),
+    });
+    await taskRow.locator('td.cell-owner').click();
+    await expect(drawer).toBeVisible({ timeout: 5_000 });
+    await drawer.locator('.btn-outline-danger').click();
+    await drawer.locator('button.btn-danger').click();
+    await expect(drawer).not.toBeVisible({ timeout: 5_000 });
+  });
 });
