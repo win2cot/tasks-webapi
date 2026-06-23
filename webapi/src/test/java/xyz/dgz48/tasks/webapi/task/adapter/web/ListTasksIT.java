@@ -49,6 +49,9 @@ class ListTasksIT {
   @Autowired EntityManager em;
   @Autowired TransactionTemplate txTemplate;
 
+  /** 固定クロック(FixedClockConfiguration)の当日(JST 2026-01-15)。 */
+  private static final LocalDate TODAY = LocalDate.of(2026, 1, 15);
+
   // User A: viewer(target user)
   private Long userAId;
   private TasksAuthenticationToken authTokenA;
@@ -117,7 +120,7 @@ class ListTasksIT {
                   "四半期レビュー資料の作成",
                   TaskStatus.NOT_STARTED,
                   Priority.MEDIUM,
-                  LocalDate.of(2026, 12, 31));
+                  TODAY);
           em.persist(tenantTask);
           em.flush();
           tenantTaskId = tenantTask.getId();
@@ -140,7 +143,7 @@ class ListTasksIT {
                   null,
                   TaskStatus.NOT_STARTED,
                   Priority.HIGH,
-                  LocalDate.of(2026, 12, 31));
+                  TODAY);
           em.persist(stakeholderTask);
           em.flush();
           stakeholderTaskId = stakeholderTask.getId();
@@ -167,7 +170,7 @@ class ListTasksIT {
                   null,
                   TaskStatus.NOT_STARTED,
                   Priority.LOW,
-                  LocalDate.of(2026, 12, 31));
+                  TODAY);
           em.persist(privateTask);
           em.flush();
           privateTaskId = privateTask.getId();
@@ -190,7 +193,7 @@ class ListTasksIT {
                   null,
                   TaskStatus.NOT_STARTED,
                   Priority.LOW,
-                  LocalDate.of(2026, 12, 31));
+                  TODAY);
           em.persist(privateTaskOwnedByA);
           em.flush();
           privateTaskOwnedByAId = privateTaskOwnedByA.getId();
@@ -343,7 +346,7 @@ class ListTasksIT {
                     null,
                     TaskStatus.NOT_STARTED,
                     Priority.MEDIUM,
-                    LocalDate.of(2026, 12, 31));
+                    TODAY);
             em.persist(taskB);
             em.flush();
             taskBId = taskB.getId();
@@ -550,6 +553,104 @@ class ListTasksIT {
       mockMvc
           .perform(get("/api/tasks").header("X-Tenant-Id", String.valueOf(tenantId)))
           .andExpect(status().isUnauthorized());
+    }
+  }
+
+  /** 表示対象日フィルタ(targetDate / includeOverdue、#665)の検証。 */
+  @Nested
+  class DateWindow {
+
+    private Long todayTaskId;
+    private Long overdueTaskId;
+    private Long overdueDoneTaskId;
+    private Long futureTaskId;
+
+    @BeforeEach
+    void setUpDatedTasks() {
+      txTemplate.execute(
+          ignored -> {
+            // JpaAuditorAware が created_by / updated_by を解決できるよう認証コンテキストを設定
+            var principalB =
+                new TasksPrincipal(
+                    userBId, "sub-lt-b", "lt-b@example.com", "一覧テストB太郎", "イチランテストビーたろう", null);
+            SecurityContextHolder.getContext()
+                .setAuthentication(new TasksAuthenticationToken(principalB, List.of()));
+
+            todayTaskId = persistTask("当日タスク", TaskStatus.NOT_STARTED, TODAY);
+            overdueTaskId = persistTask("期限切れタスク", TaskStatus.IN_PROGRESS, TODAY.minusDays(5));
+            overdueDoneTaskId = persistTask("期限切れ完了タスク", TaskStatus.DONE, TODAY.minusDays(5));
+            futureTaskId = persistTask("未来タスク", TaskStatus.NOT_STARTED, TODAY.plusDays(10));
+            return null;
+          });
+      SecurityContextHolder.clearContext();
+    }
+
+    private Long persistTask(String title, TaskStatus status, LocalDate dueDate) {
+      // visibility=TENANT(デフォルト)なので userA から参照可能
+      var task =
+          new TaskJpaEntity(tenantId, userBId, title, null, status, Priority.MEDIUM, dueDate);
+      em.persist(task);
+      em.flush();
+      return task.getId();
+    }
+
+    @Test
+    void targetDate_withDefaultIncludeOverdue_returnsTargetDayAndOverdueExcludingDoneAndFuture()
+        throws Exception {
+      // targetDate=TODAY 基準 + includeOverdue=true(デフォルト、明示指定なし)
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("targetDate", TODAY.toString())
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + todayTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + overdueTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + overdueDoneTaskId + ")]").doesNotExist())
+          .andExpect(jsonPath("$.content[?(@.id == " + futureTaskId + ")]").doesNotExist())
+          .andExpect(
+              jsonPath("$.overdueCount").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+    }
+
+    @Test
+    void includeOverdueFalse_returnsOnlyTargetDateTasks() throws Exception {
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("targetDate", TODAY.toString())
+                  .param("includeOverdue", "false")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + todayTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + overdueTaskId + ")]").doesNotExist())
+          .andExpect(jsonPath("$.content[?(@.id == " + futureTaskId + ")]").doesNotExist());
+    }
+
+    @Test
+    void targetDate_selectsThatDaysTasks() throws Exception {
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("targetDate", TODAY.plusDays(10).toString())
+                  .param("includeOverdue", "false")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + futureTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + todayTaskId + ")]").doesNotExist());
+    }
+
+    @Test
+    void invalidTargetDate_returns400() throws Exception {
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("targetDate", "not-a-date")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isBadRequest());
     }
   }
 }

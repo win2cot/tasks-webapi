@@ -23,7 +23,7 @@ public class ListTasksUseCase {
   private final Clock clock;
 
   /**
-   * 認可フィルタ済みタスク一覧を取得する。
+   * 認可フィルタ済みタスク一覧を取得する(表示対象日フィルタ済み、#665 / #666 共通)。
    *
    * @param userId 現在のユーザー ID(visibility 認可評価に使用)
    * @param statuses 絞込ステータス(null = 全ステータス)
@@ -31,8 +31,10 @@ public class ListTasksUseCase {
    * @param assigneeId 絞込担当者 ID(null = 全担当者)
    * @param visibility 絞込公開範囲(null = 全公開範囲)
    * @param keyword タイトル・説明部分一致検索キーワード(null / 空白のみ = 検索しない、#669)
+   * @param targetDate 表示対象日(基準日)。null のときは当日(JST、ADR-0009)に解決する
+   * @param includeOverdue 期限切れ未完了タスクを含めるか
    * @param pageable ページング / ソート指定
-   * @return ページ結果と期限切れ未完了タスク件数
+   * @return ページ結果と基準日時点の期限切れ未完了タスク件数
    */
   @Observed(name = "task.list")
   @Transactional(readOnly = true)
@@ -43,13 +45,25 @@ public class ListTasksUseCase {
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
       @Nullable String keyword,
+      @Nullable LocalDate targetDate,
+      boolean includeOverdue,
       Pageable pageable) {
+
+    LocalDate effectiveDate = targetDate != null ? targetDate : LocalDate.now(clock);
 
     Page<Task> taskPage =
         taskRepository.findVisibleTasks(
-            userId, statuses, ownerId, assigneeId, visibility, keyword, pageable);
+            userId,
+            statuses,
+            ownerId,
+            assigneeId,
+            visibility,
+            keyword,
+            effectiveDate,
+            includeOverdue,
+            pageable);
 
-    long overdueCount = taskRepository.countOverdueTasks(userId, LocalDate.now(clock));
+    long overdueCount = taskRepository.countOverdueTasks(userId, effectiveDate);
 
     return new Result(taskPage, Math.toIntExact(overdueCount));
   }

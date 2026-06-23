@@ -2,6 +2,7 @@ package xyz.dgz48.tasks.webapi.task.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
@@ -71,12 +72,20 @@ class ListTasksUseCaseTest {
     Page<Task> taskPage = new PageImpl<>(List.of(buildTask(1L), buildTask(2L)), pageable, 2);
 
     when(taskRepository.findVisibleTasks(
-            eq(USER_ID), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable)))
+            eq(USER_ID),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(TODAY),
+            eq(true),
+            eq(pageable)))
         .thenReturn(taskPage);
     when(taskRepository.countOverdueTasks(eq(USER_ID), eq(TODAY))).thenReturn(3L);
 
     ListTasksUseCase.Result result =
-        useCase.execute(USER_ID, null, null, null, null, null, pageable);
+        useCase.execute(USER_ID, null, null, null, null, null, null, true, pageable);
 
     assertThat(result.taskPage().getContent()).hasSize(2);
     assertThat(result.overdueCount()).isEqualTo(3);
@@ -98,12 +107,15 @@ class ListTasksUseCaseTest {
             eq(assigneeId),
             eq(visibility),
             isNull(),
+            eq(TODAY),
+            eq(true),
             eq(pageable)))
         .thenReturn(Page.empty(pageable));
     when(taskRepository.countOverdueTasks(any(), any())).thenReturn(0L);
 
     ListTasksUseCase.Result result =
-        useCase.execute(USER_ID, statuses, ownerId, assigneeId, visibility, null, pageable);
+        useCase.execute(
+            USER_ID, statuses, ownerId, assigneeId, visibility, null, null, true, pageable);
 
     assertThat(result.taskPage().getContent()).isEmpty();
     assertThat(result.overdueCount()).isZero();
@@ -116,12 +128,20 @@ class ListTasksUseCaseTest {
     String keyword = "請求書";
 
     when(taskRepository.findVisibleTasks(
-            eq(USER_ID), isNull(), isNull(), isNull(), isNull(), eq(keyword), eq(pageable)))
+            eq(USER_ID),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(keyword),
+            eq(TODAY),
+            eq(true),
+            eq(pageable)))
         .thenReturn(new PageImpl<>(List.of(buildTask(1L)), pageable, 1));
     when(taskRepository.countOverdueTasks(any(), any())).thenReturn(0L);
 
     ListTasksUseCase.Result result =
-        useCase.execute(USER_ID, null, null, null, null, keyword, pageable);
+        useCase.execute(USER_ID, null, null, null, null, keyword, null, true, pageable);
 
     assertThat(result.taskPage().getContent()).hasSize(1);
   }
@@ -130,12 +150,13 @@ class ListTasksUseCaseTest {
   void execute_returnsEmptyPage_whenRepositoryReturnsEmpty() {
     setupClock();
     Pageable pageable = PageRequest.of(0, 50);
-    when(taskRepository.findVisibleTasks(any(), any(), any(), any(), any(), any(), any()))
+    when(taskRepository.findVisibleTasks(
+            any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
         .thenReturn(Page.empty(pageable));
     when(taskRepository.countOverdueTasks(any(), any())).thenReturn(0L);
 
     ListTasksUseCase.Result result =
-        useCase.execute(USER_ID, null, null, null, null, null, pageable);
+        useCase.execute(USER_ID, null, null, null, null, null, null, true, pageable);
 
     assertThat(result.taskPage().isEmpty()).isTrue();
     assertThat(result.overdueCount()).isZero();

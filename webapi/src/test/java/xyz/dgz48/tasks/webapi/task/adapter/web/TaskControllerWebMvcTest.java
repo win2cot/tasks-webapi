@@ -353,6 +353,8 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.eq(true),
                 ArgumentMatchers.any()))
         .willReturn(result);
 
@@ -369,6 +371,40 @@ class TaskControllerWebMvcTest {
         .andExpect(jsonPath("$.size").value(50))
         .andExpect(jsonPath("$.overdueCount").value(0))
         .andExpect(jsonPath("$.content").isArray());
+  }
+
+  @Test
+  @WithMockMember
+  void listTasks_bindsTargetDateAndIncludeOverdue() throws Exception {
+    Page<Task> taskPage = new PageImpl<>(List.of(), PageRequest.of(0, 50), 0);
+    ListTasksUseCase.Result result = new ListTasksUseCase.Result(taskPage, 0);
+    BDDMockito.given(
+            listTasksUseCase.execute(
+                ArgumentMatchers.eq(USER_ID),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.eq(LocalDate.of(2026, 6, 7)),
+                ArgumentMatchers.eq(false),
+                ArgumentMatchers.any()))
+        .willReturn(result);
+    BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
+        .willReturn(List.of());
+
+    mockMvc
+        .perform(
+            get("/api/tasks").param("targetDate", "2026-06-07").param("includeOverdue", "false"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @WithMockMember
+  void listTasks_returns400_whenTargetDateMalformed() throws Exception {
+    mockMvc
+        .perform(get("/api/tasks").param("targetDate", "06/07/2026"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -399,6 +435,8 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.anyBoolean(),
                 ArgumentMatchers.any()))
         .willReturn(result);
     BDDMockito.given(userRepository.findAllById(ArgumentMatchers.anyCollection()))
