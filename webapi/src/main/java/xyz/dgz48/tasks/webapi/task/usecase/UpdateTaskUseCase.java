@@ -42,7 +42,7 @@ public class UpdateTaskUseCase {
       throw new TaskNotViewableException(taskId);
     }
     if (!taskAuthorizationDomainService.canBeEditedBy(task, userId)) {
-      throw new TaskOwnershipException(taskId);
+      throw new TaskOwnershipException(taskId, AuditEventType.EDIT_DENIED);
     }
     if (!task.getVersion().equals(ifMatchVersion)) {
       throw new PreconditionFailedException("バージョンが競合しています: task=" + taskId);

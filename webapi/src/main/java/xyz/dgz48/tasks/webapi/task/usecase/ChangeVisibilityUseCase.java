@@ -49,7 +49,7 @@ public class ChangeVisibilityUseCase {
       throw new TaskNotViewableException(taskId);
     }
     if (!taskAuthorizationDomainService.canChangeVisibilityBy(task, userId)) {
-      throw new TaskOwnershipException(taskId);
+      throw new TaskOwnershipException(taskId, AuditEventType.VISIBILITY_CHANGE_DENIED);
     }
     if (!task.getVersion().equals(ifMatchVersion)) {
       throw new PreconditionFailedException("バージョンが競合しています: task=" + taskId);

@@ -35,7 +35,7 @@ public class RemoveStakeholderUseCase {
       throw new TaskNotViewableException(taskId);
     }
     if (!taskAuthorizationDomainService.canManageStakeholdersBy(task, operatorUserId)) {
-      throw new TaskOwnershipException(taskId);
+      throw new TaskOwnershipException(taskId, AuditEventType.STAKEHOLDER_EDIT_DENIED);
     }
     if (!stakeholderRepository.existsByTaskIdAndUserId(taskId, targetUserId)) {
       throw new StakeholderNotFoundException(taskId, targetUserId);

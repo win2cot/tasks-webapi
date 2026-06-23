@@ -41,7 +41,7 @@ public class AddStakeholderUseCase {
       throw new TaskNotViewableException(taskId);
     }
     if (!taskAuthorizationDomainService.canManageStakeholdersBy(task, operatorUserId)) {
-      throw new TaskOwnershipException(taskId);
+      throw new TaskOwnershipException(taskId, AuditEventType.STAKEHOLDER_EDIT_DENIED);
     }
     // クロステナント登録を拒否(同一テナントの ACTIVE メンバーのみ登録可)
     if (tenantMembershipPort.findActiveRole(targetUserId, task.getTenantId()).isEmpty()) {

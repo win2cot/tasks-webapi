@@ -40,7 +40,7 @@ public class DeleteTaskUseCase {
       throw new TaskNotViewableException(taskId);
     }
     if (!taskAuthorizationDomainService.canBeDeletedBy(task, userId)) {
-      throw new TaskOwnershipException(taskId);
+      throw new TaskOwnershipException(taskId, AuditEventType.DELETE_DENIED);
     }
     if (!task.getVersion().equals(ifMatchVersion)) {
       throw new PreconditionFailedException("バージョンが競合しています: task=" + taskId);

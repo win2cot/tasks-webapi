@@ -8,6 +8,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 
@@ -16,7 +17,8 @@ class TaskExceptionHandlerTest {
   @SuppressWarnings("unused")
   private static void placeholder(String s) {}
 
-  private final TaskExceptionHandler handler = new TaskExceptionHandler();
+  private final TaskExceptionHandler handler =
+      new TaskExceptionHandler(new AuthorizationDeniedAuditService((a, b, c, d) -> {}));
 
   @Test
   void handleMissingHeader_returns400WithEValidation() throws NoSuchMethodException {

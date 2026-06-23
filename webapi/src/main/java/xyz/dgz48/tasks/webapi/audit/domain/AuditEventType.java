@@ -23,8 +23,11 @@ public enum AuditEventType {
   ANONYMIZE,
   LOGIN_FAILED,
 
-  // 認可違反 (基本設計書 §4.2.6 / §6.2.3, #734)。記録配線は #736 で実施(語彙のみ先行追加)。
-  // TENANT_CROSSED は旧 CROSS_TENANT_VIOLATION_ATTEMPT を設計標準語彙へ改称したもの(本 issue で記録配線済み)。
+  // 認可違反 (基本設計書 §4.2.6 / §6.2.3)。語彙追加は #734、記録配線は #736 で実施済み。
+  // *_DENIED は AuthorizationDeniedAuditService 経由で記録(TaskExceptionHandler /
+  // TasksAccessDeniedHandler)。
+  // TENANT_CROSSED は旧 CROSS_TENANT_VIOLATION_ATTEMPT を設計標準語彙へ改称し、CrossTenantViolationAuditService
+  // で記録。
   VIEW_DENIED,
   EDIT_DENIED,
   DELETE_DENIED,

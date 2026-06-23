@@ -26,6 +26,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
+import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.adapter.web.SecurityConfig;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAccessDeniedHandler;
@@ -70,6 +71,7 @@ class TaskControllerWebMvcTest {
 
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
+  @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
   @MockitoBean UserRepository userRepository;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
