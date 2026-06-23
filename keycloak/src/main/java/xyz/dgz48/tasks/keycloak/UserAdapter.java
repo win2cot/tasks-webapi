@@ -1,9 +1,13 @@
 package xyz.dgz48.tasks.keycloak;
 
+import java.util.List;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.SubjectCredentialManager;
+import org.keycloak.models.UserModel;
 import org.keycloak.storage.StorageId;
 import org.keycloak.storage.adapter.AbstractInMemoryUserAdapter;
 
@@ -58,6 +62,11 @@ public final class UserAdapter extends AbstractInMemoryUserAdapter {
     if (row.departmentName() != null) {
       setSingleAttribute(DEPARTMENT_NAME, row.departmentName());
     }
+    // realm の default role(`default-roles-<realm>` 合成ロール)を付与する。これは Account Console / token の
+    // `account` audience など基本機能に必要な技術ロールであり、ADR-0006 §3.7 が SPI から返さないとする「業務ロール
+    // (APP_ADMIN / TENANT_ADMIN / MEMBER)」とは別物。これを付与しないと federated user は自身の Account
+    // Console すら開けない(account REST が 401)。
+    grantRole(realm.getDefaultRole());
     this.hydrating = false;
   }
 
@@ -72,29 +81,46 @@ public final class UserAdapter extends AbstractInMemoryUserAdapter {
     return session.users().getUserCredentialManager(this);
   }
 
-  /** writable な profile 属性は email のみ。{@code users.email} へ書き戻す(§3.1)。 */
-  @Override
-  public void setEmail(String email) {
-    if (!hydrating) {
-      this.version = repository.updateEmail(userId, email, version);
-    }
-    super.setEmail(email);
-  }
-
   /**
-   * Custom User Profile attribute の {@code full_name_kana} / {@code department_name} を対応する {@code
-   * users} 列へ振り分ける(ADR-0006 §3.1 Console 作成)。その他の属性は in-memory に留める。
+   * 属性更新の write 戻し。Keycloak の Custom User Profile / Account / Admin Console は属性の適用を {@link
+   * #setAttribute(String, java.util.List)} 経由で行うため、こちらを SoT とする({@link #setSingleAttribute} も同じ
+   * 経路へ委譲)。writable は email(§3.1 Update-Email)/ {@code full_name_kana} / {@code
+   * department_name}(§3.1 Console 作成)のみ。値が現在と変わらない場合は書き込まない(UserProfile は未変更属性も再適用するため、無駄な version
+   * increment と楽観排他衝突を避ける)。
    */
   @Override
+  public void setAttribute(String name, List<String> values) {
+    writeBackIfManaged(name, (values == null || values.isEmpty()) ? null : values.get(0));
+    super.setAttribute(name, values);
+  }
+
+  @Override
   public void setSingleAttribute(String name, String value) {
-    if (!hydrating) {
-      if (FULL_NAME_KANA.equals(name)) {
-        this.version = repository.updateFullNameKana(userId, value, version);
-      } else if (DEPARTMENT_NAME.equals(name)) {
+    writeBackIfManaged(name, value);
+    super.setSingleAttribute(name, value);
+  }
+
+  // email / full_name_kana / department_name のみ users 列へ書き戻す。変更があった場合だけ updateXxx を呼び、
+  // 返り値で version を進める(同一更新内で複数属性が順に適用されても version を引き継ぐ)。
+  private void writeBackIfManaged(String name, @Nullable String value) {
+    if (hydrating) {
+      return;
+    }
+    if (UserModel.EMAIL.equals(name)) {
+      // email は NOT NULL。null クリアは write 戻ししない(in-memory のみ)。
+      if (value != null && !Objects.equals(value, getEmail())) {
+        this.version = repository.updateEmail(userId, value, version);
+      }
+    } else if (FULL_NAME_KANA.equals(name)) {
+      String next = value == null ? "" : value; // full_name_kana は NOT NULL(空文字許容)
+      if (!Objects.equals(next, getFirstAttribute(FULL_NAME_KANA))) {
+        this.version = repository.updateFullNameKana(userId, next, version);
+      }
+    } else if (DEPARTMENT_NAME.equals(name)) {
+      if (!Objects.equals(value, getFirstAttribute(DEPARTMENT_NAME))) {
         this.version = repository.updateDepartmentName(userId, value, version);
       }
     }
-    super.setSingleAttribute(name, value);
   }
 
   /** 無視する — full_name は read-only。SoT は tasks-webapi の profile 更新 API(§3.1)。 */

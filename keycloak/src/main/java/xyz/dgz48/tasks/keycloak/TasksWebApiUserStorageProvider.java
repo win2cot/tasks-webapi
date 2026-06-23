@@ -10,8 +10,8 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.provider.Provider;
 import org.keycloak.storage.StorageId;
+import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserLookupProvider;
 import org.keycloak.storage.user.UserQueryProvider;
 import org.keycloak.storage.user.UserRegistrationProvider;
@@ -28,7 +28,10 @@ import org.keycloak.storage.user.UserRegistrationProvider;
  * TasksWebApiUserStorageProviderFactory} 参照)で設定し、{@link #close()} で破棄する。
  */
 public class TasksWebApiUserStorageProvider
-    implements Provider, UserLookupProvider, UserQueryProvider, UserRegistrationProvider {
+    implements UserStorageProvider,
+        UserLookupProvider,
+        UserQueryProvider,
+        UserRegistrationProvider {
 
   private final KeycloakSession session;
   private final ComponentModel model;

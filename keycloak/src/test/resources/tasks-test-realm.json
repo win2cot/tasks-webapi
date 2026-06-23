@@ -1,0 +1,62 @@
+{
+  "realm": "tasks-test",
+  "enabled": true,
+  "sslRequired": "none",
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "registrationEmailAsUsername": false,
+  "editUsernameAllowed": false,
+  "resetPasswordAllowed": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "ja"],
+  "defaultLocale": "en",
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "noreply@tasks.local",
+    "fromDisplayName": "tasks-test",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
+  "clients": [
+    {
+      "clientId": "tasks-cli",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "fullScopeAllowed": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "tasks-webapi-users",
+        "providerId": "tasks-webapi-user-storage",
+        "subComponents": {},
+        "config": {
+          "jdbcUrl": ["jdbc:mysql://mysql:3306/tasks?allowPublicKeyRetrieval=true&useSSL=false"],
+          "dbUsername": ["tasks"],
+          "dbPassword": ["tasks"],
+          "cachePolicy": ["NO_CACHE"],
+          "enabled": ["true"],
+          "priority": ["0"]
+        }
+      }
+    ],
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"full_name_kana\",\"displayName\":\"${fullNameKana}\",\"group\":\"tasks-webapi\",\"validations\":{\"length\":{\"max\":255}},\"required\":{\"roles\":[\"admin\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"tasks-webapi\",\"displayHeader\":\"${tasksWebapiGroup}\"}]}"
+          ]
+        }
+      }
+    ]
+  }
+}
