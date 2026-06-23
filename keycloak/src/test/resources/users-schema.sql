@@ -15,3 +15,20 @@ CREATE TABLE users (
     UNIQUE KEY uq_users_oidc_sub (oidc_sub),
     UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ANONYMIZE 監査記録(ADR-0006 §3.4 step8 / #734)の検証用。本番では webapi の
+-- V1.0.0_01__create_tables.sql が作成するが、SPI テスト DB は users のみのためここで定義を複製する。
+CREATE TABLE audit_logs (
+    id          BIGINT      NOT NULL AUTO_INCREMENT,
+    tenant_id   BIGINT      NULL     COMMENT 'テナント分離(NULL=システム横断)。FK省略: テナント削除後も監査ログを保持',
+    user_id     BIGINT      NULL     COMMENT '操作ユーザー(認証失敗時はNULL)。FK省略: ユーザー削除後も監査ログを保持',
+    action      VARCHAR(50) NOT NULL COMMENT 'LOGIN/CREATE/UPDATE/DELETE 等',
+    entity_type VARCHAR(50) NULL     COMMENT '対象エンティティ種別',
+    entity_id   BIGINT      NULL     COMMENT '対象ID',
+    detail      JSON        NULL     COMMENT '変更内容(差分)',
+    ip_address  VARCHAR(45) NULL     COMMENT 'IPv4/IPv6',
+    hash_chain  CHAR(64)    NOT NULL COMMENT '前レコードのSHA-256(改ざん検知用)',
+    created_at  DATETIME    NOT NULL COMMENT '発生日時',
+    PRIMARY KEY (id),
+    KEY idx_al_tenant_user_created (tenant_id, user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -28,7 +28,6 @@ class CrossTenantViolationAuditService {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onViolationDetected(CrossTenantViolationDetectedEvent event) {
     var detail = Map.of("table", event.tableName(), "sqlType", event.sqlType());
-    auditLogPort.record(
-        AuditEventType.CROSS_TENANT_VIOLATION_ATTEMPT, event.tenantId(), event.userId(), detail);
+    auditLogPort.record(AuditEventType.TENANT_CROSSED, event.tenantId(), event.userId(), detail);
   }
 }

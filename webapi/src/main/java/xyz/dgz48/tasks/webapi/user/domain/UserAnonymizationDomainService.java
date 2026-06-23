@@ -24,7 +24,12 @@ public class UserAnonymizationDomainService {
    */
   public void anonymize(User user, LocalDateTime now) {
     user.anonymize(now);
-    // TODO(#144): step 8 — audit_logs に action='ANONYMIZE', entity_type='users',
-    // entity_id=user.getId() を記録する(#144 監査列 Auditing 機構整備と連携後に実装)
+    // step 8(audit_logs への ANONYMIZE 記録)は本ドメインサービスでは行わない。
+    // ドメイン層は Spring 非依存・AuditLogPort(usecase 層)に依存できないため、WebAPI 起点の匿名化
+    // では呼び出し側 UseCase が同 transaction 内で AuditEventType.ANONYMIZE(entity_type='users',
+    // entity_id=user.getId())を記録する責務を持つ。ただし WebAPI 側の匿名化呼び出し経路(解約・退会 API)は
+    // 未実装のため、この記録は将来の解約・退会 API 実装時(Phase 2 / #167 圏)に委譲する(TODO 追跡を残す)。
+    // 一方、現状実際に走る Keycloak SPI 起点の匿名化は keycloak サブプロジェクトの UserRepository#anonymize が
+    // JDBC で同一内容(action='ANONYMIZE')を記録する(#734 で実装済み / ADR-0006 §3.4)。
   }
 }

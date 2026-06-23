@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
+import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
+import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
@@ -24,6 +27,7 @@ import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
 public class TasksAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
   private final JsonMapper objectMapper;
+  private final AuditLogPort auditLogPort;
 
   @Override
   public void commence(
@@ -49,14 +53,22 @@ public class TasksAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
   private void auditLog(AuthenticationException authException, HttpServletRequest request) {
     if (authException instanceof UserNotRegisteredException) {
-      // TODO(#144): audit_logs に action='LOGIN_FAILED', detail='USER_NOT_REGISTERED' を記録する
       log.warn("USER_NOT_REGISTERED: JWT sub に対応するユーザーが存在しません path={}", request.getRequestURI());
+      recordLoginFailed("USER_NOT_REGISTERED");
     } else if (authException instanceof UserInactiveException) {
-      // TODO(#144): audit_logs に action='LOGIN_FAILED', detail='USER_INACTIVE' を記録する
       log.warn("USER_INACTIVE: 無効化済みユーザーの認証試行 path={}", request.getRequestURI());
+      recordLoginFailed("USER_INACTIVE");
     } else if (authException instanceof UserAnonymizedException) {
-      // TODO(#144): audit_logs に action='LOGIN_FAILED', detail='USER_ANONYMIZED' を記録する(監査必須)
       log.warn("USER_ANONYMIZED: 匿名化済みユーザーの認証試行 path={}", request.getRequestURI());
+      recordLoginFailed("USER_ANONYMIZED");
     }
+  }
+
+  /**
+   * 認証失敗を audit_logs に記録する(#734 / ADR-0006 §3.3)。tenant_id / user_id は認証未確立のため {@code null}、reason
+   * を detail に残す(特に {@code USER_ANONYMIZED} は監査必須)。
+   */
+  private void recordLoginFailed(String reason) {
+    auditLogPort.record(AuditEventType.LOGIN_FAILED, null, null, Map.of("reason", reason));
   }
 }

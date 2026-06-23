@@ -161,6 +161,54 @@ class UserRepositoryComponentTest extends AbstractMySqlContainerTest {
     assertThat(row.fullNameKana()).isEqualTo("__deleted__");
     assertThat(row.departmentName()).isNull();
     assertThat(row.version()).isEqualTo(1L); // 1 回だけ increment(2 回目は no-op)
+    // step 8: ANONYMIZE audit が 1 件だけ記録される(2 回目の no-op では追加されない)。
+    assertThat(countAnonymizeAudit(id)).isEqualTo(1);
+  }
+
+  @Test
+  void anonymize_recordsAnonymizeAuditWithUsersEntity() throws Exception {
+    long id = seedUser(unique("sub"), unique("aud") + "@example.com", "氏名", "カナ", null, "ACTIVE");
+    try (UserRepository repo = newRepository()) {
+      repo.anonymize(id);
+    }
+    AuditRow audit = fetchAnonymizeAudit(id);
+    assertThat(audit).isNotNull();
+    assertThat(audit.action()).isEqualTo("ANONYMIZE");
+    assertThat(audit.entityType()).isEqualTo("users");
+    assertThat(audit.entityId()).isEqualTo(id);
+    assertThat(audit.tenantId()).isNull(); // システム横断
+    assertThat(audit.userId()).isNull(); // 操作者(Keycloak admin)は webapi user-id 不明
+    assertThat(audit.detail()).isEqualTo("{}");
+    assertThat(audit.hashChain()).matches("[0-9a-f]{64}");
+  }
+
+  @Test
+  void anonymize_chainsHashToPreviousAuditRow() throws Exception {
+    // 同一 JVM・同一クラス内では逐次実行されるため、idA の ANONYMIZE 行が idB の直前行になる。
+    long idA = seedUser(unique("sub"), unique("a") + "@example.com", "A", "エー", null, "ACTIVE");
+    long idB = seedUser(unique("sub"), unique("b") + "@example.com", "B", "ビー", null, "ACTIVE");
+    try (UserRepository repo = newRepository()) {
+      repo.anonymize(idA);
+      repo.anonymize(idB);
+    }
+    AuditRow prev = fetchAnonymizeAudit(idA);
+    AuditRow next = fetchAnonymizeAudit(idB);
+    assertThat(prev).isNotNull();
+    assertThat(next).isNotNull();
+    assertThat(next.id()).isGreaterThan(prev.id());
+    // webapi AuditLogPersistenceAdapter#computeChainHash と同一式で連鎖していることを検証。
+    String expected = sha256Hex(prev.id() + "|" + prev.detail() + "|" + prev.createdAt());
+    assertThat(next.hashChain()).isEqualTo(expected);
+  }
+
+  private static String sha256Hex(String input) throws Exception {
+    java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+    byte[] bytes = digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    StringBuilder hex = new StringBuilder(64);
+    for (byte b : bytes) {
+      hex.append(String.format("%02x", b));
+    }
+    return hex.toString();
   }
 
   @Test
