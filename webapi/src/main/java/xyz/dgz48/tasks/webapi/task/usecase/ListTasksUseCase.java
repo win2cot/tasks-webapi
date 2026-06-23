@@ -31,10 +31,10 @@ public class ListTasksUseCase {
    * @param assigneeId 絞込担当者 ID(null = 全担当者)
    * @param visibility 絞込公開範囲(null = 全公開範囲)
    * @param keyword タイトル・説明部分一致検索キーワード(null / 空白のみ = 検索しない、#669)
-   * @param targetDate 表示対象日(基準日)。null のときは当日(JST、ADR-0009)に解決する
-   * @param includeOverdue 期限切れ未完了タスクを含めるか
+   * @param targetDate 表示対象日(選択日)。null のときは当日(JST、ADR-0009)に解決する
+   * @param includeOverdue 期限切れ未完了タスクを含めるか(期限切れは選択日に関わらず当日基準で常時含める、#667)
    * @param pageable ページング / ソート指定
-   * @return ページ結果と基準日時点の期限切れ未完了タスク件数
+   * @return ページ結果と当日時点の期限切れ未完了タスク件数
    */
   @Observed(name = "task.list")
   @Transactional(readOnly = true)
@@ -49,7 +49,8 @@ public class ListTasksUseCase {
       boolean includeOverdue,
       Pageable pageable) {
 
-    LocalDate effectiveDate = targetDate != null ? targetDate : LocalDate.now(clock);
+    LocalDate today = LocalDate.now(clock);
+    LocalDate effectiveDate = targetDate != null ? targetDate : today;
 
     Page<Task> taskPage =
         taskRepository.findVisibleTasks(
@@ -60,10 +61,11 @@ public class ListTasksUseCase {
             visibility,
             keyword,
             effectiveDate,
+            today,
             includeOverdue,
             pageable);
 
-    long overdueCount = taskRepository.countOverdueTasks(userId, effectiveDate);
+    long overdueCount = taskRepository.countOverdueTasks(userId, today);
 
     return new Result(taskPage, Math.toIntExact(overdueCount));
   }

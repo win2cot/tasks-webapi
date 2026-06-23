@@ -124,4 +124,49 @@ test.describe('タスク一覧 + CRUD', () => {
     await drawer.locator('button.btn-danger').click();
     await expect(drawer).not.toBeVisible({ timeout: 5_000 });
   });
+
+  // #667 — 期限切れ未完了の常時表示
+  test('期限切れ未完了タスクは選択日に関わらず常時上部に表示される', async ({ page }) => {
+    const taskTitle = `E2E overdue ${Date.now()}`;
+    const fmt = (d: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(d);
+    const today = fmt(new Date());
+    const yesterday = fmt(new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+    // 期限=前日(=期限切れ・未完了)のタスクを作成
+    await page.click('#btn-new-task');
+    const drawer = page.locator('app-task-drawer .offcanvas');
+    await expect(drawer).toBeVisible({ timeout: 5_000 });
+    await page.fill('#newTitle', taskTitle);
+    await page.fill('#newDue', yesterday);
+    await drawer.locator('button[type="submit"]').click();
+    await expect(drawer).not.toBeVisible({ timeout: 10_000 });
+
+    // 当日ビューで期限切れセクションに表示される
+    await expect(page.locator('#task-tbody')).toContainText('期限切れ');
+    await expect(page.locator('#task-tbody')).toContainText(taskTitle, { timeout: 10_000 });
+
+    // 翌日へ切替しても期限切れは当日基準で常時表示される(#667 の要)
+    await page.click('#btn-date-next');
+    await expect(page.locator('#date-picker')).not.toHaveValue(today);
+    await expect(page.locator('#task-tbody')).toContainText(taskTitle, { timeout: 10_000 });
+
+    // 後始末: 当日へ戻し(期限切れは引き続き表示)、作成したタスクを削除
+    await page.click('#btn-date-today');
+    await expect(page.locator('#date-picker')).toHaveValue(today);
+    const taskRow = page.locator('app-task-row').filter({
+      has: page.locator('.task-title', { hasText: taskTitle }),
+    });
+    await expect(taskRow).toBeVisible({ timeout: 10_000 });
+    await taskRow.locator('td.cell-owner').click();
+    await expect(drawer).toBeVisible({ timeout: 5_000 });
+    await drawer.locator('.btn-outline-danger').click();
+    await drawer.locator('button.btn-danger').click();
+    await expect(drawer).not.toBeVisible({ timeout: 5_000 });
+  });
 });

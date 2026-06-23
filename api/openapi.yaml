@@ -562,7 +562,7 @@ paths:
       operationId: listTasks
       parameters:
         - { name: targetDate,     in: query, schema: { type: string, format: date }, description: "表示対象日(省略時は当日 TODAY)" }
-        - { name: includeOverdue, in: query, schema: { type: boolean, default: true }, description: "期限切れ未完了タスクを含める" }
+        - { name: includeOverdue, in: query, schema: { type: boolean, default: true }, description: "期限切れ未完了タスク(`due_date < TODAY` かつ未完了)を含める。期限切れは選択日 targetDate に依存せず常時当日基準で含める(#667)" }
         - name: status
           in: query
           style: form
@@ -1469,7 +1469,7 @@ components:
         totalPages:    { type: integer }
         number:        { type: integer, description: "現在のページ番号(0始まり)" }
         size:          { type: integer }
-        overdueCount:  { type: integer, description: "期限切れ未完了タスク件数(参考)" }
+        overdueCount:  { type: integer, description: "期限切れ未完了タスク件数(JST 基準、`due_date < TODAY` かつ未完了。選択日 targetDate に依存せず常時当日基準、#667)" }
 
     TenantPage:
       type: object

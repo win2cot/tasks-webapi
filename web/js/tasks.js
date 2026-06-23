@@ -74,18 +74,22 @@ function buildEtag(task) {
 }
 
 // ---- Render task list from API response ----
-// 当日対象タスクを「期限切れ」「本日(選択日)」の 2 セクションに分けて描画する
-// (基本設計書 §3.3.1)。期限切れ = dueDate < 表示対象日。各セクションは常時表示し、
-// 空の場合は空状態行を表示する。
+// 取得したタスクを「期限切れ」「本日(選択日)」の 2 セクションに分けて描画する
+// (基本設計書 §3.3.1)。期限切れ = dueDate < 当日 かつ 未完了。期限切れは選択日に関わらず
+// 当日基準で常時上部に表示する(#667)。各セクションは常時表示し、空の場合は空状態行を表示する。
 /** @param {Task[]} tasks */
 function renderTasks(tasks) {
   /** @type {HTMLElement} */ (mustQuery(document, '#total-count')).textContent =
     `${totalElements} 件`;
   rowMap.clear();
 
+  const today = todayDateStr();
+  /** @param {Task} t */
+  const isOverdue = (t) => t.dueDate != null && t.dueDate < today && t.status !== 'DONE';
+
   const list = tasks ?? [];
-  const overdue = list.filter((t) => t.dueDate != null && t.dueDate < currentTargetDate);
-  const onTarget = list.filter((t) => !(t.dueDate != null && t.dueDate < currentTargetDate));
+  const overdue = list.filter(isOverdue);
+  const onTarget = list.filter((t) => !isOverdue(t));
   const targetCount = Math.max(0, totalElements - overdueTotal);
 
   // 表示基準日が当日なら「本日」、それ以外は選択日のラベルを表示する(#666)。
