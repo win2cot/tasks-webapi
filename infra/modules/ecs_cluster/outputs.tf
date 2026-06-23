@@ -8,16 +8,6 @@ output "cluster_arn" {
   value       = aws_ecs_cluster.main.arn
 }
 
-output "webapi_log_group_name" {
-  description = "CloudWatch Log Group name for tasks-webapi"
-  value       = aws_cloudwatch_log_group.webapi.name
-}
-
-output "keycloak_log_group_name" {
-  description = "CloudWatch Log Group name for Keycloak"
-  value       = aws_cloudwatch_log_group.keycloak.name
-}
-
 output "adot_log_group_name" {
   description = "CloudWatch Log Group name for ADOT Collector sidecar"
   value       = aws_cloudwatch_log_group.adot.name
