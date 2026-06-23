@@ -84,7 +84,8 @@ variable "log_retention_days" {
     app   = number
     audit = number
   })
-  default     = { app = 10, audit = 30 }
+  # app=14: CloudWatch Logs の許容値は離散(7/14/30/...)。「約 10 日」を最近接値 14 に丸め。
+  default     = { app = 14, audit = 30 }
   description = "CloudWatch Logs retention per log class (days): app = アプリ/アクセスlog, audit = 監査証跡"
 }
 
