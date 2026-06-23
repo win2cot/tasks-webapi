@@ -79,6 +79,7 @@ class ListTasksUseCaseTest {
             isNull(),
             isNull(),
             eq(TODAY),
+            eq(TODAY),
             eq(true),
             eq(pageable)))
         .thenReturn(taskPage);
@@ -108,6 +109,7 @@ class ListTasksUseCaseTest {
             eq(visibility),
             isNull(),
             eq(TODAY),
+            eq(TODAY),
             eq(true),
             eq(pageable)))
         .thenReturn(Page.empty(pageable));
@@ -135,6 +137,7 @@ class ListTasksUseCaseTest {
             isNull(),
             eq(keyword),
             eq(TODAY),
+            eq(TODAY),
             eq(true),
             eq(pageable)))
         .thenReturn(new PageImpl<>(List.of(buildTask(1L)), pageable, 1));
@@ -147,11 +150,38 @@ class ListTasksUseCaseTest {
   }
 
   @Test
+  void execute_anchorsOverdueToToday_notTargetDate() {
+    // #667: 未来日を選択しても期限切れ判定・件数は当日(TODAY)基準。
+    setupClock();
+    Pageable pageable = PageRequest.of(0, 10);
+    LocalDate future = TODAY.plusDays(10);
+
+    when(taskRepository.findVisibleTasks(
+            eq(USER_ID),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(future), // targetDate(選択日)
+            eq(TODAY), // today(期限切れ基準)
+            eq(true),
+            eq(pageable)))
+        .thenReturn(Page.empty(pageable));
+    when(taskRepository.countOverdueTasks(eq(USER_ID), eq(TODAY))).thenReturn(2L);
+
+    ListTasksUseCase.Result result =
+        useCase.execute(USER_ID, null, null, null, null, null, future, true, pageable);
+
+    assertThat(result.overdueCount()).isEqualTo(2);
+  }
+
+  @Test
   void execute_returnsEmptyPage_whenRepositoryReturnsEmpty() {
     setupClock();
     Pageable pageable = PageRequest.of(0, 50);
     when(taskRepository.findVisibleTasks(
-            any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+            any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
         .thenReturn(Page.empty(pageable));
     when(taskRepository.countOverdueTasks(any(), any())).thenReturn(0L);
 

@@ -1,11 +1,13 @@
 package xyz.dgz48.tasks.webapi.task.adapter.web;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.EntityManager;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 import xyz.dgz48.tasks.webapi.FixedClockConfiguration;
@@ -25,6 +28,7 @@ import xyz.dgz48.tasks.webapi.MockJwtDecoderConfiguration;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
 import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
+import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.task.adapter.persistence.TaskJpaEntity;
 import xyz.dgz48.tasks.webapi.task.domain.Priority;
 import xyz.dgz48.tasks.webapi.task.domain.TaskStatus;
@@ -49,7 +53,13 @@ class ListTasksIT {
   @Autowired EntityManager em;
   @Autowired TransactionTemplate txTemplate;
 
-  /** 固定クロック(FixedClockConfiguration)の当日(JST 2026-01-15)。 */
+  /**
+   * {@code ListTasksUseCase} が注入する {@link Clock} を固定し、期限切れ判定(#667)の基準となる当日({@code
+   * LocalDate.now(clock)})を {@link #TODAY} に一致させる。これにより「選択日に関わらず当日基準で期限切れを表示」を決定論的に検証できる。
+   */
+  @MockitoBean Clock clock;
+
+  /** 固定クロックの当日(JST 2026-01-15)。期限切れ判定(#667)が決定論的になるよう Clock を固定する。 */
   private static final LocalDate TODAY = LocalDate.of(2026, 1, 15);
 
   // User A: viewer(target user)
@@ -69,6 +79,10 @@ class ListTasksIT {
 
   @BeforeEach
   void setUp() {
+    when(clock.getZone()).thenReturn(AppZones.JST);
+    when(clock.instant())
+        .thenReturn(FixedClockConfiguration.FIXED_NOW.atZone(AppZones.JST).toInstant());
+
     txTemplate.execute(
         ignored -> {
           var userA =
@@ -640,6 +654,30 @@ class ListTasksIT {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.content[?(@.id == " + futureTaskId + ")]").exists())
           .andExpect(jsonPath("$.content[?(@.id == " + todayTaskId + ")]").doesNotExist());
+    }
+
+    @Test
+    void overdueAlwaysShown_whenTargetDateIsFuture() throws Exception {
+      // #667: 未来日を選択しても、期限切れ未完了タスクは当日(TODAY)基準で常時上部に表示される。
+      // 期限切れ判定は選択日ではなく当日基準のため、当日タスクは未来日ビューに現れない。
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("targetDate", TODAY.plusDays(10).toString())
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          // 選択日(未来)のタスク
+          .andExpect(jsonPath("$.content[?(@.id == " + futureTaskId + ")]").exists())
+          // 期限切れ未完了は選択日に関わらず常時表示
+          .andExpect(jsonPath("$.content[?(@.id == " + overdueTaskId + ")]").exists())
+          // 当日タスクは当日基準では期限切れでなく、選択日(未来)とも一致しないため現れない
+          .andExpect(jsonPath("$.content[?(@.id == " + todayTaskId + ")]").doesNotExist())
+          // 完了済の期限切れは除外
+          .andExpect(jsonPath("$.content[?(@.id == " + overdueDoneTaskId + ")]").doesNotExist())
+          // overdueCount は当日基準で算出される(選択日に依存しない)
+          .andExpect(
+              jsonPath("$.overdueCount").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
     }
 
     @Test
