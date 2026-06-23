@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -111,8 +113,8 @@ public class TaskController {
   /**
    * タスク一覧取得(operationId: listTasks)。
    *
-   * <p>keyword 絞込(タイトル・説明部分一致)は #669 で実装済。targetDate / includeOverdue / priority 絞込は Sprint 3 の別
-   * issue(#665-668)で実装予定。現フェーズでは受理するが実装なし(フィルタ動作なし)。
+   * <p>表示対象日(targetDate、省略時は当日 TODAY)を基準に、当日 + 期限切れ未完了(includeOverdue=true、デフォルト)の タスクを返す(S-04 /
+   * 基本設計書 §3.3.1、#665 / #666 共通)。keyword 絞込(タイトル・説明部分一致)は #669 で実装済。priority 絞込は別 Issue で実装予定。
    */
   @GetMapping
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
@@ -124,8 +126,9 @@ public class TaskController {
       @RequestParam(required = false) @Nullable Long ownerId,
       @RequestParam(required = false) @Nullable Long assigneeId,
       @RequestParam(required = false) @Nullable Visibility visibility,
-      @RequestParam(required = false) @Nullable String targetDate,
-      @RequestParam(required = false) @Nullable Boolean includeOverdue,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          @Nullable LocalDate targetDate,
+      @RequestParam(defaultValue = "true") boolean includeOverdue,
       @RequestParam(required = false) @Nullable String priority,
       @RequestParam(required = false) @Nullable String keyword,
       TasksAuthenticationToken token) {
@@ -135,7 +138,15 @@ public class TaskController {
 
     ListTasksUseCase.Result result =
         listTasksUseCase.execute(
-            userId, statuses, ownerId, assigneeId, visibility, keyword, pageable);
+            userId,
+            statuses,
+            ownerId,
+            assigneeId,
+            visibility,
+            keyword,
+            targetDate,
+            includeOverdue,
+            pageable);
 
     Page<Task> taskPage = result.taskPage();
     Map<Long, UserJpaEntity> userMap = loadUserMap(taskPage.getContent());

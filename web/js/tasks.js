@@ -4,7 +4,19 @@ let currentSort = 'dueDate,asc';
 let totalPages = 1;
 let totalElements = 0;
 let currentKeyword = ''; // タスク検索キーワード(タイトル・説明部分一致、#669)
+let overdueTotal = 0;
+let currentTargetDate = ''; // 表示対象日 (YYYY-MM-DD, JST)
 const PAGE_SIZE = 50;
+
+// 当日 (JST) を YYYY-MM-DD で返す。
+function todayDateStr() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
 
 // ---- Task / user state ----
 const taskMap = new Map(); // taskId(number) → Task object
@@ -31,13 +43,62 @@ function buildEtag(task) {
 }
 
 // ---- Render task list from API response ----
+// 当日対象タスクを「期限切れ」「本日(選択日)」の 2 セクションに分けて描画する
+// (基本設計書 §3.3.1)。期限切れ = dueDate < 表示対象日。各セクションは常時表示し、
+// 空の場合は空状態行を表示する。
 /** @param {Task[]} tasks */
 function renderTasks(tasks) {
   /** @type {HTMLElement} */ (mustQuery(document, '#total-count')).textContent =
     `${totalElements} 件`;
   rowMap.clear();
 
-  if (!tasks || tasks.length === 0) {
+  const list = tasks ?? [];
+  const overdue = list.filter((t) => t.dueDate != null && t.dueDate < currentTargetDate);
+  const onTarget = list.filter((t) => !(t.dueDate != null && t.dueDate < currentTargetDate));
+  const todayCount = Math.max(0, totalElements - overdueTotal);
+
+  /** @type {Node[]} */
+  const nodes = [];
+  nodes.push(groupHeadRow('bi-exclamation-triangle-fill text-danger', '期限切れ', overdueTotal));
+  nodes.push(...sectionRows(overdue, '期限切れのタスクはありません'));
+  nodes.push(groupHeadRow('bi-calendar-day text-primary', '本日', todayCount));
+  nodes.push(...sectionRows(onTarget, '本日のタスクはありません'));
+  tbody.replaceChildren(...nodes);
+}
+
+// ---- Section group header row ----
+/**
+ * @param {string} iconClass — Bootstrap Icons クラス (色クラス込み可)
+ * @param {string} label
+ * @param {number} count
+ * @returns {HTMLTableRowElement}
+ */
+function groupHeadRow(iconClass, label, count) {
+  const tr = document.createElement('tr');
+  tr.className = 'group-head';
+  const td = document.createElement('td');
+  td.colSpan = 7;
+  const icon = document.createElement('i');
+  icon.className = `bi ${iconClass} me-2`;
+  icon.setAttribute('aria-hidden', 'true');
+  td.appendChild(icon);
+  td.appendChild(document.createTextNode(label));
+  const cnt = document.createElement('span');
+  cnt.className = 'sec-count ms-2';
+  cnt.textContent = `${count} 件`;
+  td.appendChild(cnt);
+  tr.appendChild(td);
+  return tr;
+}
+
+// ---- Build rows (or an empty-state row) for one section ----
+/**
+ * @param {Task[]} tasks
+ * @param {string} emptyMsg
+ * @returns {Node[]}
+ */
+function sectionRows(tasks, emptyMsg) {
+  if (tasks.length === 0) {
     const tr = document.createElement('tr');
     tr.className = 'empty-row';
     const td = document.createElement('td');
@@ -48,21 +109,18 @@ function renderTasks(tasks) {
     td.appendChild(icon);
     td.appendChild(
       document.createTextNode(
-        currentKeyword ? `「${currentKeyword}」に一致するタスクはありません` : 'タスクはありません',
+        currentKeyword ? `「${currentKeyword}」に一致するタスクはありません` : emptyMsg,
       ),
     );
     tr.appendChild(td);
-    tbody.replaceChildren(tr);
-    return;
+    return [tr];
   }
-
-  const rows = tasks.map((task) => {
+  return tasks.map((task) => {
     const row = /** @type {AppTaskRowElement} */ (document.createElement('app-task-row'));
     row.setTask(task, currentUserId, tenantUsers);
     rowMap.set(task.id, row);
     return row;
   });
-  tbody.replaceChildren(...rows);
 }
 
 // ---- Re-render a single row after a successful PATCH ----
@@ -183,14 +241,18 @@ async function loadTasks() {
   cancelAllEdits();
   showLoading(true);
   try {
+    currentTargetDate = todayDateStr();
     const data = await Api.listTasks({
       page: currentPage,
       size: PAGE_SIZE,
       sort: currentSort,
       keyword: currentKeyword || undefined,
+      targetDate: currentTargetDate,
+      includeOverdue: true,
     });
     totalPages = data.totalPages || 1;
     totalElements = data.totalElements || 0;
+    overdueTotal = data.overdueCount || 0;
     taskMap.clear();
     if (data.content)
       data.content.forEach((t) => {

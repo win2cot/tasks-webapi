@@ -98,11 +98,23 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
       @Nullable String keyword,
+      LocalDate targetDate,
+      boolean includeOverdue,
       Pageable pageable) {
 
     CriteriaBuilder cb = em.getCriteriaBuilder();
 
-    long total = executeCountQuery(cb, userId, statuses, ownerId, assigneeId, visibility, keyword);
+    long total =
+        executeCountQuery(
+            cb,
+            userId,
+            statuses,
+            ownerId,
+            assigneeId,
+            visibility,
+            keyword,
+            targetDate,
+            includeOverdue);
     if (total == 0) {
       return Page.empty(pageable);
     }
@@ -111,7 +123,17 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
     Root<TaskJpaEntity> task = dataQuery.from(TaskJpaEntity.class);
     dataQuery.where(
         buildPredicates(
-            cb, dataQuery, task, userId, statuses, ownerId, assigneeId, visibility, keyword));
+            cb,
+            dataQuery,
+            task,
+            userId,
+            statuses,
+            ownerId,
+            assigneeId,
+            visibility,
+            keyword,
+            targetDate,
+            includeOverdue));
     dataQuery.orderBy(buildOrders(cb, task, pageable.getSort()));
 
     List<TaskJpaEntity> result =
@@ -150,7 +172,9 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
-      @Nullable String keyword) {
+      @Nullable String keyword,
+      LocalDate targetDate,
+      boolean includeOverdue) {
 
     CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
     Root<TaskJpaEntity> countRoot = countQuery.from(TaskJpaEntity.class);
@@ -166,7 +190,9 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
                 ownerId,
                 assigneeId,
                 visibility,
-                keyword));
+                keyword,
+                targetDate,
+                includeOverdue));
     Long result = em.createQuery(countQuery).getSingleResult();
     return result != null ? result : 0L;
   }
@@ -180,11 +206,14 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
-      @Nullable String keyword) {
+      @Nullable String keyword,
+      LocalDate targetDate,
+      boolean includeOverdue) {
 
     List<Predicate> predicates = new ArrayList<>();
     predicates.add(cb.isNull(task.get("deletedAt")));
     predicates.add(buildAuthPredicate(cb, query, task, userId));
+    predicates.add(buildTargetDatePredicate(cb, task, targetDate, includeOverdue));
 
     if (statuses != null && !statuses.isEmpty()) {
       predicates.add(task.get("status").in(statuses));
@@ -226,6 +255,25 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
   /** LIKE のワイルドカード文字をエスケープし、入力をリテラル一致として扱う。 */
   private static String escapeLike(String input) {
     return input.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
+  /**
+   * 表示対象日フィルタ述語(#665 / #666 共通)。
+   *
+   * <p>{@code includeOverdue == true}: 当日(due_date = targetDate)+ 期限切れ未完了(due_date &lt; targetDate
+   * かつ status != DONE)。{@code includeOverdue == false}: 当日のみ。
+   */
+  private Predicate buildTargetDatePredicate(
+      CriteriaBuilder cb, Root<TaskJpaEntity> task, LocalDate targetDate, boolean includeOverdue) {
+    Predicate dueOnTarget = cb.equal(task.get("dueDate"), targetDate);
+    if (!includeOverdue) {
+      return dueOnTarget;
+    }
+    Predicate overdue =
+        cb.and(
+            cb.lessThan(task.get("dueDate"), targetDate),
+            cb.notEqual(task.get("status"), TaskStatus.DONE));
+    return cb.or(dueOnTarget, overdue);
   }
 
   /** visibility 3 役割評価認可述語(ADR-0005)。Hibernate Filter による tenant_id 絞込は別途自動適用。 */

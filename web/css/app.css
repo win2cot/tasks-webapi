@@ -238,6 +238,19 @@ table.tasks .empty-row td {
   padding: 40px 14px;
   font-size: 13px;
 }
+table.tasks tr.group-head {
+  cursor: default;
+}
+table.tasks tr.group-head:hover {
+  background: transparent;
+}
+table.tasks tr.group-head td {
+  background: #fafbfc;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--app-ink);
+  padding: 8px 14px;
+}
 
 /* ---- Badges (design-system.md §6.4) ---- */
 .vis-badge {
