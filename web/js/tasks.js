@@ -3,6 +3,7 @@ let currentPage = 0;
 let currentSort = 'dueDate,asc';
 let totalPages = 1;
 let totalElements = 0;
+let currentKeyword = ''; // タスク検索キーワード(タイトル・説明部分一致、#669)
 const PAGE_SIZE = 50;
 
 // ---- Task / user state ----
@@ -45,7 +46,11 @@ function renderTasks(tasks) {
     icon.className = 'bi bi-inbox me-2';
     icon.setAttribute('aria-hidden', 'true');
     td.appendChild(icon);
-    td.appendChild(document.createTextNode('タスクはありません'));
+    td.appendChild(
+      document.createTextNode(
+        currentKeyword ? `「${currentKeyword}」に一致するタスクはありません` : 'タスクはありません',
+      ),
+    );
     tr.appendChild(td);
     tbody.replaceChildren(tr);
     return;
@@ -178,7 +183,12 @@ async function loadTasks() {
   cancelAllEdits();
   showLoading(true);
   try {
-    const data = await Api.listTasks({ page: currentPage, size: PAGE_SIZE, sort: currentSort });
+    const data = await Api.listTasks({
+      page: currentPage,
+      size: PAGE_SIZE,
+      sort: currentSort,
+      keyword: currentKeyword || undefined,
+    });
     totalPages = data.totalPages || 1;
     totalElements = data.totalElements || 0;
     taskMap.clear();
@@ -228,6 +238,24 @@ function updateSortCarets() {
           : 'bi bi-caret-down-fill'
         : 'bi bi-chevron-expand';
   });
+}
+
+// ---- Keyword search (#669, GET /api/tasks?keyword=) ----
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let searchDebounce;
+const SEARCH_DEBOUNCE_MS = 300;
+
+const searchInput = /** @type {HTMLInputElement} */ (mustQuery(document, '#search-input'));
+const searchClear = /** @type {HTMLElement} */ (mustQuery(document, '#search-clear'));
+
+/** 入力値を確定し、変化があれば 1 ページ目から再取得する。 */
+function applyKeyword() {
+  const next = searchInput.value.trim();
+  searchClear.classList.toggle('d-none', next === '');
+  if (next === currentKeyword) return;
+  currentKeyword = next;
+  currentPage = 0;
+  loadTasks();
 }
 
 // ---- Row click → open detail drawer (S-05) ----
@@ -313,6 +341,26 @@ pager.addEventListener('page-change', (e) => {
 /** @type {HTMLElement} */ (mustQuery(document, '#th-priority')).addEventListener('click', () =>
   cycleSort('priority'),
 );
+
+// Search: debounce while typing, immediate on submit (Enter) / clear.
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(applyKeyword, SEARCH_DEBOUNCE_MS);
+});
+/** @type {HTMLFormElement} */ (mustQuery(document, '#search-form')).addEventListener(
+  'submit',
+  (e) => {
+    e.preventDefault();
+    clearTimeout(searchDebounce);
+    applyKeyword();
+  },
+);
+searchClear.addEventListener('click', () => {
+  clearTimeout(searchDebounce);
+  searchInput.value = '';
+  searchInput.focus();
+  applyKeyword();
+});
 
 // ---- Init ----
 async function main() {

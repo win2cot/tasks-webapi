@@ -111,8 +111,8 @@ public class TaskController {
   /**
    * タスク一覧取得(operationId: listTasks)。
    *
-   * <p>targetDate / includeOverdue / keyword / priority 絞込は Sprint 3 で実装予定。現フェーズでは受理するが
-   * 実装なし(フィルタ動作なし)。
+   * <p>keyword 絞込(タイトル・説明部分一致)は #669 で実装済。targetDate / includeOverdue / priority 絞込は Sprint 3 の別
+   * issue(#665-668)で実装予定。現フェーズでは受理するが実装なし(フィルタ動作なし)。
    */
   @GetMapping
   @PreAuthorize("hasAnyRole('TENANT_ADMIN', 'MEMBER')")
@@ -134,7 +134,8 @@ public class TaskController {
     Pageable pageable = buildPageable(page, size, sort);
 
     ListTasksUseCase.Result result =
-        listTasksUseCase.execute(userId, statuses, ownerId, assigneeId, visibility, pageable);
+        listTasksUseCase.execute(
+            userId, statuses, ownerId, assigneeId, visibility, keyword, pageable);
 
     Page<Task> taskPage = result.taskPage();
     Map<Long, UserJpaEntity> userMap = loadUserMap(taskPage.getContent());

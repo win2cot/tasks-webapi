@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
@@ -96,11 +97,12 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable String keyword,
       Pageable pageable) {
 
     CriteriaBuilder cb = em.getCriteriaBuilder();
 
-    long total = executeCountQuery(cb, userId, statuses, ownerId, assigneeId, visibility);
+    long total = executeCountQuery(cb, userId, statuses, ownerId, assigneeId, visibility, keyword);
     if (total == 0) {
       return Page.empty(pageable);
     }
@@ -108,7 +110,8 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
     CriteriaQuery<TaskJpaEntity> dataQuery = cb.createQuery(TaskJpaEntity.class);
     Root<TaskJpaEntity> task = dataQuery.from(TaskJpaEntity.class);
     dataQuery.where(
-        buildPredicates(cb, dataQuery, task, userId, statuses, ownerId, assigneeId, visibility));
+        buildPredicates(
+            cb, dataQuery, task, userId, statuses, ownerId, assigneeId, visibility, keyword));
     dataQuery.orderBy(buildOrders(cb, task, pageable.getSort()));
 
     List<TaskJpaEntity> result =
@@ -146,7 +149,8 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable List<TaskStatus> statuses,
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
-      @Nullable Visibility visibility) {
+      @Nullable Visibility visibility,
+      @Nullable String keyword) {
 
     CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
     Root<TaskJpaEntity> countRoot = countQuery.from(TaskJpaEntity.class);
@@ -154,7 +158,15 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
         .select(cb.count(countRoot))
         .where(
             buildPredicates(
-                cb, countQuery, countRoot, userId, statuses, ownerId, assigneeId, visibility));
+                cb,
+                countQuery,
+                countRoot,
+                userId,
+                statuses,
+                ownerId,
+                assigneeId,
+                visibility,
+                keyword));
     Long result = em.createQuery(countQuery).getSingleResult();
     return result != null ? result : 0L;
   }
@@ -167,7 +179,8 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
       @Nullable List<TaskStatus> statuses,
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
-      @Nullable Visibility visibility) {
+      @Nullable Visibility visibility,
+      @Nullable String keyword) {
 
     List<Predicate> predicates = new ArrayList<>();
     predicates.add(cb.isNull(task.get("deletedAt")));
@@ -185,8 +198,34 @@ class TaskJpaRepositoryAdapter implements TaskRepository {
     if (visibility != null) {
       predicates.add(cb.equal(task.get("visibility"), visibility));
     }
+    Predicate keywordPredicate = buildKeywordPredicate(cb, task, keyword);
+    if (keywordPredicate != null) {
+      predicates.add(keywordPredicate);
+    }
 
     return predicates.toArray(Predicate[]::new);
+  }
+
+  /**
+   * keyword のタイトル・説明部分一致述語を組み立てる(#669、基本設計書 §5.3.3)。
+   *
+   * <p>大文字小文字を区別せず(lower)、{@code title} または {@code description} のいずれかに含まれれば一致。 LIKE のワイルドカード({@code
+   * % _ \})はエスケープし、ユーザー入力をリテラルとして扱う。null / 空白のみのときは 述語なし(null を返す)。
+   */
+  private @Nullable Predicate buildKeywordPredicate(
+      CriteriaBuilder cb, Root<TaskJpaEntity> task, @Nullable String keyword) {
+    if (keyword == null || keyword.isBlank()) {
+      return null;
+    }
+    String pattern = "%" + escapeLike(keyword.strip().toLowerCase(Locale.ROOT)) + "%";
+    Predicate titleMatch = cb.like(cb.lower(task.get("title")), pattern, '\\');
+    Predicate descriptionMatch = cb.like(cb.lower(task.get("description")), pattern, '\\');
+    return cb.or(titleMatch, descriptionMatch);
+  }
+
+  /** LIKE のワイルドカード文字をエスケープし、入力をリテラル一致として扱う。 */
+  private static String escapeLike(String input) {
+    return input.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   /** visibility 3 役割評価認可述語(ADR-0005)。Hibernate Filter による tenant_id 絞込は別途自動適用。 */

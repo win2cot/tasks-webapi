@@ -352,6 +352,7 @@ class TaskControllerWebMvcTest {
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.isNull(),
+                ArgumentMatchers.isNull(),
                 ArgumentMatchers.any()))
         .willReturn(result);
 
@@ -393,6 +394,7 @@ class TaskControllerWebMvcTest {
     BDDMockito.given(
             listTasksUseCase.execute(
                 ArgumentMatchers.anyLong(),
+                ArgumentMatchers.any(),
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any(),
                 ArgumentMatchers.any(),

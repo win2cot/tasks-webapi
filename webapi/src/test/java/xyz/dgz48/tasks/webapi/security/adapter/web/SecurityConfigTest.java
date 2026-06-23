@@ -109,7 +109,7 @@ class SecurityConfigTest {
   void stubTenantResolver() {
     given(userTenantsResolverService.resolveInitial(ArgumentMatchers.anyLong()))
         .willReturn(Optional.of(new TenantMembership(1L, TenantRole.MEMBER)));
-    given(listTasksUseCase.execute(any(), any(), any(), any(), any(), any()))
+    given(listTasksUseCase.execute(any(), any(), any(), any(), any(), any(), any()))
         .willReturn(new ListTasksUseCase.Result(Page.empty(PageRequest.of(0, 50)), 0));
   }
 

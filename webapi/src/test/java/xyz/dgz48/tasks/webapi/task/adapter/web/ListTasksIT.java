@@ -114,7 +114,7 @@ class ListTasksIT {
                   tenantId,
                   userBId,
                   "TENANTタスク",
-                  null,
+                  "四半期レビュー資料の作成",
                   TaskStatus.NOT_STARTED,
                   Priority.MEDIUM,
                   LocalDate.of(2026, 12, 31));
@@ -414,6 +414,76 @@ class ListTasksIT {
                   .with(authentication(authTokenA)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.content[?(@.owner.id == " + userBId + ")]").doesNotExist());
+    }
+
+    @Test
+    void keywordFilter_matchesTitlePartial() throws Exception {
+      // "STAKEHOLDERS" は stakeholderTask のタイトルにのみ含まれる(#669)
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("keyword", "STAKEHOLDERS")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + stakeholderTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + tenantTaskId + ")]").doesNotExist())
+          .andExpect(
+              jsonPath("$.content[?(@.id == " + privateTaskOwnedByAId + ")]").doesNotExist());
+    }
+
+    @Test
+    void keywordFilter_matchesDescriptionPartial() throws Exception {
+      // "四半期" は tenantTask の説明にのみ含まれる(#669、タイトルは "TENANTタスク")
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("keyword", "四半期")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + tenantTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + stakeholderTaskId + ")]").doesNotExist());
+    }
+
+    @Test
+    void keywordFilter_isCaseInsensitive() throws Exception {
+      // 小文字 "stakeholders" でも大文字タイトルに一致する
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("keyword", "stakeholders")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + stakeholderTaskId + ")]").exists());
+    }
+
+    @Test
+    void keywordFilter_noMatch_returnsEmpty() throws Exception {
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("keyword", "存在しないキーワードxyz")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content.length()").value(0))
+          .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void keywordFilter_blank_returnsAllVisible() throws Exception {
+      // 空白のみの keyword は検索条件なし扱い(認可フィルタ通過タスクは全件返る)
+      mockMvc
+          .perform(
+              get("/api/tasks")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .param("keyword", "   ")
+                  .with(authentication(authTokenA)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content[?(@.id == " + tenantTaskId + ")]").exists())
+          .andExpect(jsonPath("$.content[?(@.id == " + stakeholderTaskId + ")]").exists());
     }
 
     @Test

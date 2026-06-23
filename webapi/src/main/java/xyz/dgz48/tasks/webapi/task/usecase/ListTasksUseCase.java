@@ -30,6 +30,7 @@ public class ListTasksUseCase {
    * @param ownerId 絞込所有者 ID(null = 全所有者)
    * @param assigneeId 絞込担当者 ID(null = 全担当者)
    * @param visibility 絞込公開範囲(null = 全公開範囲)
+   * @param keyword タイトル・説明部分一致検索キーワード(null / 空白のみ = 検索しない、#669)
    * @param pageable ページング / ソート指定
    * @return ページ結果と期限切れ未完了タスク件数
    */
@@ -41,11 +42,12 @@ public class ListTasksUseCase {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable String keyword,
       Pageable pageable) {
 
     Page<Task> taskPage =
         taskRepository.findVisibleTasks(
-            userId, statuses, ownerId, assigneeId, visibility, pageable);
+            userId, statuses, ownerId, assigneeId, visibility, keyword, pageable);
 
     long overdueCount = taskRepository.countOverdueTasks(userId, LocalDate.now(clock));
 
