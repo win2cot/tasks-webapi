@@ -17,6 +17,14 @@ test.describe('タスク一覧 + CRUD', () => {
 
   test('タスクを作成・詳細表示・ステータス変更・削除できる', async ({ page }) => {
     const taskTitle = `E2E smoke ${Date.now()}`;
+    // メイン画面は「当日対象タスク」のみ表示する(#665, 基本設計書 §3.3.1)ため、
+    // 作成タスクが「本日」セクションに現れるよう期限を当日 (JST) に設定する。
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
 
     // ── Create ─────────────────────────────────────────────────────────────
     await page.click('#btn-new-task');
@@ -25,7 +33,7 @@ test.describe('タスク一覧 + CRUD', () => {
     await expect(drawer).toBeVisible({ timeout: 5_000 });
 
     await page.fill('#newTitle', taskTitle);
-    await page.fill('#newDue', '2099-12-31');
+    await page.fill('#newDue', today);
     // 優先度はデフォルト MEDIUM、公開範囲はデフォルト TENANT のまま送信
     await drawer.locator('button[type="submit"]').click();
 
