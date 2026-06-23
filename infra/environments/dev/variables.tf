@@ -75,6 +75,21 @@ variable "tenant_default_id" {
 }
 
 # ---------------------------------------------------------------------------
+# ログ基盤 — CloudWatch Logs 保持期間(infra ADR-0005 §3.3 / §6)
+# dev はコスト優先で短期保持。stg / prd で要件に応じ tfvars で上書きする。
+# ---------------------------------------------------------------------------
+
+variable "log_retention_days" {
+  type = object({
+    app   = number
+    audit = number
+  })
+  # app=14: CloudWatch Logs の許容値は離散(7/14/30/...)。「約 10 日」を最近接値 14 に丸め。
+  default     = { app = 14, audit = 30 }
+  description = "CloudWatch Logs retention per log class (days): app = アプリ/アクセスlog, audit = 監査証跡"
+}
+
+# ---------------------------------------------------------------------------
 # ECS Task Definition — bootstrap image (ADR-0028)
 # ---------------------------------------------------------------------------
 

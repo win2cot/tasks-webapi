@@ -1027,7 +1027,8 @@ data "aws_iam_policy_document" "tasks_apply" {
     resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/ecs.amazonaws.com/*"]
   }
 
-  # CloudWatch Logs CRUD scoped to ECS task log groups
+  # CloudWatch Logs CRUD — ECS task log groups(/ecs/tasks-<env>/*: ADOT / EMF, ADR-0007)
+  # + ログ基盤(/tasks/<env>/*: webapi / audit, S3Infra-3 / ADR-0005)
   statement {
     sid = "LogsWrite"
     actions = [
@@ -1044,6 +1045,7 @@ data "aws_iam_policy_document" "tasks_apply" {
     ]
     resources = [
       "arn:aws:logs:${var.region}:${var.account_id}:log-group:/ecs/tasks-${var.env}/*",
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:/tasks/${var.env}/*",
     ]
   }
   # logs:DescribeLogGroups does not support resource-level permissions; must use Resource:"*"
