@@ -168,7 +168,8 @@ resource "aws_ecs_task_definition" "webapi" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = module.ecs_cluster.webapi_log_group_name
+          # ログ基盤は logging モジュール所有(/tasks/<env>/webapi, ADR-0005)
+          "awslogs-group"         = module.logging.webapi_log_group_name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "webapi"
         }

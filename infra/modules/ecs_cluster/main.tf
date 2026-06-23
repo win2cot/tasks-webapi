@@ -34,27 +34,13 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 }
 
 # ---------------------------------------------------------------------------
-# CloudWatch Log Groups — 雛形(本格運用設定は S3Infra-3)
-# tasks-webapi / keycloak 各 Service が参照するロググループを事前作成
+# CloudWatch Log Groups — ADOT / APM 用(ADR-0007)
+#
+# アプリ(webapi)/ 監査ログは S3Infra-3 でログ基盤(logging モジュール,
+# `/tasks/<env>/*`, ADR-0005)へ移管した。Keycloak ログは共有 platform 所有
+# (`/ecs/platform-<env>/keycloak`)。本モジュールには ECS task 定義と密結合する
+# ADOT Collector / EMF メトリクス用ロググループのみ残す。
 # ---------------------------------------------------------------------------
-
-resource "aws_cloudwatch_log_group" "webapi" {
-  name              = "/ecs/tasks-${var.env}/webapi"
-  retention_in_days = 7
-
-  tags = {
-    Name = "/ecs/tasks-${var.env}/webapi"
-  }
-}
-
-resource "aws_cloudwatch_log_group" "keycloak" {
-  name              = "/ecs/tasks-${var.env}/keycloak"
-  retention_in_days = 7
-
-  tags = {
-    Name = "/ecs/tasks-${var.env}/keycloak"
-  }
-}
 
 resource "aws_cloudwatch_log_group" "adot" {
   name              = "/ecs/tasks-${var.env}/adot"
