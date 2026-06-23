@@ -8,6 +8,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
 import xyz.dgz48.tasks.webapi.task.domain.Task;
 import xyz.dgz48.tasks.webapi.task.domain.TaskAuthorizationDomainService;
 import xyz.dgz48.tasks.webapi.task.domain.TaskNotFoundException;
@@ -36,7 +37,7 @@ public class ChangeTaskStatusUseCase {
       throw new TaskNotViewableException(taskId);
     }
     if (!taskAuthorizationDomainService.canChangeStatusBy(task, userId)) {
-      throw new TaskOwnershipException(taskId);
+      throw new TaskOwnershipException(taskId, AuditEventType.STATUS_CHANGE_DENIED);
     }
     LocalDateTime now = LocalDateTime.now(clock);
     task.changeStatus(newStatus, now);

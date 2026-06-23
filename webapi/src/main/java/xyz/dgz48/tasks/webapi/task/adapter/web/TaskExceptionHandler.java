@@ -2,12 +2,22 @@ package xyz.dgz48.tasks.webapi.task.adapter.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import xyz.dgz48.tasks.webapi.audit.domain.AuditEventType;
+import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
+import xyz.dgz48.tasks.webapi.security.adapter.web.TasksAuthenticationToken;
+import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.shared.exception.DomainException;
 import xyz.dgz48.tasks.webapi.shared.exception.PreconditionFailedException;
 import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
@@ -22,11 +32,15 @@ import xyz.dgz48.tasks.webapi.task.domain.TaskOwnershipException;
 @RestControllerAdvice(assignableTypes = TaskController.class)
 public class TaskExceptionHandler {
 
-  @ExceptionHandler({
-    TaskNotFoundException.class,
-    TaskNotViewableException.class,
-    StakeholderNotFoundException.class
-  })
+  private static final Logger log = LoggerFactory.getLogger(TaskExceptionHandler.class);
+
+  private final AuthorizationDeniedAuditService authorizationDeniedAuditService;
+
+  public TaskExceptionHandler(AuthorizationDeniedAuditService authorizationDeniedAuditService) {
+    this.authorizationDeniedAuditService = authorizationDeniedAuditService;
+  }
+
+  @ExceptionHandler({TaskNotFoundException.class, StakeholderNotFoundException.class})
   @ResponseStatus(HttpStatus.NOT_FOUND)
   public ErrorResponse handleNotFound(DomainException ex, HttpServletRequest request) {
     return new ErrorResponse(
@@ -38,9 +52,28 @@ public class TaskExceptionHandler {
         request.getRequestURI());
   }
 
+  /** タスク参照拒否(可視性フィルタ不通過): 404 + 監査ログ {@code VIEW_DENIED}(§6.2.3)。 */
+  @ExceptionHandler(TaskNotViewableException.class)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ErrorResponse handleNotViewable(TaskNotViewableException ex, HttpServletRequest request) {
+    recordDenied(AuditEventType.VIEW_DENIED, ex.getTaskId());
+    return new ErrorResponse(
+        OffsetDateTime.now(AppZones.JST),
+        HttpStatus.NOT_FOUND.value(),
+        HttpStatus.NOT_FOUND.getReasonPhrase(),
+        ErrorCode.E_NOT_FOUND,
+        Objects.requireNonNullElse(ex.getMessage(), "リソースが見つかりません"),
+        request.getRequestURI());
+  }
+
+  /** タスク操作権限違反: 403 +(該当時)監査ログ {@code *_DENIED}(§6.2.3)。 */
   @ExceptionHandler(TaskOwnershipException.class)
   @ResponseStatus(HttpStatus.FORBIDDEN)
-  public ErrorResponse handleForbidden(DomainException ex, HttpServletRequest request) {
+  public ErrorResponse handleForbidden(TaskOwnershipException ex, HttpServletRequest request) {
+    AuditEventType deniedAction = ex.getDeniedAction();
+    if (deniedAction != null) {
+      recordDenied(deniedAction, ex.getTaskId());
+    }
     return new ErrorResponse(
         OffsetDateTime.now(AppZones.JST),
         HttpStatus.FORBIDDEN.value(),
@@ -99,5 +132,23 @@ public class TaskExceptionHandler {
         ErrorCode.E_VALIDATION,
         Objects.requireNonNullElse(ex.getMessage(), "If-Match ヘッダの形式が不正です"),
         request.getRequestURI());
+  }
+
+  /** 認可違反を {@code audit_logs} に記録する。記録失敗で本来の認可応答(403/404)を 500 に化けさせないよう、 例外は握りつぶしてログ出力に留める。 */
+  private void recordDenied(AuditEventType action, Long taskId) {
+    try {
+      authorizationDeniedAuditService.record(
+          action, TenantContext.get(), currentUserId(), Map.of("taskId", taskId));
+    } catch (RuntimeException e) {
+      log.warn("認可違反の監査記録に失敗しました: action={}", action, e);
+    }
+  }
+
+  private static @Nullable Long currentUserId() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth instanceof TasksAuthenticationToken token) {
+      return token.getPrincipal().getId();
+    }
+    return null;
   }
 }
