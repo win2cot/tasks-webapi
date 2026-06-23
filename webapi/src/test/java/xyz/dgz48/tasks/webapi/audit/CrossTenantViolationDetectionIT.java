@@ -26,7 +26,7 @@ import xyz.dgz48.tasks.webapi.task.usecase.TaskRepository;
  * クロステナント違反検知ログの統合テスト。
  *
  * <p>TenantContext 未設定で tenant-filtered テーブルへの SQL が発行された場合に {@code audit_logs} へ {@code
- * CROSS_TENANT_VIOLATION_ATTEMPT} が記録されること、および D-1 の正当 bypass で false positive が 発生しないことを検証する。
+ * TENANT_CROSSED} が記録されること、および D-1 の正当 bypass で false positive が 発生しないことを検証する。
  */
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, MockJwtDecoderConfiguration.class})
@@ -57,10 +57,9 @@ class CrossTenantViolationDetectionIT {
     taskRepository.findById(Long.MAX_VALUE);
 
     List<Map<String, Object>> rows =
-        jdbcTemplate.queryForList(
-            "SELECT * FROM audit_logs WHERE action = 'CROSS_TENANT_VIOLATION_ATTEMPT'");
+        jdbcTemplate.queryForList("SELECT * FROM audit_logs WHERE action = 'TENANT_CROSSED'");
     assertThat(rows).isNotEmpty();
-    assertThat(rows.get(0)).containsEntry("action", "CROSS_TENANT_VIOLATION_ATTEMPT");
+    assertThat(rows.get(0)).containsEntry("action", "TENANT_CROSSED");
   }
 
   @Test
@@ -78,8 +77,7 @@ class CrossTenantViolationDetectionIT {
     }
 
     List<Map<String, Object>> rows =
-        jdbcTemplate.queryForList(
-            "SELECT * FROM audit_logs WHERE action = 'CROSS_TENANT_VIOLATION_ATTEMPT'");
+        jdbcTemplate.queryForList("SELECT * FROM audit_logs WHERE action = 'TENANT_CROSSED'");
     assertThat(rows).isEmpty();
   }
 
@@ -99,8 +97,7 @@ class CrossTenantViolationDetectionIT {
         });
 
     List<Map<String, Object>> rows =
-        jdbcTemplate.queryForList(
-            "SELECT * FROM audit_logs WHERE action = 'CROSS_TENANT_VIOLATION_ATTEMPT'");
+        jdbcTemplate.queryForList("SELECT * FROM audit_logs WHERE action = 'TENANT_CROSSED'");
     assertThat(rows).isEmpty();
   }
 
@@ -111,8 +108,7 @@ class CrossTenantViolationDetectionIT {
     jdbcTemplate.queryForList("SELECT id FROM users LIMIT 1");
 
     List<Map<String, Object>> rows =
-        jdbcTemplate.queryForList(
-            "SELECT * FROM audit_logs WHERE action = 'CROSS_TENANT_VIOLATION_ATTEMPT'");
+        jdbcTemplate.queryForList("SELECT * FROM audit_logs WHERE action = 'TENANT_CROSSED'");
     assertThat(rows).isEmpty();
   }
 
@@ -125,8 +121,7 @@ class CrossTenantViolationDetectionIT {
 
     List<Map<String, Object>> rows =
         jdbcTemplate.queryForList(
-            "SELECT hash_chain FROM audit_logs"
-                + " WHERE action = 'CROSS_TENANT_VIOLATION_ATTEMPT' ORDER BY id");
+            "SELECT hash_chain FROM audit_logs" + " WHERE action = 'TENANT_CROSSED' ORDER BY id");
     assertThat(rows).hasSize(2);
 
     // 1件目はジェネシスハッシュ(前レコードなし)

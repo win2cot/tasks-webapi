@@ -48,7 +48,8 @@ public class User {
    * 論理削除 + 個人情報匿名化(ADR-0006 §3.4 ステップ 1〜6)。
    *
    * <p>step 7(version の自動 increment)は JPA {@code @Version} により保存時に自動適用される。 step 8(audit_logs への
-   * ANONYMIZE 記録)は {@link UserAnonymizationDomainService} の TODO コメントを参照(#144 依存)。
+   * ANONYMIZE 記録)の責務分担は {@link UserAnonymizationDomainService} のコメントを参照(SPI 起点は #734 実装済み、WebAPI
+   * 起点は Phase 2 / #167 圏へ委譲)。
    */
   public void anonymize(LocalDateTime now) {
     this.deletedAt = now;

@@ -6,6 +6,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import org.testcontainers.containers.Network;
 import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -134,4 +136,56 @@ abstract class AbstractMySqlContainerTest {
       String status,
       long version,
       boolean deleted) {}
+
+  /** 検証用の audit_logs 行スナップショット(#734)。 */
+  record AuditRow(
+      long id,
+      Long tenantId,
+      Long userId,
+      String action,
+      String entityType,
+      Long entityId,
+      String detail,
+      String hashChain,
+      LocalDateTime createdAt) {}
+
+  /** 指定 entity_id の ANONYMIZE audit 行を取得する(無ければ null)。 */
+  static AuditRow fetchAnonymizeAudit(long entityId) throws SQLException {
+    String sql =
+        "SELECT id, tenant_id, user_id, action, entity_type, entity_id, detail, hash_chain,"
+            + " created_at FROM audit_logs WHERE action = 'ANONYMIZE' AND entity_id = ?";
+    try (Connection c = dbConnection();
+        PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setLong(1, entityId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          return null;
+        }
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        return new AuditRow(
+            rs.getLong("id"),
+            (Long) rs.getObject("tenant_id"),
+            (Long) rs.getObject("user_id"),
+            rs.getString("action"),
+            rs.getString("entity_type"),
+            (Long) rs.getObject("entity_id"),
+            rs.getString("detail"),
+            rs.getString("hash_chain"),
+            createdAt == null ? null : createdAt.toLocalDateTime());
+      }
+    }
+  }
+
+  /** 指定 entity_id の ANONYMIZE audit 行数を返す(冪等性検証用)。 */
+  static int countAnonymizeAudit(long entityId) throws SQLException {
+    String sql = "SELECT COUNT(*) FROM audit_logs WHERE action = 'ANONYMIZE' AND entity_id = ?";
+    try (Connection c = dbConnection();
+        PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setLong(1, entityId);
+      try (ResultSet rs = ps.executeQuery()) {
+        rs.next();
+        return rs.getInt(1);
+      }
+    }
+  }
 }

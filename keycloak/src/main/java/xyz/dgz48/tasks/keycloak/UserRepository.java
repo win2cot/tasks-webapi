@@ -1,11 +1,15 @@
 package xyz.dgz48.tasks.keycloak;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +48,11 @@ final class UserRepository implements AutoCloseable {
 
   private static final String SELECT_COLUMNS =
       "id, oidc_sub, email, full_name, full_name_kana, department_name, status, version";
+
+  /**
+   * audit_logs hash chain の起点(先頭行)ハッシュ。webapi {@code AuditLogPersistenceAdapter.GENESIS_HASH} と一致。
+   */
+  private static final String GENESIS_HASH = "0".repeat(64);
 
   private final String jdbcUrl;
   private final String username;
@@ -209,16 +218,42 @@ final class UserRepository implements AutoCloseable {
   }
 
   /**
-   * 論理削除 + 個人情報匿名化(ADR-0006 §3.4 step 1〜7)。webapi の {@code UserAnonymizationDomainService} / {@code
+   * 論理削除 + 個人情報匿名化(ADR-0006 §3.4 step 1〜8)。webapi の {@code UserAnonymizationDomainService} / {@code
    * User#anonymize} と同一ロジック。モジュール境界(keycloak SPI プラグインは webapi プロジェクト無しでビルドされる。{@code
    * keycloak/Dockerfile} 参照)のためその domain service を直接再利用できないので、同一の placeholder ロジックをここで 1 つの SQL
    * として適用する。{@code deleted_at} は ambient なタイムゾーンを避けるため DB クロック({@code NOW()})を使う。冪等: 匿名化済み行の再削除は
-   * no-op。
+   * no-op(audit ログも残さない)。
    *
-   * <p>TODO(#144): step 8 — {@code audit_logs} に {@code action='ANONYMIZE'} を記録する(監査機構の整備待ちで、{@code
-   * UserAnonymizationDomainService} と同様にここでも保留)。
+   * <p>step 8: 匿名化が成立した(=有効行を更新できた)場合のみ、同一トランザクション内で {@code audit_logs} に {@code
+   * action='ANONYMIZE', entity_type='users', entity_id=<id>} を記録する(#734 / ADR-0006 §3.4)。SSOT は
+   * webapi の {@code AuditLogPersistenceAdapter} 側だが、モジュール境界のため hash chain アルゴリズムを同一式で複製する({@link
+   * #computeChainHash})。UPDATE と INSERT を 1 トランザクションに束ねるため autoCommit を一時的に無効化する。
    */
   void anonymize(long id) {
+    Connection c = connection();
+    boolean previousAutoCommit;
+    try {
+      previousAutoCommit = c.getAutoCommit();
+    } catch (SQLException e) {
+      throw new ModelException(
+          "tasks-webapi user store: anonymize failed for user " + id + " (autoCommit query)", e);
+    }
+    try {
+      c.setAutoCommit(false);
+      if (applyAnonymize(c, id) > 0) {
+        insertAnonymizeAudit(c, id);
+      }
+      c.commit();
+    } catch (SQLException e) {
+      rollbackQuietly(c);
+      throw new ModelException("tasks-webapi user store: anonymize failed for user " + id, e);
+    } finally {
+      restoreAutoCommit(c, previousAutoCommit);
+    }
+  }
+
+  /** users 行を匿名化し、更新件数を返す(0 = 既に匿名化済みで no-op)。 */
+  private static int applyAnonymize(Connection c, long id) throws SQLException {
     String sql =
         "UPDATE users SET deleted_at = NOW(),"
             + " email = CONCAT('__deleted__', id, '@deleted.invalid'),"
@@ -228,11 +263,78 @@ final class UserRepository implements AutoCloseable {
             + " department_name = NULL,"
             + " version = version + 1"
             + " WHERE id = ? AND deleted_at IS NULL";
-    try (PreparedStatement ps = connection().prepareStatement(sql)) {
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
       ps.setLong(1, id);
+      return ps.executeUpdate();
+    }
+  }
+
+  /**
+   * audit_logs に ANONYMIZE を 1 件 INSERT する。{@code detail} は webapi 側で null detail が {@code "{}"}
+   * と格納されるのに 合わせて {@code '{}'} とする(後続行の hash chain 入力を一致させるため)。{@code created_at} は DB クロック。
+   */
+  private static void insertAnonymizeAudit(Connection c, long userId) throws SQLException {
+    String hashChain = computeChainHash(c);
+    String sql =
+        "INSERT INTO audit_logs"
+            + " (tenant_id, user_id, action, entity_type, entity_id, detail, ip_address,"
+            + " hash_chain, created_at)"
+            + " VALUES (NULL, NULL, 'ANONYMIZE', 'users', ?, '{}', NULL, ?, NOW())";
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setLong(1, userId);
+      ps.setString(2, hashChain);
       ps.executeUpdate();
+    }
+  }
+
+  /**
+   * 直前の audit_logs 行から hash chain を算出する。webapi の {@code
+   * AuditLogPersistenceAdapter#computeChainHash} と 完全に同一の入力式・出力形式(行なし=64 個の "0"、行あり={@code
+   * SHA-256(id + "|" + detail + "|" + createdAt)} の小文字 hex)。{@code created_at} は {@code
+   * LocalDateTime#toString()} 表現を用いる(JPA 読み戻し側と一致)。
+   */
+  private static String computeChainHash(Connection c) throws SQLException {
+    String sql = "SELECT id, detail, created_at FROM audit_logs ORDER BY id DESC LIMIT 1";
+    try (PreparedStatement ps = c.prepareStatement(sql);
+        ResultSet rs = ps.executeQuery()) {
+      if (!rs.next()) {
+        return GENESIS_HASH;
+      }
+      long prevId = rs.getLong("id");
+      String prevDetail = rs.getString("detail");
+      Timestamp ts = rs.getTimestamp("created_at");
+      Object prevCreatedAt = (ts == null) ? null : ts.toLocalDateTime();
+      return sha256Hex(prevId + "|" + prevDetail + "|" + prevCreatedAt);
+    }
+  }
+
+  private static String sha256Hex(String input) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+      StringBuilder hex = new StringBuilder(64);
+      for (byte b : hashBytes) {
+        hex.append(String.format("%02x", b));
+      }
+      return hex.toString();
+    } catch (NoSuchAlgorithmException e) {
+      throw new ModelException("tasks-webapi user store: SHA-256 not available", e);
+    }
+  }
+
+  private static void rollbackQuietly(Connection c) {
+    try {
+      c.rollback();
     } catch (SQLException e) {
-      throw new ModelException("tasks-webapi user store: anonymize failed for user " + id, e);
+      // rollback 失敗時に取れる対処はないためベストエフォートで握りつぶす。
+    }
+  }
+
+  private static void restoreAutoCommit(Connection c, boolean autoCommit) {
+    try {
+      c.setAutoCommit(autoCommit);
+    } catch (SQLException e) {
+      // autoCommit 復元失敗時に取れる対処はないためベストエフォートで握りつぶす。
     }
   }
 

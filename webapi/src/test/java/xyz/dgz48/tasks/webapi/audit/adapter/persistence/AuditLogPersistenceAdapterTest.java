@@ -33,8 +33,7 @@ class AuditLogPersistenceAdapterTest {
     LocalDateTime createdAt = LocalDateTime.of(2026, 6, 6, 11, 0, 0);
     String detail = "{\"table\":\"tasks\",\"sqlType\":\"SELECT\"}";
     var prev =
-        new AuditLogJpaEntity(
-            null, null, "CROSS_TENANT_VIOLATION_ATTEMPT", detail, createdAt, "0".repeat(64));
+        new AuditLogJpaEntity(null, null, "TENANT_CROSSED", detail, createdAt, "0".repeat(64));
 
     String hash = AuditLogPersistenceAdapter.computeChainHash(prev);
 

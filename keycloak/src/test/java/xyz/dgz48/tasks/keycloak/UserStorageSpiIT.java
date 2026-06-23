@@ -175,6 +175,15 @@ class UserStorageSpiIT extends AbstractSpiContainerTest {
     assertThat(row.fullNameKana()).isEqualTo("__deleted__");
     assertThat(row.departmentName()).isNull();
     assertThat(row.version()).isEqualTo(1L);
+
+    // step 8(ADR-0006 §3.4 / #734): 実 Keycloak removeUser 経由で匿名化と同一トランザクションに
+    // audit_logs へ ANONYMIZE が記録される(entity_type='users' / entity_id=users.id、hash_chain 整合)。
+    AuditRow audit = fetchAnonymizeAudit(id);
+    assertThat(audit).isNotNull();
+    assertThat(audit.action()).isEqualTo("ANONYMIZE");
+    assertThat(audit.entityType()).isEqualTo("users");
+    assertThat(audit.entityId()).isEqualTo(id);
+    assertThat(audit.hashChain()).matches("[0-9a-f]{64}");
   }
 
   @Test
