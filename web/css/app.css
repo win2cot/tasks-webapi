@@ -440,6 +440,10 @@ app-task-row {
   width: 172px;
 }
 
+.w-search {
+  width: 240px;
+}
+
 #user-avatar {
   width: 30px;
   height: 30px;

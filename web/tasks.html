@@ -64,6 +64,20 @@
     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
       <h1 class="page-title">タスク一覧</h1>
       <div class="ms-auto d-flex align-items-center gap-2">
+        <form id="search-form" class="d-flex align-items-center" role="search" aria-label="タスク検索">
+          <label for="search-input" class="visually-hidden">キーワード検索(タイトル・説明)</label>
+          <div class="input-group input-group-sm w-search">
+            <button type="submit" class="btn btn-outline-secondary" aria-label="検索">
+              <i class="bi bi-search" aria-hidden="true"></i>
+            </button>
+            <input id="search-input" type="search" class="form-control"
+              placeholder="タイトル・説明で検索" autocomplete="off" maxlength="255">
+            <button id="search-clear" type="button" class="btn btn-outline-secondary d-none"
+              aria-label="検索条件をクリア">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </div>
+        </form>
         <label for="sortSel" class="text-muted small mb-0">
           <i class="bi bi-sort-down me-1" aria-hidden="true"></i>並び替え
         </label>

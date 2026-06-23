@@ -37,6 +37,8 @@ public interface TaskRepository {
    *
    * <p>Hibernate Filter による tenant_id 自動絞込 + deleted_at IS NULL + visibility 3 役割評価(ADR-0005)を
    * 適用する。priority ソートは HIGH=3 / MEDIUM=2 / LOW=1 に内部変換。desc ソートで HIGH が先頭(重要度高い順)。
+   *
+   * @param keyword タイトル・説明の部分一致検索キーワード(null / 空白のみ = 検索しない、#669)
    */
   Page<Task> findVisibleTasks(
       Long userId,
@@ -44,6 +46,7 @@ public interface TaskRepository {
       @Nullable Long ownerId,
       @Nullable Long assigneeId,
       @Nullable Visibility visibility,
+      @Nullable String keyword,
       Pageable pageable);
 
   /** 認可フィルタを適用した期限切れ未完了タスク件数を返す。 */
