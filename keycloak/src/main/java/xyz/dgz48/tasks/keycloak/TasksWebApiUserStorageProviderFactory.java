@@ -2,23 +2,24 @@ package xyz.dgz48.tasks.keycloak;
 
 import java.util.List;
 import org.keycloak.Config;
-import org.keycloak.component.ComponentFactory;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.ModelException;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.provider.ProviderConfigurationBuilder;
+import org.keycloak.storage.UserStorageProviderFactory;
 
 /**
  * {@link TasksWebApiUserStorageProvider} を Keycloak の User Federation コンポーネントとして登録する。
  *
- * <p>{@code META-INF/services/org.keycloak.component.ComponentFactory} 経由で登録される。tasks-webapi の
- * {@code users} データベースへの JDBC 接続は、下記の config プロパティでコンポーネントごとに与える(realm で federation provider
- * を作成する際に設定する。 realm 側の配線は別 sub-issue)。
+ * <p>{@code META-INF/services/org.keycloak.storage.UserStorageProviderFactory} 経由で登録される(Keycloak は
+ * User Storage の provider をこの SPI サービス名で discover する。{@code ComponentFactory} 直接登録では User
+ * Federation として解決されない)。tasks-webapi の {@code users} データベースへの JDBC 接続は、下記の config
+ * プロパティでコンポーネントごとに与える(realm で federation provider を作成する際に設定する。 realm 側の配線は別 sub-issue)。
  */
 public class TasksWebApiUserStorageProviderFactory
-    implements ComponentFactory<TasksWebApiUserStorageProvider, TasksWebApiUserStorageProvider> {
+    implements UserStorageProviderFactory<TasksWebApiUserStorageProvider> {
 
   public static final String PROVIDER_ID = "tasks-webapi-user-storage";
 
