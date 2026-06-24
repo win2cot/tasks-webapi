@@ -116,6 +116,19 @@ tasks.named<JacocoReport>("jacocoTestReport") {
     }
 }
 
+// webapi と同一基準: 命令(INSTRUCTION)カバレッジ 80%。JaCoCo の rule limit は既定で
+// counter=INSTRUCTION / value=COVEREDRATIO のため、webapi 同様 counter は明示しない。
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named("test"))
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
 spotless {
     lineEndings = com.diffplug.spotless.LineEnding.UNIX
     java {
@@ -124,5 +137,5 @@ spotless {
 }
 
 tasks.named("check") {
-    dependsOn("spotlessCheck")
+    dependsOn("spotlessCheck", "jacocoTestCoverageVerification")
 }
