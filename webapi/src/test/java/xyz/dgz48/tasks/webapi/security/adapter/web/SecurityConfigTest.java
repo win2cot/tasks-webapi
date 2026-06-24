@@ -35,6 +35,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
+import xyz.dgz48.tasks.webapi.dashboard.usecase.GetDashboardSummaryUseCase;
+import xyz.dgz48.tasks.webapi.dashboard.usecase.GetDashboardTasksUseCase;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
@@ -103,6 +105,8 @@ class SecurityConfigTest {
   @MockitoBean GetPlatformMetricsUseCase getPlatformMetricsUseCase;
   @MockitoBean GetMeUseCase getMeUseCase;
   @MockitoBean ListTenantUsersUseCase listTenantUsersUseCase;
+  @MockitoBean GetDashboardTasksUseCase getDashboardTasksUseCase;
+  @MockitoBean GetDashboardSummaryUseCase getDashboardSummaryUseCase;
 
   @Autowired MockMvc mockMvc;
 
