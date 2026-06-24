@@ -6,6 +6,7 @@
 結果記録・fallback 判断を一元管理する。
 
 関連:
+
 - spec(機械検知): [`../tests/a11y-task-table.spec.ts`](../tests/a11y-task-table.spec.ts)
 - 対象 CE: `web/js/components/app-task-row.js`(`display: contents`)/ 透過先 `<tr>`(7セル)
 - 注意: 行は必ず JS 生成(静的 HTML で `<tbody>` 内に書くと HTML パーサが table 外へ追い出すため)
@@ -56,7 +57,7 @@ CI: `.github/workflows/e2e-test.yml` が full stack 起動後に `npx playwright
 | A6 | データ行で `Enter` | 詳細ドロワーが開く(操作可能性) | ⏸ 未踏破(操作制約) |
 
 > A2〜A4 の「行/セル/列ヘッダ role 露出」は §1 の自動 spec(`getByRole('row'/'cell'/'columnheader')`
-> + `toMatchAriaSnapshot`)が機械的に厳密検証しており、CI で常時担保される。Ctrl+Alt+矢印 が
+> と `toMatchAriaSnapshot`)が機械的に厳密検証しており、CI で常時担保される。Ctrl+Alt+矢印 が
 > 効かないのは、グラフィックドライバ(Intel/AMD)が画面回転ホットキーとして握る既知の競合の可能性。
 > 後日 SR 操作を再確認する場合は、ドライバのホットキー無効化 or NVDA キーを CapsLock に設定してから
 > Ctrl+Alt+矢印 / すべて読み上げ(NVDA+↓)を試す。
