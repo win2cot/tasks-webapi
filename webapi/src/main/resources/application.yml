@@ -70,3 +70,14 @@ rds:
   iam-auth:
     enabled: ${RDS_IAM_AUTH_ENABLED:false}
     region: ${AWS_DEFAULT_REGION:ap-northeast-1}
+
+# 通知バッチ(B-01 期限当日通知メール、設計規約 §7 / 基本設計書 §8.1)。
+# email.provider=ses のときのみ SES クライアントを生成。既定 log はローカル/テスト用のログフォールバック。
+notification:
+  email:
+    provider: ${NOTIFICATION_EMAIL_PROVIDER:log}
+    from: ${NOTIFICATION_EMAIL_FROM:no-reply@example.invalid}
+  batch:
+    enabled: ${NOTIFICATION_BATCH_ENABLED:true}
+    cron: ${NOTIFICATION_BATCH_CRON:0 0 9 * * *}
+    zone: ${NOTIFICATION_BATCH_ZONE:Asia/Tokyo}
