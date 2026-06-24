@@ -150,7 +150,7 @@ jobs:
             TEST_ROW="| テスト結果 ${TEST_ICON} | 合計 ${TOTAL}: 成功 **${PASSED}**, 失敗 $((FAIL + ERR)), スキップ ${SKIP} |"
           fi
 
-          # ── Coverage (report only, no gate) ───────────────────────────
+          # ── Coverage (report; gate is enforced by Gradle jacocoTestCoverageVerification) ──
           JACOCO_XML="keycloak/build/reports/jacoco/test/jacocoTestReport.xml"
           if [ -f "$JACOCO_XML" ]; then
             COVERAGE=$(python3 << 'PYEOF'
@@ -169,7 +169,7 @@ jobs:
               print('N/A')
           PYEOF
             )
-            COV_ROW="| カバレッジ :bar_chart: | 命令カバレッジ **${COVERAGE}%** (参考値・ゲートなし) |"
+            COV_ROW="| カバレッジ :bar_chart: | 命令カバレッジ **${COVERAGE}%** (基準 80%・ゲートあり) |"
           else
             COV_ROW="| カバレッジ :bar_chart: | レポートなし(JaCoCo 未設定) |"
           fi
