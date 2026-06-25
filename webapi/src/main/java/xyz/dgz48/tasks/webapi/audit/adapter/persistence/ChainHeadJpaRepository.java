@@ -2,6 +2,7 @@ package xyz.dgz48.tasks.webapi.audit.adapter.persistence;
 
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -31,4 +32,8 @@ interface ChainHeadJpaRepository extends JpaRepository<ChainHeadJpaEntity, Long>
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select h from ChainHeadJpaEntity h where h.chainKey = :chainKey")
   Optional<ChainHeadJpaEntity> lockByChainKey(@Param("chainKey") long chainKey);
+
+  /** 連鎖が存在する全 {@code chain_key}(B-05 検証の対象集合)。 */
+  @Query("select h.chainKey from ChainHeadJpaEntity h")
+  List<Long> findAllChainKeys();
 }
