@@ -17,6 +17,9 @@ class TaskAuthorizationDomainServiceTest {
   private static final Long ASSIGNEE_ID = 2L;
   private static final Long STAKEHOLDER_ID = 3L;
   private static final Long OTHER_ID = 4L;
+  // テナント運営者(TENANT_ADMIN)に相当する、タスクの所有者・担当者・関係者のいずれでもないユーザー。
+  // ドメイン SSOT はテナントロールを引数に取らない(= 業務タスク認可はテナントロールを参照しない)。
+  private static final Long TENANT_ADMIN_ID = 5L;
 
   private Task mockTask(Visibility visibility, Long ownerId, @Nullable Long assigneeId) {
     Task task = mock(Task.class);
@@ -57,6 +60,13 @@ class TaskAuthorizationDomainServiceTest {
     void stakeholdersVisibilityDeniesUnrelatedUser() {
       Task task = mockTask(Visibility.STAKEHOLDERS, OWNER_ID, ASSIGNEE_ID);
       assertThat(service.canBeViewedBy(task, OTHER_ID, List.of())).isFalse();
+    }
+
+    @Test
+    void stakeholdersVisibilityDeniesUnregisteredStakeholderCandidate() {
+      // 関係者リストに登録されていない限り、STAKEHOLDERS でも参照不可(参照権限は登録の有無で決まる)。
+      Task task = mockTask(Visibility.STAKEHOLDERS, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeViewedBy(task, STAKEHOLDER_ID, List.of(OTHER_ID))).isFalse();
     }
 
     @Test
@@ -191,6 +201,66 @@ class TaskAuthorizationDomainServiceTest {
     void nonOwnerNonAssigneeCannotManageStakeholders() {
       Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
       assertThat(service.canManageStakeholdersBy(task, OTHER_ID)).isFalse();
+    }
+  }
+
+  /**
+   * ADR-0005 撤廃確認: Tenant Admin に業務タスク特権が無いことを SSOT(本ドメインサービス)レベルで固定する。
+   *
+   * <p>本サービスはテナントロールを一切受け取らず、所有者・担当者・関係者の 3 役割のみで評価する。よって「テナント運営者であること」は
+   * 業務タスクの編集・削除・ステータス変更・公開範囲変更・関係者管理のいずれにも作用しない。参照については、TENANT 公開のタスクは
+   * テナントメンバー全員が見られる(運営者特権ではなく通常のメンバー権)が、STAKEHOLDERS / PRIVATE では運営者でも所有者・担当者・登録関係者で ない限り参照できない。
+   */
+  @Nested
+  class TenantAdminHasNoBusinessTaskPrivilege {
+
+    @Test
+    void canViewTenantTask_asOrdinaryMember_notAsPrivilege() {
+      // TENANT 公開はメンバー全員に開かれている。運営者も「メンバーとして」参照できるだけで特権ではない。
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeViewedBy(task, TENANT_ADMIN_ID, List.of())).isTrue();
+    }
+
+    @Test
+    void cannotViewStakeholdersTask_whenNotRegistered() {
+      Task task = mockTask(Visibility.STAKEHOLDERS, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeViewedBy(task, TENANT_ADMIN_ID, List.of(STAKEHOLDER_ID))).isFalse();
+    }
+
+    @Test
+    void cannotViewPrivateTask() {
+      Task task = mockTask(Visibility.PRIVATE, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeViewedBy(task, TENANT_ADMIN_ID, List.of())).isFalse();
+    }
+
+    @Test
+    void cannotEdit() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeEditedBy(task, TENANT_ADMIN_ID)).isFalse();
+    }
+
+    @Test
+    void cannotDelete() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canBeDeletedBy(task, TENANT_ADMIN_ID)).isFalse();
+    }
+
+    @Test
+    void cannotChangeStatus() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canChangeStatusBy(task, TENANT_ADMIN_ID)).isFalse();
+    }
+
+    @Test
+    void cannotChangeVisibility() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canChangeVisibilityBy(task, TENANT_ADMIN_ID)).isFalse();
+    }
+
+    @Test
+    void cannotManageStakeholders() {
+      Task task = mockTask(Visibility.TENANT, OWNER_ID, ASSIGNEE_ID);
+      assertThat(service.canManageStakeholdersBy(task, TENANT_ADMIN_ID)).isFalse();
     }
   }
 }
