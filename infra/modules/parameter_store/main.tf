@@ -86,6 +86,23 @@ resource "aws_ssm_parameter" "keycloak_smtp_password" {
   }
 }
 
+# Audit hash-chain HMAC key (ADR-0038). Stored under app/* so the existing webapi
+# task-role policy (ssm:GetParameter* on parameter/tasks/<env>/app/* + kms:Decrypt)
+# already grants read; no IAM change required.
+resource "aws_ssm_parameter" "audit_hmac_key_v1" {
+  name  = "/tasks/${var.env}/app/audit-hash-key-v1"
+  type  = "SecureString"
+  value = var.audit_hmac_key_v1
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-app-audit-hash-key-v1"
+  }
+}
+
 # ---------------------------------------------------------------------------
 # String parameters — config values fully managed by Terraform
 # ---------------------------------------------------------------------------

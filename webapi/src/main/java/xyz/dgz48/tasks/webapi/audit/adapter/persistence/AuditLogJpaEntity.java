@@ -59,6 +59,12 @@ class AuditLogJpaEntity {
   @Column(name = "hash_chain", nullable = false, length = 64)
   private String hashChain;
 
+  @Column(name = "chain_seq", nullable = false)
+  private Long chainSeq;
+
+  @Column(name = "hash_key_id", nullable = false, length = 32)
+  private String hashKeyId;
+
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
 
@@ -67,13 +73,17 @@ class AuditLogJpaEntity {
       @Nullable Long userId,
       String action,
       @Nullable String detail,
-      LocalDateTime createdAt,
-      String hashChain) {
+      long chainSeq,
+      String hashChain,
+      String hashKeyId,
+      LocalDateTime createdAt) {
     this.tenantId = tenantId;
     this.userId = userId;
     this.action = action;
     this.detail = detail;
-    this.createdAt = createdAt;
+    this.chainSeq = chainSeq;
     this.hashChain = hashChain;
+    this.hashKeyId = hashKeyId;
+    this.createdAt = createdAt;
   }
 }

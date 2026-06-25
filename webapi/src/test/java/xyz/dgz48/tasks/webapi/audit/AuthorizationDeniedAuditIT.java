@@ -290,10 +290,15 @@ class AuthorizationDeniedAuditIT {
         ignored -> {
           @SuppressWarnings("unchecked")
           List<String> hashes =
-              em.createNativeQuery("SELECT hash_chain FROM audit_logs ORDER BY id").getResultList();
+              em.createNativeQuery("SELECT hash_chain FROM audit_logs ORDER BY chain_seq")
+                  .getResultList();
           assertThat(hashes).hasSize(2);
-          assertThat(hashes.get(0)).isEqualTo("0".repeat(64));
-          assertThat(hashes.get(1)).isNotEqualTo("0".repeat(64)).matches("[0-9a-f]{64}");
+          // ADR-0038: 各行は自レコードハッシュを格納する。先頭行もジェネシスではなく自己ハッシュ。
+          assertThat(hashes.get(0)).isNotEqualTo("0".repeat(64)).matches("[0-9a-f]{64}");
+          assertThat(hashes.get(1))
+              .isNotEqualTo("0".repeat(64))
+              .matches("[0-9a-f]{64}")
+              .isNotEqualTo(hashes.get(0));
           return null;
         });
   }

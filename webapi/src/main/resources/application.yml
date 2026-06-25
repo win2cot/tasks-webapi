@@ -71,6 +71,16 @@ rds:
     enabled: ${RDS_IAM_AUTH_ENABLED:false}
     region: ${AWS_DEFAULT_REGION:ap-northeast-1}
 
+# 監査ログ ハッシュチェーン改ざん検知(ADR-0038)。HMAC 鍵の取得元を切り替える。
+#   source=property(既定): secret 値を鍵に用いる(ローカル/テスト)。
+#   source=ssm(本番)     : Parameter Store SecureString から <ssm-parameter-prefix>-<key-id> をロード。
+audit:
+  hash-chain:
+    key-id: ${AUDIT_HASH_CHAIN_KEY_ID:v1}
+    source: ${AUDIT_HASH_CHAIN_SOURCE:property}
+    secret: ${AUDIT_HASH_CHAIN_SECRET:dev-insecure-audit-hmac-key-change-me}
+    ssm-parameter-prefix: ${AUDIT_HASH_CHAIN_SSM_PREFIX:/tasks/dev/app/audit-hash-key}
+
 # 通知バッチ(B-01 期限当日通知メール、設計規約 §7 / 基本設計書 §8.1)。
 # email.provider=ses のときのみ SES クライアントを生成。既定 log はローカル/テスト用のログフォールバック。
 notification:
