@@ -8,6 +8,7 @@ module "parameter_store" {
   keycloak_admin_password      = var.keycloak_admin_password
   keycloak_oauth_client_secret = var.keycloak_oauth_client_secret
   keycloak_smtp_password       = var.keycloak_smtp_password
+  audit_hmac_key_v1            = var.audit_hmac_key_v1
   jwt_issuer                   = var.jwt_issuer
   tenant_default_id            = var.tenant_default_id
 }

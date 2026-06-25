@@ -58,6 +58,13 @@ variable "keycloak_smtp_password" {
   description = "SES SMTP password placeholder for Keycloak email sending"
 }
 
+variable "audit_hmac_key_v1" {
+  type        = string
+  sensitive   = true
+  default     = "CHANGE_ME"
+  description = "Audit hash-chain HMAC key (id v1) placeholder; set actual value in SSM after apply (ADR-0038)"
+}
+
 # ---------------------------------------------------------------------------
 # Parameter Store — String values
 # ---------------------------------------------------------------------------

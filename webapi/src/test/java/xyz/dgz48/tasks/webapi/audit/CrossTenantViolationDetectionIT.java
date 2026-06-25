@@ -113,7 +113,9 @@ class CrossTenantViolationDetectionIT {
   }
 
   @Test
-  void hashChain_firstRecordUsesGenesisHash_secondRecordHasNonGenesisHash() {
+  void hashChain_eachRecordStoresOwnHmac_andChainSeqIncrements() {
+    // ADR-0038: 各行は自レコードハッシュ(HMAC(canonical(自行) ‖ 前ハッシュ))を格納する。
+    // 先頭行も前ハッシュ=ジェネシスで計算した自己ハッシュであり、ジェネシスそのものではない。
     // 1件目の違反を記録
     taskRepository.findById(Long.MAX_VALUE);
     // 2件目の違反を記録
@@ -121,16 +123,21 @@ class CrossTenantViolationDetectionIT {
 
     List<Map<String, Object>> rows =
         jdbcTemplate.queryForList(
-            "SELECT hash_chain FROM audit_logs" + " WHERE action = 'TENANT_CROSSED' ORDER BY id");
+            "SELECT hash_chain, chain_seq, hash_key_id FROM audit_logs"
+                + " WHERE action = 'TENANT_CROSSED' ORDER BY chain_seq");
     assertThat(rows).hasSize(2);
 
-    // 1件目はジェネシスハッシュ(前レコードなし)
-    assertThat(rows.get(0).get("hash_chain")).isEqualTo("0".repeat(64));
-
-    // 2件目は前レコードを参照したチェーンハッシュ(ジェネシスハッシュではなく 64 桁の hex)
+    String first = (String) rows.get(0).get("hash_chain");
     String second = (String) rows.get(1).get("hash_chain");
-    assertThat(second).isNotEqualTo("0".repeat(64));
-    assertThat(second).matches("[0-9a-f]{64}");
+
+    // 双方とも 64 桁 hex の自己ハッシュ(ジェネシスではない)で、相異なる。
+    assertThat(first).matches("[0-9a-f]{64}").isNotEqualTo("0".repeat(64));
+    assertThat(second).matches("[0-9a-f]{64}").isNotEqualTo("0".repeat(64)).isNotEqualTo(first);
+
+    // chain_seq は同一連鎖(横断 = chain_key 0)で 1, 2 と採番される。
+    assertThat(((Number) rows.get(0).get("chain_seq")).longValue()).isEqualTo(1L);
+    assertThat(((Number) rows.get(1).get("chain_seq")).longValue()).isEqualTo(2L);
+    assertThat(rows.get(0).get("hash_key_id")).isEqualTo("v1");
   }
 
   private void setUpSaasAdmin() {

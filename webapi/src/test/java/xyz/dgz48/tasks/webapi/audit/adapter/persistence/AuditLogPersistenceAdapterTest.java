@@ -2,46 +2,25 @@ package xyz.dgz48.tasks.webapi.audit.adapter.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditFieldChange;
 
-/** {@link AuditLogPersistenceAdapter} のユニットテスト。 */
+/**
+ * {@link AuditLogPersistenceAdapter} の {@code serializeDetail} のユニットテスト。
+ *
+ * <p>連鎖計算({@code canonical} / HMAC)は {@code AuditCanonicalizerTest} / {@code AuditChainHasherTest}
+ * で、 連鎖の連結・直列化は Testcontainers IT で検証する。
+ */
 class AuditLogPersistenceAdapterTest {
 
   private static JsonMapper defaultJsonMapper() {
     // Jackson 3.x では DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS がデフォルト false のため
     // LocalDate は設定なしで "2026-08-01" のような ISO 文字列にシリアライズされる
     return JsonMapper.builder().build();
-  }
-
-  @Test
-  void computeChainHash_whenNoPreviousRecord_returnsGenesisHash() {
-    String hash = AuditLogPersistenceAdapter.computeChainHash(null);
-    assertThat(hash).isEqualTo("0".repeat(64));
-  }
-
-  @Test
-  void computeChainHash_withPreviousRecord_computesSha256OfIdDetailCreatedAt() {
-    LocalDateTime createdAt = LocalDateTime.of(2026, 6, 6, 11, 0, 0);
-    String detail = "{\"table\":\"tasks\",\"sqlType\":\"SELECT\"}";
-    var prev =
-        new AuditLogJpaEntity(null, null, "TENANT_CROSSED", detail, createdAt, "0".repeat(64));
-
-    String hash = AuditLogPersistenceAdapter.computeChainHash(prev);
-
-    // prev.getId() は null(未永続化エンティティ) — same behavior as null|detail|createdAt input
-    String expectedInput = prev.getId() + "|" + prev.getDetail() + "|" + prev.getCreatedAt();
-    assertThat(hash).isEqualTo(sha256Hex(expectedInput));
-    assertThat(hash).matches("[0-9a-f]{64}");
-    assertThat(hash).isNotEqualTo("0".repeat(64));
   }
 
   @Test
@@ -85,20 +64,7 @@ class AuditLogPersistenceAdapterTest {
   }
 
   private static AuditLogPersistenceAdapter newAdapter() {
-    return new AuditLogPersistenceAdapter(null, null, defaultJsonMapper());
-  }
-
-  private static String sha256Hex(String input) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-      StringBuilder hex = new StringBuilder(64);
-      for (byte b : hashBytes) {
-        hex.append(String.format("%02x", b));
-      }
-      return hex.toString();
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 not available", e);
-    }
+    // serializeDetail は jsonMapper のみを使うため、他の協調オブジェクトは不要。
+    return new AuditLogPersistenceAdapter(null, null, null, defaultJsonMapper(), null);
   }
 }

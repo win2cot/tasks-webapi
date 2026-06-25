@@ -14,6 +14,7 @@ keycloak_spi_read_password   = "CHANGE_ME"
 keycloak_admin_password      = "CHANGE_ME"
 keycloak_oauth_client_secret = "CHANGE_ME"
 keycloak_smtp_password       = "CHANGE_ME"
+audit_hmac_key_v1            = "CHANGE_ME"
 
 # String config values
 jwt_issuer        = "https://auth-dev.dgz48.xyz/realms/tasks"
