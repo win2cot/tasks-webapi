@@ -80,6 +80,12 @@ audit:
     source: ${AUDIT_HASH_CHAIN_SOURCE:property}
     secret: ${AUDIT_HASH_CHAIN_SECRET:dev-insecure-audit-hmac-key-change-me}
     ssm-parameter-prefix: ${AUDIT_HASH_CHAIN_SSM_PREFIX:/tasks/dev/app/audit-hash-key}
+  # B-05 監査ログ整合性検証バッチ(毎日 02:00 JST、ShedLock 排他、ADR-0038 §3.7)。
+  verification:
+    batch:
+      enabled: ${AUDIT_VERIFICATION_BATCH_ENABLED:true}
+      cron: ${AUDIT_VERIFICATION_BATCH_CRON:0 0 2 * * *}
+      zone: ${AUDIT_VERIFICATION_BATCH_ZONE:Asia/Tokyo}
 
 # 通知バッチ(B-01 期限当日通知メール、設計規約 §7 / 基本設計書 §8.1)。
 # email.provider=ses のときのみ SES クライアントを生成。既定 log はローカル/テスト用のログフォールバック。

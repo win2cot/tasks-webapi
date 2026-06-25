@@ -37,7 +37,8 @@ class HibernateFilterEntityAuditTest {
           "UserTenantJpaEntity", // user_tenants: TenantContext 確立前にクロステナント参照が必要
           "AppAdminUserJpaEntity", // app_admin_users: SaaS Admin ユーザー管理、tenant_id 列なし
           "AuditLogJpaEntity", // audit_logs: tenant_id が nullable、テナント範囲を超えた参照が必要
-          "ChainHeadJpaEntity" // chain_heads: chain_key(=tenant_id/0)が PK、横断連鎖も持つ補助表(ADR-0038)
+          "ChainHeadJpaEntity", // chain_heads: chain_key(=tenant_id/0)が PK、横断連鎖も持つ補助表(ADR-0038)
+          "AuditAnchorJpaEntity" // audit_anchors: chain_key 単位の検証チェックポイント、横断連鎖も持つ(ADR-0038)
           );
 
   @Autowired EntityManagerFactory emf;
