@@ -80,8 +80,8 @@ class DashboardQueryAdapter implements DashboardQueryPort {
         myOpenCount++;
       }
       // ステータス別・優先度別(認可フィルタ通過タスク全体)
-      statusBreakdown.merge(row.status(), 1L, Long::sum);
-      priorityBreakdown.merge(row.priority(), 1L, Long::sum);
+      statusBreakdown.merge(row.status(), 1L, (a, b) -> a + b);
+      priorityBreakdown.merge(row.priority(), 1L, (a, b) -> a + b);
     }
 
     return new DashboardSummary(

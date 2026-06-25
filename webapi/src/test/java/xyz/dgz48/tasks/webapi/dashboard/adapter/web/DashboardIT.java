@@ -77,9 +77,6 @@ class DashboardIT {
   private Long t8CompletedYesterday;
   private Long t9UpcomingAssignedToA;
   private Long t10FutureBeyondWindowOwnedByA;
-  // 集計漏れ検証用(A から参照不可)
-  private Long t4PrivateOwnedByB;
-  private Long t6StakeholderNotRegistered;
 
   @BeforeEach
   void setUp() {
@@ -140,15 +137,15 @@ class DashboardIT {
                   Priority.MEDIUM,
                   Visibility.TENANT,
                   TODAY);
-          t4PrivateOwnedByB =
-              persistTask(
-                  userBId,
-                  null,
-                  "T4",
-                  TaskStatus.NOT_STARTED,
-                  Priority.MEDIUM,
-                  Visibility.PRIVATE,
-                  TODAY);
+          // T4: 他者(B)の PRIVATE。当日期限だが A の集計に漏れない検証用(集計漏れ検証)。
+          persistTask(
+              userBId,
+              null,
+              "T4",
+              TaskStatus.NOT_STARTED,
+              Priority.MEDIUM,
+              Visibility.PRIVATE,
+              TODAY);
           t5StakeholderUpcoming =
               persistTask(
                   userBId,
@@ -158,15 +155,15 @@ class DashboardIT {
                   Priority.HIGH,
                   Visibility.STAKEHOLDERS,
                   TODAY.plusDays(1));
-          t6StakeholderNotRegistered =
-              persistTask(
-                  userBId,
-                  null,
-                  "T6",
-                  TaskStatus.NOT_STARTED,
-                  Priority.MEDIUM,
-                  Visibility.STAKEHOLDERS,
-                  TODAY);
+          // T6: A が非関係者の STAKEHOLDERS。当日期限だが A の集計に漏れない検証用(集計漏れ検証)。
+          persistTask(
+              userBId,
+              null,
+              "T6",
+              TaskStatus.NOT_STARTED,
+              Priority.MEDIUM,
+              Visibility.STAKEHOLDERS,
+              TODAY);
           t7CompletedTodayOwnedByA =
               persistTask(
                   userAId,

@@ -57,9 +57,6 @@ class DueTodayNotificationQueryIT {
   private Long taskStake; // owner A, STAKEHOLDERS, stakeholder E
   private Long taskDoneA;
   private Long taskFutureA;
-  private Long taskB1;
-  private Long taskC1;
-  private Long taskD1;
 
   @BeforeEach
   void setUp() {
@@ -150,15 +147,12 @@ class DueTodayNotificationQueryIT {
                   TaskStatus.NOT_STARTED,
                   Visibility.TENANT,
                   TODAY.plusDays(1));
-          taskB1 =
-              persist(
-                  tenant1Id, userBId, null, "B1", TaskStatus.NOT_STARTED, Visibility.TENANT, TODAY);
-          taskC1 =
-              persist(
-                  tenant2Id, userCId, null, "C1", TaskStatus.NOT_STARTED, Visibility.TENANT, TODAY);
-          taskD1 =
-              persist(
-                  tenant1Id, userDId, null, "D1", TaskStatus.NOT_STARTED, Visibility.TENANT, TODAY);
+          // B1: 所有者 B は email_due_today=OFF のため通知対象外(設定 OFF 除外の検証用)。
+          persist(tenant1Id, userBId, null, "B1", TaskStatus.NOT_STARTED, Visibility.TENANT, TODAY);
+          // C1: 別テナント(tenant2)の C。テナント単位グループ化の検証用。
+          persist(tenant2Id, userCId, null, "C1", TaskStatus.NOT_STARTED, Visibility.TENANT, TODAY);
+          // D1: 所有者 D は INACTIVE のため通知対象外(INACTIVE 除外の検証用)。
+          persist(tenant1Id, userDId, null, "D1", TaskStatus.NOT_STARTED, Visibility.TENANT, TODAY);
 
           // userE を taskStake の関係者として登録(所有者・担当者ではない)
           em.createNativeQuery(
