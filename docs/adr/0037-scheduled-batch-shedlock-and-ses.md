@@ -79,4 +79,4 @@ SES クライアントとその送出実装は `notification.email.provider=ses`
 - 基本設計書 §8(バッチ設計)/ §4.2.7(user_notification_settings)/ §4.2.8(shedlock)
 - 設計規約 §7(バッチ設計規約)/ §3.3(クエリ実装優先順位・native 許容)
 - ADR-0005 §3.4(通知ルール)/ ADR-0010(Hibernate Filter テナント分離)
-- ShedLock: https://github.com/lukas-krecan/ShedLock
+- ShedLock: [lukas-krecan/ShedLock](https://github.com/lukas-krecan/ShedLock)
