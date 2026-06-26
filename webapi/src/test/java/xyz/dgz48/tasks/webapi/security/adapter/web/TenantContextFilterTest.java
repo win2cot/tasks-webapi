@@ -43,6 +43,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.CreateTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.GetPlatformMetricsUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.GetTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantUsersUseCase;
@@ -122,6 +123,7 @@ class TenantContextFilterTest {
   @MockitoBean ListTenantUsersUseCase listTenantUsersUseCase;
   @MockitoBean GetDashboardTasksUseCase getDashboardTasksUseCase;
   @MockitoBean GetDashboardSummaryUseCase getDashboardSummaryUseCase;
+  @MockitoBean CreateTenantUseCase createTenantUseCase;
 
   @Autowired MockMvc mockMvc;
 

@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.tenant.domain.Tenant;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantPlan;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.AdminTenantRepository;
 
@@ -22,6 +23,31 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.AdminTenantRepository;
 class AdminTenantPersistenceAdapter implements AdminTenantRepository {
 
   private final TenantJpaRepository tenantJpaRepository;
+
+  @Override
+  @Transactional
+  public Tenant createTenant(String code, String name) {
+    TenantJpaEntity saved =
+        tenantJpaRepository.save(new TenantJpaEntity(code, name, TenantPlan.FREE));
+    // 新規作成直後はメンバー未登録 → COUNT クエリ(特に tasks)を発行しない。
+    // userCount は呼び出し側 UseCase が初代 admin 登録後に 1 へ補正する。
+    return new Tenant(
+        saved.getId(),
+        saved.getCode(),
+        saved.getName(),
+        saved.getPlan(),
+        saved.getStatus(),
+        saved.getCreatedAt(),
+        saved.getUpdatedAt(),
+        0L,
+        0L);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public boolean existsByCode(String code) {
+    return tenantJpaRepository.existsByCode(code);
+  }
 
   @Override
   @Transactional(readOnly = true)

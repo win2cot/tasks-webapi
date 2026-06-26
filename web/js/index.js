@@ -26,9 +26,15 @@ async function main() {
       return;
     }
 
-    // テナント未選択: テナント選択 UI を表示
+    // テナント未選択: テナント選択 UI と「テナント作成」導線を表示
     /** @type {HTMLElement} */ (mustQuery(document, '#user-info')).textContent =
-      'テナントを選択してタスク一覧を開いてください。';
+      me.tenants.length === 0
+        ? '所属テナントがありません。新しいテナントを作成してください。'
+        : 'テナントを選択してタスク一覧を開いてください。';
+
+    /** @type {HTMLElement} */ (mustQuery(document, '#link-create-tenant')).classList.remove(
+      'd-none',
+    );
 
     /** @type {AppTenantSwitcherElement} */ (mustQuery(document, '#tenant-switcher')).setData(
       me.tenants,
