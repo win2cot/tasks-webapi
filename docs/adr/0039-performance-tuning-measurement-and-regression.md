@@ -24,7 +24,7 @@
 
 [Issue #769](https://github.com/win2cot/tasks-webapi/issues/769)(Phase 1 / Sprint 5)は MVP リリース前に明らかな性能ボトルネックを是正する。**定量 SLO は設けず**、「測定 → 是正 → 所見記録」のサイクルで対応する方針が確定している(win2cot 決定 2026-06-25)。本 ADR は、この Issue を回すうえで判断を要する **測定の進め方・N+1 回帰の固定手段・index レビューの完了基準・是正スコープの線引き** を確定する(claude-automation = 議論先行)。
 
-[ADR-0029](0029-performance-measurement-and-diagnostics.md) でアプリの計測基盤(Spring Boot 4 公式 OpenTelemetry スターター / OTLP / Application Signals)は確定済みである。本 ADR は ADR-0029 を前提とし、その「使い方」と「テストでの回帰固定の仕組み」を補完する位置づけ(ADR-0029 を supersede しない)。
+[ADR-0029](0029-performance-measurement-and-diagnostics.md) でアプリの計測基盤(Spring Boot 4 公式 OpenTelemetry スターター / OTLP / Application Signals)は確定済みである。本 ADR は ADR-0029 を前提とし、その「使い方」と「テストでの回帰固定の仕組み」を補完する位置づけ(ADR-0029 を supersede しない)。特に **ADR-0029 §6.1 は JDBC 計装として `datasource-micrometer-spring-boot:2.2.1` を採用済み(Native Image 両立を確認済み)** であり、本 ADR はこれを前提・維持する。
 
 現状認識(2026-06-26 コード確認):
 
@@ -40,7 +40,7 @@
 - テストは Testcontainers MySQL 8.4 が前提(コーディング規約、H2 不可)。
 - 実行バイナリは GraalVM Native Image([ADR-0008](0008-graalvm-native-image.md))。ただしテストは JVM モードで実行されるため、テスト専用の計測ライブラリは Native 互換の検証対象外。
 - `@Profile` 禁止(コーディング規約 §20.2)。ON/OFF・環境差は外部化プロパティで吸収。
-- MVP 直前であり、新規 **ランタイム依存** の Native 互換検証コストは避けたい。
+- MVP 直前であり、#769 では ADR-0029 が所掌するランタイム計装の実装作業を重複して持ち込まず、テスト層の回帰機構に集中したい。
 
 ## 2. 検討した選択肢(Options Considered)
 
@@ -52,13 +52,13 @@
 
 - 概要: 既定の計測基盤(ADR-0029)をローカルで起動し、endpoint レイテンシと自動計装の span を確認。N+1 の有無は `show_sql`(+ `format_sql`)の出力で目視確認する。
 - 利点: 追加依存ゼロ。ADR-0029 と一直線。発掘は一時的作業のためローカルで十分。
-- 欠点: ランタイム(本番)での継続的な N+1 可視化は得られない。
+- 欠点: ローカル一回性の発掘手段。継続的な観測は ADR-0029 のランタイム計装(datasource-micrometer 含む)が別途担う。
 
-#### 選択肢 E: datasource-micrometer を追加
+#### 選択肢 E: datasource-micrometer のランタイム span を発掘に用いる(ADR-0029 §6.1 で採用済み)
 
-- 概要: `datasource-micrometer-spring-boot`(v2.x が Spring Boot 4 対応、#722 で確認済)を追加し、JDBC クエリを Micrometer Observation / OTLP の span・metric として送出。
-- 利点: 本番でも N+1 兆候を trace 上で継続観測できる。ADR-0029 の OTLP 経路に統合される。
-- 欠点・リスク: 新規 **ランタイム依存**。Native Image 互換(特に SB 4.1 系)は導入時に再検証が必要。MVP 直前のコストとして重い。発掘という一時目的に対して過剰。
+- 概要: ADR-0029 §6.1 で JDBC 計装として `datasource-micrometer-spring-boot:2.2.1` が **採用済み**。これが実装済みであれば、その `connection` / `query` span を発掘に活用できる。
+- 利点: 本番でも N+1 兆候を trace 上で継続観測できる(ADR-0029 の OTLP 経路に統合済、Native Image 両立も ADR-0029 §6.1 で確認済)。
+- 欠点・リスク: ADR-0029 の計装実装(#584-587 系)が未完了の段階では発掘に使えない。#769 として計装の実装そのものはスコープ外。
 
 ### レイヤー2: 回帰固定(テスト)
 
@@ -82,7 +82,7 @@
 ## 3. 決定(Decision)
 
 1. **回帰固定(②)= 選択肢 B(datasource-proxy, test scope)** を採用する。クエリ本数を assert する小さなテストヘルパを用意し、Testcontainers 統合テストで N+1 回帰を固定する。**既に対策済みの箇所(`loadUserMap` 一括解決・関係者 JOIN・summary `EXISTS`)にも回帰ガードを張る** — 回帰固定こそが本 Issue の主目的である。
-2. **発掘(①)= 選択肢 D(ADR-0029 の OTel + `show_sql`)** を採用する。**datasource-micrometer(C / E)は今回採用しない**(MVP 直前の Native 互換検証コスト回避。将来ランタイムでの継続的 N+1 可視化が必要になった時点で別途 ADR 化を検討)。
+2. **発掘(①)= 選択肢 D(ADR-0029 の OTel + `show_sql`)を主に用いる**。datasource-micrometer による JDBC 計装は **ADR-0029 §6.1 で採用済み**(本 ADR は維持し supersede しない)。その計装が実装済みであれば発掘に span を活用し、未実装の段階では `show_sql` で代替する。**#769 のスコープに datasource-micrometer の計装実装そのものは含めない**(ADR-0029 の実装 Issue で扱う)。テスト層の回帰固定(②)には datasource-micrometer を用いない(選択肢 C は不採用)。
 3. **index レビューの完了基準**: 主要 endpoint の代表クエリを MySQL 8.4 上で `EXPLAIN` し、所見(`type` / 使用 index / `rows`)を docs に記録する。`type=ALL`(フルスキャン)等の重大事象は是正する。「合否」ではなく **所見記録 + 重大事象の是正** をもって完了とする。
 4. **是正スコープの線引き**: N+1 と欠損 index は #769 内で是正する(fetch join / `@EntityGraph` / Flyway index 追加)。**測定で見つかった重大ボトルネックも、可能な範囲で #769 内で是正する**。ただし read model 化・キャッシュ導入等の **アーキテクチャ大改修で PR が肥大化する場合に限り、別 Issue に切り出してよい**(逃げ道)。
 5. **keyword 検索(LIKE 部分一致)の扱い**: 現状挙動を `EXPLAIN` で所見記録するのみとし、前方一致化 / FULLTEXT 等の改善は **別 Issue 候補**に切り出す(#769 では是正しない)。
@@ -92,7 +92,7 @@
 
 - 発掘と回帰固定は目的が異なる(前者は一時的探索、後者は恒久的ガード)。レイヤーを分けることで、各々に最小の道具を割り当てられる。
 - N+1 回帰テストは「本数」だけでなく「どの SQL が反復したか」が見えると、テストも是正も書きやすい。datasource-proxy はこの点で Hibernate Statistics に勝る。捨てた利点は「依存ゼロ」だが、テスト scope の単一依存は許容範囲。
-- datasource-micrometer の利点(本番での継続可視化)は魅力的だが、MVP 直前にランタイム依存と Native 検証を増やす ROI が見合わない。発掘はローカル一回性で足りる。
+- datasource-micrometer は ADR-0029 §6.1 で既に採用済みのランタイム計装であり、本 ADR で再決定・追加するものではない。#769 の発掘は計装の実装状況に依存せず進められるよう、ローカルの OTel + `show_sql` を主手段とする。
 - 現状すでに主要 N+1 は対策済みのため、本 Issue は「壊さないための回帰ガード」の価値が最も高い。スコープを検証 + ガード + index 所見に寄せるのが実態に合う。
 - SLO を設けない判断は、単独運用・MVP 段階で定量目標の維持コストに見合う負荷試験基盤が無いため。重大事象は所見ベースで個別是正する。
 
@@ -102,12 +102,12 @@
 
 - 主要 endpoint のクエリ本数がテストで固定され、将来の実装変更による N+1 退行を CI で検知できる。
 - 測定・是正の判断基準(完了基準・スコープ線引き)が明文化され、#769 着手後の判断ブレが減る。
-- ランタイム依存を増やさないため、Native ビルド・本番イメージへの影響がない。
+- 回帰固定は test scope の datasource-proxy のみで、ランタイム/本番イメージ(ADR-0029 の計装構成)に影響を与えない。
 
 ### 悪い影響・制約(Negative)
 
 - datasource-proxy のテスト配線(proxy `DataSource` + `QueryCountHolder` リセット)を新規に整備・維持する必要がある。
-- 本番での継続的な N+1 可視化は得られない(将来必要なら別 ADR)。
+- 本番での継続的な N+1 可視化は ADR-0029 のランタイム計装(datasource-micrometer)に依存するため、その計装が実装されるまで発掘は `show_sql` 主体になる。
 - SLO 不在のため「どこまでが重大か」は所見ベースの定性判断に依存する。
 
 ### 既存ドキュメント・規約への波及
@@ -129,7 +129,7 @@
 ## 7. 参考リンク(References)
 
 - [Issue #769](https://github.com/win2cot/tasks-webapi/issues/769) — 性能チューニング(本 ADR の対象)
-- [ADR-0029](0029-performance-measurement-and-diagnostics.md) — 計測基盤(OTel / Application Signals)
+- [ADR-0029](0029-performance-measurement-and-diagnostics.md) §6.1 — 計測基盤(OTel / Application Signals)。JDBC 計装に `datasource-micrometer-spring-boot:2.2.1` を採用済み(本 ADR が前提とする)。
 - [ADR-0008](0008-graalvm-native-image.md) — GraalVM Native Image
 - [ADR-0010](0010-tenant-isolation-hibernate-filter.md) — テナント分離(Hibernate Filter)
 - `docs/specs/設計規約.md` §3.1 — Flyway マイグレーション命名
