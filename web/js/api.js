@@ -110,6 +110,15 @@
  */
 
 /**
+ * @typedef {object} UserProfile
+ * @property {number} id
+ * @property {string} email
+ * @property {string} fullName
+ * @property {string} fullNameKana
+ * @property {string|null} [departmentName]
+ */
+
+/**
  * @typedef {object} NotificationSettings
  * @property {boolean} emailDueToday
  * @property {boolean} emailOverdue
@@ -371,6 +380,14 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/users/me — 自身のプロフィール取得(A-07、S-09)。テナント選択状態に依存しない。
+   * @returns {Promise<UserProfile>}
+   */
+  function getMyProfile() {
+    return request('/api/users/me');
+  }
+
+  /**
    * GET /api/users/me/notification-settings — 通知設定取得(A-23、S-10、現テナント)。
    * @returns {Promise<NotificationSettings>}
    */
@@ -491,6 +508,7 @@ const Api = (() => {
     changeVisibility,
     listTenantUsers,
     getTenantDashboardSummary,
+    getMyProfile,
     getNotificationSettings,
     updateNotificationSettings,
     listStakeholders,
