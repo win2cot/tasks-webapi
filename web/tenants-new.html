@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テナント作成 — Tasks</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/app.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">Tasks</a>
+        <div class="ms-auto d-flex align-items-center">
+          <span id="nav-username" class="navbar-text text-white me-3 d-none"></span>
+          <button id="btn-logout" type="button" class="btn btn-outline-light btn-sm d-none">
+            ログアウト
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container mt-4">
+      <div id="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">認証状態を確認中...</p>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+          <form id="signup-form" class="card d-none" novalidate>
+            <div class="card-body">
+              <h1 class="h5 card-title mb-3">テナントを作成</h1>
+              <p class="text-muted small">
+                テナント名を入力して作成すると、あなたが初代テナント管理者として登録されます。
+              </p>
+
+              <div id="form-error" class="alert alert-danger d-none" role="alert"></div>
+
+              <div class="mb-3">
+                <label for="tenant-name" class="form-label">テナント名</label>
+                <input
+                  id="tenant-name"
+                  type="text"
+                  class="form-control"
+                  maxlength="255"
+                  required
+                  autocomplete="off"
+                  placeholder="例: 営業部"
+                >
+              </div>
+
+              <button id="btn-create" type="submit" class="btn btn-primary">
+                作成
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="vendor/keycloak-js/keycloak.min.js"></script>
+    <script src="js/dom.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/tenants-new.js"></script>
+  </body>
+</html>

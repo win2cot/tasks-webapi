@@ -78,6 +78,25 @@
  */
 
 /**
+ * @typedef {object} Tenant
+ * @property {number} id
+ * @property {string} code
+ * @property {string} name
+ * @property {'FREE'|'STANDARD'|'ENTERPRISE'} plan
+ * @property {'ACTIVE'|'SUSPENDED'|'DELETED'} status
+ * @property {string} createdAt
+ * @property {string} updatedAt
+ * @property {number} userCount
+ * @property {number} taskCount
+ */
+
+/**
+ * @typedef {object} TenantCreatedResponse
+ * @property {Tenant} tenant
+ * @property {TenantUser} initialAdmin
+ */
+
+/**
  * @typedef {object} TenantRef
  * @property {number} id
  * @property {string} name
@@ -242,6 +261,19 @@ const Api = (() => {
   }
 
   /**
+   * POST /api/tenants — セルフサインアップ(A-05、createTenant)。認証済み・テナント未所属でも作成可。
+   * 呼び出しユーザーは初代 TENANT_ADMIN として登録される。
+   *
+   * 注意: X-Tenant-Id は送らないこと。TenantContextFilter は免除パス判定を「ヘッダ無し」のときだけ行うため、
+   * 非メンバーテナントの X-Tenant-Id を送ると 403 になる。呼び出し前に setTenantId(null) でクリアする想定。
+   * @param {{name: string}} body
+   * @returns {Promise<TenantCreatedResponse>}
+   */
+  function createTenant(body) {
+    return request('/api/tenants', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  /**
    * GET /api/tasks — タスク一覧取得(A-1、listTasks)。
    * @param {Object} [params]
    * @param {string}  [params.targetDate]     - 表示対象日 (YYYY-MM-DD)
@@ -402,6 +434,7 @@ const Api = (() => {
     requestRaw,
     getMe,
     selectTenant,
+    createTenant,
     listTasks,
     getTask,
     createTask,

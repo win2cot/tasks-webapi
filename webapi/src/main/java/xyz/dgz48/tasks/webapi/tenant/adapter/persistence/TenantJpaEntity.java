@@ -54,9 +54,13 @@ public class TenantJpaEntity {
   private LocalDateTime updatedAt;
 
   public TenantJpaEntity(String code, String name) {
+    this(code, name, TenantPlan.STANDARD);
+  }
+
+  public TenantJpaEntity(String code, String name, TenantPlan plan) {
     this.code = code;
     this.name = name;
-    this.plan = TenantPlan.STANDARD;
+    this.plan = plan;
     this.status = TenantStatus.ACTIVE;
   }
 

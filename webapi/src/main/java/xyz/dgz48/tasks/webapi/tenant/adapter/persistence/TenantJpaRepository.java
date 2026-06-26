@@ -12,6 +12,8 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantStatus;
 
 interface TenantJpaRepository extends JpaRepository<TenantJpaEntity, Long> {
 
+  boolean existsByCode(String code);
+
   @Query(
       """
       SELECT t FROM TenantJpaEntity t
