@@ -66,7 +66,7 @@ dependencies {
     // E2E(Account / Admin Console のブラウザ操作 + Update-Email 到達検証)。
     testImplementation("com.microsoft.playwright:playwright:1.60.0")
 
-    testImplementation("org.assertj:assertj-core:3.27.6")
+    testImplementation("org.assertj:assertj-core:3.27.7")
     // component テスト(SPI クラスを JVM 内で直接駆動 → JaCoCo 計測対象)で Keycloak SPI 型を mock する。
     testImplementation("org.mockito:mockito-core:5.14.2")
     testRuntimeOnly("org.slf4j:slf4j-simple:2.0.17")
