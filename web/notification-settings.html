@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>運営者ダッシュボード — Tasks</title>
+  <title>通知設定 — Tasks</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
@@ -45,7 +45,7 @@
     </a>
     <div class="admin-only">
       <div class="nav-group-label" aria-hidden="true">テナント運営</div>
-      <a class="side-link active" href="tenant-dashboard.html" aria-current="page">
+      <a class="side-link" href="tenant-dashboard.html">
         <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>運営者ダッシュボード
       </a>
       <a class="side-link" href="#">
@@ -54,95 +54,56 @@
     </div>
     <div class="nav-group-label" aria-hidden="true">アカウント</div>
     <a class="side-link" href="#"><i class="bi bi-person-circle" aria-hidden="true"></i>プロフィール</a>
-    <a class="side-link" href="notification-settings.html"><i class="bi bi-bell" aria-hidden="true"></i>通知設定</a>
+    <a class="side-link active" href="notification-settings.html" aria-current="page">
+      <i class="bi bi-bell" aria-hidden="true"></i>通知設定
+    </a>
   </aside>
 
   <!-- ===== Main ===== -->
   <main id="main-content" class="app-main">
     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-      <h1 class="page-title">運営者ダッシュボード</h1>
+      <h1 class="page-title">通知設定</h1>
     </div>
-    <p class="text-muted small mb-3">
-      テナント全体で共有(TENANT)または関係者限定(STAKEHOLDERS)で動いている業務量の集計です。
-      PRIVATE タスクは集計に含まれません。
-    </p>
+    <p class="text-muted small mb-3">現在のテナントにおける、自分宛てのメール通知の ON/OFF を設定します。</p>
 
     <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+    <div id="saved-alert" class="alert alert-success d-none" role="status">保存しました。</div>
 
     <div id="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
-      <p class="mt-2 text-muted">集計を取得中...</p>
+      <p class="mt-2 text-muted">設定を取得中...</p>
     </div>
 
-    <div id="summary" class="d-none">
-      <!-- 数値カード -->
-      <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
-        <div class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="text-muted small">総タスク数</div>
-              <div id="card-total" class="fs-3 fw-semibold">—</div>
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-9 col-lg-7">
+        <form id="settings-form" class="card d-none">
+          <div class="card-body">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" role="switch" id="email-due-today">
+              <label class="form-check-label" for="email-due-today">
+                期限当日のメール通知
+                <span class="d-block text-muted small">期限が今日のタスクを当日に通知します。</span>
+              </label>
             </div>
-          </div>
-        </div>
-        <div class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="text-muted small">当日期限</div>
-              <div id="card-today-due" class="fs-3 fw-semibold">—</div>
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" role="switch" id="email-overdue">
+              <label class="form-check-label" for="email-overdue">
+                期限超過のメール通知
+                <span class="d-block text-muted small">期限を過ぎた未完了タスクを通知します。</span>
+              </label>
             </div>
-          </div>
-        </div>
-        <div class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="text-muted small">期限切れ</div>
-              <div id="card-overdue" class="fs-3 fw-semibold text-danger">—</div>
+            <div class="form-check form-switch mb-4">
+              <input class="form-check-input" type="checkbox" role="switch" id="email-stakeholder">
+              <label class="form-check-label" for="email-stakeholder">
+                関係者登録のメール通知
+                <span class="d-block text-muted small">タスクの関係者として登録されたときに通知します。</span>
+              </label>
             </div>
+            <button id="btn-save" type="submit" class="btn btn-primary">保存</button>
           </div>
-        </div>
-        <div class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="text-muted small">本日完了</div>
-              <div id="card-completed-today" class="fs-3 fw-semibold text-success">—</div>
-            </div>
-          </div>
-        </div>
-        <div class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="text-muted small">メンバー数</div>
-              <div id="card-members" class="fs-3 fw-semibold">—</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ブレークダウン -->
-      <div class="row g-3">
-        <div class="col-12 col-lg-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <h2 class="h6 card-title">ステータス別件数</h2>
-              <table class="table table-sm mb-0">
-                <tbody id="status-breakdown"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 col-lg-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <h2 class="h6 card-title">優先度別件数</h2>
-              <table class="table table-sm mb-0">
-                <tbody id="priority-breakdown"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        </form>
       </div>
     </div>
   </main>
@@ -153,8 +114,7 @@
 <script src="js/dom.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
-<script src="js/meta.js"></script>
 <script src="js/components/app-tenant-switcher.js"></script>
-<script src="js/tenant-dashboard.js"></script>
+<script src="js/notification-settings.js"></script>
 </body>
 </html>

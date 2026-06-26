@@ -110,6 +110,14 @@
  */
 
 /**
+ * @typedef {object} NotificationSettings
+ * @property {boolean} emailDueToday
+ * @property {boolean} emailOverdue
+ * @property {boolean} emailStakeholder
+ * @property {string} [updatedAt]
+ */
+
+/**
  * @typedef {object} TenantDashboardSummary
  * @property {number} totalTaskCount
  * @property {number} todayDueCount
@@ -363,6 +371,26 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/users/me/notification-settings — 通知設定取得(A-23、S-10、現テナント)。
+   * @returns {Promise<NotificationSettings>}
+   */
+  function getNotificationSettings() {
+    return request('/api/users/me/notification-settings');
+  }
+
+  /**
+   * PUT /api/users/me/notification-settings — 通知設定更新(A-24、S-10、現テナント)。
+   * @param {NotificationSettings} body
+   * @returns {Promise<NotificationSettings>}
+   */
+  function updateNotificationSettings(body) {
+    return request('/api/users/me/notification-settings', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
    * GET /api/tasks/{id} — タスク詳細取得(A-12)。ETag も返す。
    * @param {number} id
    * @returns {Promise<{task: TaskDetail, etag: string|null}>}
@@ -463,6 +491,8 @@ const Api = (() => {
     changeVisibility,
     listTenantUsers,
     getTenantDashboardSummary,
+    getNotificationSettings,
+    updateNotificationSettings,
     listStakeholders,
     addStakeholder,
     removeStakeholder,
