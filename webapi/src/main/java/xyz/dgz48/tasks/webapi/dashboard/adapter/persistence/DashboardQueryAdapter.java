@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import xyz.dgz48.tasks.webapi.dashboard.domain.DashboardSummary;
 import xyz.dgz48.tasks.webapi.dashboard.domain.DashboardTask;
 import xyz.dgz48.tasks.webapi.dashboard.domain.DashboardTaskSections;
+import xyz.dgz48.tasks.webapi.dashboard.domain.TenantDashboardSummary;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.DashboardQueryPort;
 
 /**
@@ -91,6 +92,49 @@ class DashboardQueryAdapter implements DashboardQueryPort {
         myOpenCount,
         statusBreakdown,
         priorityBreakdown);
+  }
+
+  @Override
+  public TenantDashboardSummary aggregateTenantSummary(LocalDate today, Long tenantId) {
+    List<DashboardSummaryRow> rows = repository.findTenantVisibleSummaryRows();
+
+    long todayDueCount = 0;
+    long overdueCount = 0;
+    long completedTodayCount = 0;
+    Map<String, Long> statusBreakdown = newBreakdown(STATUS_KEYS);
+    Map<String, Long> priorityBreakdown = newBreakdown(PRIORITY_KEYS);
+
+    for (DashboardSummaryRow row : rows) {
+      boolean done = DONE.equals(row.status());
+
+      // 当日期限(due_date = TODAY、ステータス不問)
+      if (row.dueDate().isEqual(today)) {
+        todayDueCount++;
+      }
+      // 期限切れ未完了(due_date < TODAY かつ未完了)
+      if (!done && row.dueDate().isBefore(today)) {
+        overdueCount++;
+      }
+      // 本日完了(status = DONE かつ completed_at の日付 = TODAY、JST)
+      LocalDateTime completedAt = row.completedAt();
+      if (done && completedAt != null && completedAt.toLocalDate().isEqual(today)) {
+        completedTodayCount++;
+      }
+      // ステータス別・優先度別(visibility ∈ {TENANT, STAKEHOLDERS} 全体)
+      statusBreakdown.merge(row.status(), 1L, (a, b) -> a + b);
+      priorityBreakdown.merge(row.priority(), 1L, (a, b) -> a + b);
+    }
+
+    long memberCount = repository.countActiveMembers(tenantId);
+
+    return new TenantDashboardSummary(
+        rows.size(),
+        todayDueCount,
+        overdueCount,
+        completedTodayCount,
+        statusBreakdown,
+        priorityBreakdown,
+        memberCount);
   }
 
   private static Map<String, Long> newBreakdown(List<String> keys) {

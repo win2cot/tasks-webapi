@@ -3,6 +3,7 @@ package xyz.dgz48.tasks.webapi.dashboard.usecase;
 import java.time.LocalDate;
 import xyz.dgz48.tasks.webapi.dashboard.domain.DashboardSummary;
 import xyz.dgz48.tasks.webapi.dashboard.domain.DashboardTaskSections;
+import xyz.dgz48.tasks.webapi.dashboard.domain.TenantDashboardSummary;
 
 /**
  * ダッシュボード集計の取得ポート(クリーンアーキの out port)。
@@ -32,4 +33,16 @@ public interface DashboardQueryPort {
    * @param today サーバ側システム日付(JST)
    */
   DashboardSummary aggregateSummary(Long userId, LocalDate today);
+
+  /**
+   * S-15 テナント運営者向けの数値カード集計を取得する。
+   *
+   * <p>集計対象は自テナント内の {@code visibility ∈ {TENANT, STAKEHOLDERS}} のタスクのみ({@code PRIVATE} は除外、NIST
+   * AC-4)。テナント分離(タスク集合)は Hibernate Filter が自動付与する。{@code memberCount} は {@code user_tenants}
+   * (Filter 非適用テーブル)を {@code tenantId} 明示絞り込みで算出する。
+   *
+   * @param today サーバ側システム日付(JST)
+   * @param tenantId 現在のテナント ID(memberCount 算出用)
+   */
+  TenantDashboardSummary aggregateTenantSummary(LocalDate today, Long tenantId);
 }

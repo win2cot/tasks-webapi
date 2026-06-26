@@ -25,6 +25,7 @@ import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.GetDashboardSummaryUseCase;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.GetDashboardTasksUseCase;
+import xyz.dgz48.tasks.webapi.dashboard.usecase.GetTenantDashboardSummaryUseCase;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
@@ -123,6 +124,7 @@ class TenantContextFilterTest {
   @MockitoBean ListTenantUsersUseCase listTenantUsersUseCase;
   @MockitoBean GetDashboardTasksUseCase getDashboardTasksUseCase;
   @MockitoBean GetDashboardSummaryUseCase getDashboardSummaryUseCase;
+  @MockitoBean GetTenantDashboardSummaryUseCase getTenantDashboardSummaryUseCase;
   @MockitoBean CreateTenantUseCase createTenantUseCase;
 
   @Autowired MockMvc mockMvc;
