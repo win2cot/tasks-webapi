@@ -109,6 +109,17 @@
  * @property {TenantRef[]} tenants
  */
 
+/**
+ * @typedef {object} TenantDashboardSummary
+ * @property {number} totalTaskCount
+ * @property {number} todayDueCount
+ * @property {number} overdueCount
+ * @property {number} completedTodayCount
+ * @property {Record<string, number>} statusBreakdown
+ * @property {Record<string, number>} priorityBreakdown
+ * @property {number} memberCount
+ */
+
 const Api = (() => {
   const _envMatch = window.location.hostname.match(/^tasks(?:-(\w+))?\.dgz48\.xyz$/);
   const BASE_URL = _envMatch
@@ -344,6 +355,14 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/tenant/dashboard/summary — テナント運営者向けダッシュボード集計(A-28、S-15、Tenant Admin)。
+   * @returns {Promise<TenantDashboardSummary>}
+   */
+  function getTenantDashboardSummary() {
+    return request('/api/tenant/dashboard/summary');
+  }
+
+  /**
    * GET /api/tasks/{id} — タスク詳細取得(A-12)。ETag も返す。
    * @param {number} id
    * @returns {Promise<{task: TaskDetail, etag: string|null}>}
@@ -443,6 +462,7 @@ const Api = (() => {
     changeStatus,
     changeVisibility,
     listTenantUsers,
+    getTenantDashboardSummary,
     listStakeholders,
     addStakeholder,
     removeStakeholder,

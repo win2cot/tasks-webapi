@@ -101,4 +101,35 @@ interface DashboardTaskViewRepository extends Repository<DashboardTaskView, Long
         )
       """)
   List<DashboardSummaryRow> findVisibleSummaryRows(@Param("userId") Long userId);
+
+  /**
+   * S-15 テナント運営者集計の対象タスク(自テナント内の {@code visibility ∈ {TENANT, STAKEHOLDERS}})を軽量射影で取得する。
+   *
+   * <p>{@code PRIVATE} は件数も含めて除外する(NIST AC-4 整合)。テナント分離は Hibernate Filter "tenantFilter" が自動付与する
+   * ({@link DashboardTaskView} は {@code TenantFilteredEntity} を継承)。件数系・ブレークダウンは adapter 側で算出する。
+   */
+  @Query(
+      """
+      SELECT new xyz.dgz48.tasks.webapi.dashboard.adapter.persistence.DashboardSummaryRow(
+        t.status, t.priority, t.dueDate, t.completedAt, t.ownerId)
+      FROM DashboardTaskView t
+      WHERE t.deletedAt IS NULL
+        AND t.visibility IN ('TENANT', 'STAKEHOLDERS')
+      """)
+  List<DashboardSummaryRow> findTenantVisibleSummaryRows();
+
+  /**
+   * 現在テナントの ACTIVE 所属ユーザー数を取得する({@code TenantDashboardSummary.memberCount})。
+   *
+   * <p>native 理由: モジュール境界越え(tenant feature の {@code user_tenants} 参照)。{@code user_tenants} は {@code
+   * TenantFilteredEntity} 非適用テーブル(ADR-0010 §6.1)のため、テナント条件を {@code tenantId} で明示絞り込みする。
+   */
+  @Query(
+      value =
+          """
+          SELECT COUNT(*) FROM user_tenants
+          WHERE tenant_id = :tenantId AND status = 'ACTIVE'
+          """,
+      nativeQuery = true)
+  long countActiveMembers(@Param("tenantId") Long tenantId);
 }
