@@ -52,52 +52,52 @@ class DashboardQueryAdapter implements DashboardQueryPort {
   @Override
   public DashboardSummary aggregateSummary(Long userId, LocalDate today) {
     List<DashboardSummaryRow> rows = repository.findVisibleSummaryRows(userId);
+    AggregatedMetrics metrics = aggregate(rows, today);
 
-    long todayDueCount = 0;
-    long overdueCount = 0;
-    long completedTodayCount = 0;
-    long myOpenCount = 0;
-    Map<String, Long> statusBreakdown = newBreakdown(STATUS_KEYS);
-    Map<String, Long> priorityBreakdown = newBreakdown(PRIORITY_KEYS);
-
-    for (DashboardSummaryRow row : rows) {
-      boolean done = DONE.equals(row.status());
-
-      // 当日期限(due_date = TODAY、ステータス不問。OpenAPI DashboardSummary.todayDueCount)
-      if (row.dueDate().isEqual(today)) {
-        todayDueCount++;
-      }
-      // 期限切れ未完了(due_date < TODAY かつ未完了)
-      if (!done && row.dueDate().isBefore(today)) {
-        overdueCount++;
-      }
-      // 本日完了(status = DONE かつ completed_at の日付 = TODAY、JST)
-      LocalDateTime completedAt = row.completedAt();
-      if (done && completedAt != null && completedAt.toLocalDate().isEqual(today)) {
-        completedTodayCount++;
-      }
-      // 自分が所有する未完了(所有者視点指標、担当・関係者は含まない)
-      if (!done && row.ownerId().equals(userId)) {
-        myOpenCount++;
-      }
-      // ステータス別・優先度別(認可フィルタ通過タスク全体)
-      statusBreakdown.merge(row.status(), 1L, (a, b) -> a + b);
-      priorityBreakdown.merge(row.priority(), 1L, (a, b) -> a + b);
-    }
+    // 自分が所有する未完了(所有者視点指標、担当・関係者は含まない)。S-03 個人集計固有の指標。
+    long myOpenCount =
+        rows.stream()
+            .filter(row -> !DONE.equals(row.status()) && row.ownerId().equals(userId))
+            .count();
 
     return new DashboardSummary(
-        todayDueCount,
-        overdueCount,
-        completedTodayCount,
+        metrics.todayDueCount(),
+        metrics.overdueCount(),
+        metrics.completedTodayCount(),
         myOpenCount,
-        statusBreakdown,
-        priorityBreakdown);
+        metrics.statusBreakdown(),
+        metrics.priorityBreakdown());
   }
 
   @Override
   public TenantDashboardSummary aggregateTenantSummary(LocalDate today, Long tenantId) {
     List<DashboardSummaryRow> rows = repository.findTenantVisibleSummaryRows();
+    AggregatedMetrics metrics = aggregate(rows, today);
+    long memberCount = repository.countActiveMembers(tenantId);
 
+    return new TenantDashboardSummary(
+        rows.size(),
+        metrics.todayDueCount(),
+        metrics.overdueCount(),
+        metrics.completedTodayCount(),
+        metrics.statusBreakdown(),
+        metrics.priorityBreakdown(),
+        memberCount);
+  }
+
+  /** S-03 個人集計と S-15 運営者集計で共通の件数系・ブレークダウン指標(myOpenCount は除く)。 */
+  private record AggregatedMetrics(
+      long todayDueCount,
+      long overdueCount,
+      long completedTodayCount,
+      Map<String, Long> statusBreakdown,
+      Map<String, Long> priorityBreakdown) {}
+
+  /**
+   * 軽量射影行集合から共通指標を 1 パスで算出する。対象タスク集合の絞り込み(個人=3 役割評価 / 運営者=visibility ∈ {TENANT,
+   * STAKEHOLDERS})は呼び出し側のクエリが担い、本メソッドは集計のみを担う。
+   */
+  private AggregatedMetrics aggregate(List<DashboardSummaryRow> rows, LocalDate today) {
     long todayDueCount = 0;
     long overdueCount = 0;
     long completedTodayCount = 0;
@@ -120,21 +120,13 @@ class DashboardQueryAdapter implements DashboardQueryPort {
       if (done && completedAt != null && completedAt.toLocalDate().isEqual(today)) {
         completedTodayCount++;
       }
-      // ステータス別・優先度別(visibility ∈ {TENANT, STAKEHOLDERS} 全体)
+      // ステータス別・優先度別
       statusBreakdown.merge(row.status(), 1L, (a, b) -> a + b);
       priorityBreakdown.merge(row.priority(), 1L, (a, b) -> a + b);
     }
 
-    long memberCount = repository.countActiveMembers(tenantId);
-
-    return new TenantDashboardSummary(
-        rows.size(),
-        todayDueCount,
-        overdueCount,
-        completedTodayCount,
-        statusBreakdown,
-        priorityBreakdown,
-        memberCount);
+    return new AggregatedMetrics(
+        todayDueCount, overdueCount, completedTodayCount, statusBreakdown, priorityBreakdown);
   }
 
   private static Map<String, Long> newBreakdown(List<String> keys) {

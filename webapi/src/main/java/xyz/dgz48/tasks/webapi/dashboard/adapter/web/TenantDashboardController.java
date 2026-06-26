@@ -1,13 +1,12 @@
 package xyz.dgz48.tasks.webapi.dashboard.adapter.web;
 
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import xyz.dgz48.tasks.webapi.dashboard.adapter.web.dto.TenantDashboardSummaryResponse;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.GetTenantDashboardSummaryUseCase;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
@@ -30,10 +29,10 @@ public class TenantDashboardController {
   @GetMapping("/summary")
   @PreAuthorize("hasRole('TENANT_ADMIN')")
   public ResponseEntity<TenantDashboardSummaryResponse> getTenantDashboardSummary() {
-    Long tenantId = TenantContext.get();
-    if (tenantId == null) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "テナントが選択されていません");
-    }
+    // TenantContextFilter が業務 API 到達前に X-Tenant-Id 検証 + ACTIVE メンバーシップ確認を済ませているため、
+    // ここに到達した時点で TenantContext は必ず確立済み(未確立なら Filter が 403 を返す)。
+    Long tenantId =
+        Objects.requireNonNull(TenantContext.get(), "TenantContext must be set by filter");
     return ResponseEntity.ok(
         TenantDashboardSummaryResponse.from(getTenantDashboardSummaryUseCase.execute(tenantId)));
   }

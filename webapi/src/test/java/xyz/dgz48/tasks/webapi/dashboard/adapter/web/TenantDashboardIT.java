@@ -13,11 +13,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -64,9 +66,11 @@ class TenantDashboardIT {
   private Long adminUserId;
   private Long memberUserId;
   private Long invitedUserId;
+  private Long saasAdminUserId;
 
   private TasksAuthenticationToken adminToken;
   private TasksAuthenticationToken memberToken;
+  private TasksAuthenticationToken saasAdminToken;
 
   @BeforeEach
   void setUp() {
@@ -79,13 +83,18 @@ class TenantDashboardIT {
           var admin = new UserJpaEntity("sub-tda", "tda@example.com", "運営者", "ウンエイシャ", null);
           var member = new UserJpaEntity("sub-tdm", "tdm@example.com", "一般", "イッパン", null);
           var invited = new UserJpaEntity("sub-tdi", "tdi@example.com", "招待中", "ショウタイチュウ", null);
+          // SaaS Admin: このテナントに user_tenants 行を持たない(業務 API では非メンバー扱い)
+          var saasAdmin =
+              new UserJpaEntity("sub-tds", "tds@example.com", "SaaS管理者", "サースカンリシャ", null);
           em.persist(admin);
           em.persist(member);
           em.persist(invited);
+          em.persist(saasAdmin);
           em.flush();
           adminUserId = admin.getId();
           memberUserId = member.getId();
           invitedUserId = invited.getId();
+          saasAdminUserId = saasAdmin.getId();
 
           // 監査列(created_by/updated_by)解決のため認証コンテキストを設定
           SecurityContextHolder.getContext()
@@ -146,6 +155,12 @@ class TenantDashboardIT {
         new TasksAuthenticationToken(
             new TasksPrincipal(memberUserId, "sub-tdm", "tdm@example.com", "一般", "イッパン", null),
             List.of());
+    // ROLE_APP_ADMIN を持つが、当テナントの user_tenants 行を持たない(SaaS Admin の業務 API アクセス)
+    saasAdminToken =
+        new TasksAuthenticationToken(
+            new TasksPrincipal(
+                saasAdminUserId, "sub-tds", "tds@example.com", "SaaS管理者", "サースカンリシャ", null),
+            List.of(new SimpleGrantedAuthority("ROLE_APP_ADMIN")));
   }
 
   @AfterEach
@@ -165,10 +180,11 @@ class TenantDashboardIT {
           em.createNativeQuery("DELETE FROM tenants WHERE id = ?")
               .setParameter(1, tenantId)
               .executeUpdate();
-          em.createNativeQuery("DELETE FROM users WHERE id IN (?,?,?)")
+          em.createNativeQuery("DELETE FROM users WHERE id IN (?,?,?,?)")
               .setParameter(1, adminUserId)
               .setParameter(2, memberUserId)
               .setParameter(3, invitedUserId)
+              .setParameter(4, saasAdminUserId)
               .executeUpdate();
           return null;
         });
@@ -217,6 +233,114 @@ class TenantDashboardIT {
         .perform(
             get("/api/tenant/dashboard/summary").header("X-Tenant-Id", String.valueOf(tenantId)))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void saasAdmin_isForbidden() throws Exception {
+    // 業務 API のため APP_ADMIN(当テナント非メンバー)は 403。Javadoc「SaaS Admin も 403」の回帰検知。
+    mockMvc
+        .perform(
+            get("/api/tenant/dashboard/summary")
+                .header("X-Tenant-Id", String.valueOf(tenantId))
+                .with(authentication(saasAdminToken)))
+        .andExpect(status().isForbidden());
+  }
+
+  /** テナント分離(ADR-0010)。Hibernate Filter が無効化された場合に他テナントのタスク混入を検知する。 */
+  @Nested
+  class CrossTenantIsolation {
+
+    private Long tenantBId;
+    private Long userBId;
+    private Long taskBId;
+
+    @BeforeEach
+    void setUpTenantB() {
+      txTemplate.execute(
+          ignored -> {
+            var userB = new UserJpaEntity("sub-tdb", "tdb@example.com", "別テナント", "ベツテナント", null);
+            em.persist(userB);
+            em.flush();
+            userBId = userB.getId();
+
+            SecurityContextHolder.getContext()
+                .setAuthentication(
+                    new TasksAuthenticationToken(
+                        new TasksPrincipal(
+                            userBId, "sub-tdb", "tdb@example.com", "別テナント", "ベツテナント", null),
+                        List.of()));
+
+            var tenantB = new TenantJpaEntity("TD-B", "別運営テナント");
+            em.persist(tenantB);
+            em.flush();
+            tenantBId = tenantB.getId();
+
+            em.createNativeQuery(
+                    "INSERT INTO user_tenants (user_id, tenant_id, role, status, joined_at)"
+                        + " VALUES (?,?,?,?,?)")
+                .setParameter(1, userBId)
+                .setParameter(2, tenantBId)
+                .setParameter(3, "TENANT_ADMIN")
+                .setParameter(4, "ACTIVE")
+                .setParameter(5, LocalDateTime.of(2026, 1, 1, 0, 0))
+                .executeUpdate();
+
+            // テナント B の当日期限 TENANT タスク。テナント A の集計に混入してはならない。
+            var taskB =
+                new TaskJpaEntity(
+                    tenantBId,
+                    userBId,
+                    "別テナントの当日タスク",
+                    null,
+                    TaskStatus.NOT_STARTED,
+                    Priority.MEDIUM,
+                    Visibility.TENANT,
+                    null,
+                    TODAY);
+            em.persist(taskB);
+            em.flush();
+            taskBId = taskB.getId();
+            return null;
+          });
+      SecurityContextHolder.clearContext();
+    }
+
+    @AfterEach
+    void tearDownTenantB() {
+      SecurityContextHolder.clearContext();
+      if (tenantBId == null) {
+        return;
+      }
+      txTemplate.execute(
+          ignored -> {
+            em.createNativeQuery("DELETE FROM tasks WHERE id = ?")
+                .setParameter(1, taskBId)
+                .executeUpdate();
+            em.createNativeQuery("DELETE FROM user_tenants WHERE tenant_id = ?")
+                .setParameter(1, tenantBId)
+                .executeUpdate();
+            em.createNativeQuery("DELETE FROM tenants WHERE id = ?")
+                .setParameter(1, tenantBId)
+                .executeUpdate();
+            em.createNativeQuery("DELETE FROM users WHERE id = ?")
+                .setParameter(1, userBId)
+                .executeUpdate();
+            return null;
+          });
+    }
+
+    @Test
+    void tenantA_summary_excludesTenantBTasks() throws Exception {
+      // テナント A の Admin で集計しても、テナント B のタスク(別テナント当日タスク)は混入しない。
+      mockMvc
+          .perform(
+              get("/api/tenant/dashboard/summary")
+                  .header("X-Tenant-Id", String.valueOf(tenantId))
+                  .with(authentication(adminToken)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.totalTaskCount").value(4))
+          .andExpect(jsonPath("$.todayDueCount").value(1));
+    }
   }
 
   // --- helpers ---
