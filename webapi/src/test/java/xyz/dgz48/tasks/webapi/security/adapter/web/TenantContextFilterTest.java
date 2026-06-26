@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
+import xyz.dgz48.tasks.webapi.audit.usecase.ListAuditLogsUseCase;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.GetDashboardSummaryUseCase;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.GetDashboardTasksUseCase;
 import xyz.dgz48.tasks.webapi.dashboard.usecase.GetTenantDashboardSummaryUseCase;
@@ -126,6 +127,7 @@ class TenantContextFilterTest {
   @MockitoBean GetDashboardSummaryUseCase getDashboardSummaryUseCase;
   @MockitoBean GetTenantDashboardSummaryUseCase getTenantDashboardSummaryUseCase;
   @MockitoBean CreateTenantUseCase createTenantUseCase;
+  @MockitoBean ListAuditLogsUseCase listAuditLogsUseCase;
 
   @Autowired MockMvc mockMvc;
 
