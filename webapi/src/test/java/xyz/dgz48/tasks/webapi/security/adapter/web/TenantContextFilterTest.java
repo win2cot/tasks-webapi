@@ -59,6 +59,7 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.UpdateTenantStatusUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UpdateTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
+import xyz.dgz48.tasks.webapi.user.usecase.GetMyProfileUseCase;
 
 @WebMvcTest
 @Import({
@@ -132,6 +133,7 @@ class TenantContextFilterTest {
   @MockitoBean ListAuditLogsUseCase listAuditLogsUseCase;
   @MockitoBean GetNotificationSettingsUseCase getNotificationSettingsUseCase;
   @MockitoBean UpdateNotificationSettingsUseCase updateNotificationSettingsUseCase;
+  @MockitoBean GetMyProfileUseCase getMyProfileUseCase;
 
   @Autowired MockMvc mockMvc;
 
