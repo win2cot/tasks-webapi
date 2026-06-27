@@ -372,6 +372,43 @@ const Api = (() => {
   }
 
   /**
+   * POST /api/tenant/users/invite — ユーザー招待(A-09、Tenant Admin)。
+   * 招待レコードを作成し SES で受諾リンク付きメールを送信する。重複(既メンバー)は 409。
+   * @param {{email: string, role: Role}} body
+   * @returns {Promise<void>}
+   */
+  function inviteUser(body) {
+    return request('/api/tenant/users/invite', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * PUT /api/tenant/users/{userId}/role — ロール変更(A-10、Tenant Admin)。
+   * 自己ロール変更は 403、ACTIVE メンバー不在は 404。
+   * @param {number} userId
+   * @param {Role} role
+   * @returns {Promise<TenantUser>}
+   */
+  function updateMemberRole(userId, role) {
+    return request(`/api/tenant/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  /**
+   * DELETE /api/tenant/users/{userId} — テナントメンバー削除(A-30、Tenant Admin)。
+   * 自己削除は 403、ACTIVE メンバー不在は 404。
+   * @param {number} userId
+   * @returns {Promise<void>}
+   */
+  function removeMember(userId) {
+    return request(`/api/tenant/users/${userId}`, { method: 'DELETE' });
+  }
+
+  /**
    * GET /api/tenant/dashboard/summary — テナント運営者向けダッシュボード集計(A-28、S-15、Tenant Admin)。
    * @returns {Promise<TenantDashboardSummary>}
    */
@@ -507,6 +544,9 @@ const Api = (() => {
     changeStatus,
     changeVisibility,
     listTenantUsers,
+    inviteUser,
+    updateMemberRole,
+    removeMember,
     getTenantDashboardSummary,
     getMyProfile,
     getNotificationSettings,

@@ -5,6 +5,11 @@ export const MEMBER1 = {
   password: 'password',
 } as const;
 
+export const ADMIN1 = {
+  username: 'tenant1-admin@example.com',
+  password: 'password',
+} as const;
+
 /**
  * Keycloak PKCE ログインを実行して tasks.html に到達するまで待機する。
  * tenant1-member1 は tenant1 に 1 所属しているため index.html が自動でテナントを

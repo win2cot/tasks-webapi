@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>プロフィール — Tasks</title>
+  <title>ユーザー管理 — Tasks</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
@@ -48,12 +48,12 @@
       <a class="side-link" href="tenant-dashboard.html">
         <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>運営者ダッシュボード
       </a>
-      <a class="side-link" href="tenant-users.html">
+      <a class="side-link active" href="tenant-users.html" aria-current="page">
         <i class="bi bi-people" aria-hidden="true"></i>ユーザー管理
       </a>
     </div>
     <div class="nav-group-label" aria-hidden="true">アカウント</div>
-    <a class="side-link active" href="profile.html" aria-current="page">
+    <a class="side-link" href="profile.html">
       <i class="bi bi-person-circle" aria-hidden="true"></i>プロフィール
     </a>
     <a class="side-link" href="notification-settings.html">
@@ -64,7 +64,7 @@
   <!-- ===== Main ===== -->
   <main id="main-content" class="app-main">
     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-      <h1 class="page-title">プロフィール</h1>
+      <h1 class="page-title">ユーザー管理</h1>
     </div>
 
     <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
@@ -73,23 +73,54 @@
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
-      <p class="mt-2 text-muted">プロフィールを取得中...</p>
+      <p class="mt-2 text-muted">ユーザー情報を取得中...</p>
     </div>
 
-    <div class="row justify-content-center">
-      <div class="col-12 col-md-9 col-lg-7">
-        <div id="profile-card" class="card d-none">
-          <div class="card-body">
-            <dl class="row mb-0">
-              <dt class="col-sm-4 text-muted">氏名</dt>
-              <dd id="pf-full-name" class="col-sm-8"></dd>
-              <dt class="col-sm-4 text-muted">フリガナ</dt>
-              <dd id="pf-full-name-kana" class="col-sm-8"></dd>
-              <dt class="col-sm-4 text-muted">メールアドレス</dt>
-              <dd id="pf-email" class="col-sm-8"></dd>
-              <dt class="col-sm-4 text-muted">部署</dt>
-              <dd id="pf-department" class="col-sm-8"></dd>
-            </dl>
+    <div id="content" class="d-none">
+      <!-- ===== 招待フォーム ===== -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="h6 mb-3">ユーザーを招待</h2>
+          <form id="invite-form" class="row g-2 align-items-end" novalidate>
+            <div class="col-12 col-md-6">
+              <label for="invite-email" class="form-label small text-muted">メールアドレス</label>
+              <input type="email" id="invite-email" class="form-control" required
+                placeholder="user@example.com" autocomplete="off">
+            </div>
+            <div class="col-8 col-md-3">
+              <label for="invite-role" class="form-label small text-muted">ロール</label>
+              <select id="invite-role" class="form-select">
+                <option value="MEMBER" selected>メンバー</option>
+                <option value="TENANT_ADMIN">テナント管理者</option>
+              </select>
+            </div>
+            <div class="col-4 col-md-3 d-grid">
+              <button type="submit" id="btn-invite" class="btn btn-primary">
+                <i class="bi bi-envelope-plus me-1" aria-hidden="true"></i>招待
+              </button>
+            </div>
+          </form>
+          <div id="invite-feedback" class="small mt-2 d-none" role="status"></div>
+        </div>
+      </div>
+
+      <!-- ===== メンバー一覧 ===== -->
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 mb-3">メンバー一覧</h2>
+          <div class="table-responsive">
+            <table class="table align-middle mb-0" aria-label="メンバー一覧">
+              <thead>
+                <tr>
+                  <th scope="col">氏名</th>
+                  <th scope="col">メールアドレス</th>
+                  <th scope="col">ロール</th>
+                  <th scope="col">状態</th>
+                  <th scope="col" class="text-end">操作</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -103,6 +134,6 @@
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
 <script src="js/components/app-tenant-switcher.js"></script>
-<script src="js/profile.js"></script>
+<script src="js/tenant-users.js"></script>
 </body>
 </html>
