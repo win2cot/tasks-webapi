@@ -97,3 +97,9 @@ notification:
     enabled: ${NOTIFICATION_BATCH_ENABLED:true}
     cron: ${NOTIFICATION_BATCH_CRON:0 0 9 * * *}
     zone: ${NOTIFICATION_BATCH_ZONE:Asia/Tokyo}
+
+# A-09 招待(ADR-0017)。招待メールの受諾リンクのベース URL。
+# 平文トークンを <accept-url-base>?token=... の形でメール本文にのみ載せる(本番は実ドメインを設定)。
+tenant:
+  invite:
+    accept-url-base: ${TENANT_INVITE_ACCEPT_URL_BASE:http://localhost:8080/invitations/accept}

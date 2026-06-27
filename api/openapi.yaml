@@ -426,7 +426,11 @@ paths:
     post:
       tags: [User]
       summary: ユーザー招待 (Tenant Admin)
-      description: "認可: Tenant Admin のみ。oidc_subが既存usersに登録済みの場合、user_tenants に紐付け"
+      description: |
+        認可: Tenant Admin のみ。テナントは `X-Tenant-Id` ヘッダ駆動(テナント暗黙)。
+        ADR-0017(自前招待トークン)準拠。登録状況に関わらず `invitations` 行を作成し、SES で受諾リンク付き招待メールを送信する(201)。
+        トークンは平文をメールにのみ載せ、DB には SHA-256 ハッシュのみを保存(有効期限 7 日・one-time)。
+        受諾(トークン消費)と `user_tenants` 紐付けは受諾画面フローで行う。
       operationId: inviteUser
       requestBody:
         required: true
@@ -440,8 +444,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "409":
           $ref: "#/components/responses/Conflict"
-          description: 招待対象が既に `user_tenants` に登録済み(重複招待)。
-        "422": { $ref: "#/components/responses/UnprocessableContent" }
+          description: 招待対象の email が既に `user_tenants` に登録済み(重複招待)。
 
   /api/tenant/users/{userId}:
     delete:

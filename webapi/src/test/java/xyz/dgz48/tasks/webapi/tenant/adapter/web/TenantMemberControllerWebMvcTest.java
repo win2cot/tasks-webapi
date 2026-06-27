@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,10 +35,12 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantUserInfo;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserAlreadyMemberException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantNotFoundException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
+import xyz.dgz48.tasks.webapi.tenant.usecase.InviteUserUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
@@ -66,6 +69,7 @@ class TenantMemberControllerWebMvcTest {
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
+  @MockitoBean InviteUserUseCase inviteUserUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
 
@@ -237,5 +241,76 @@ class TenantMemberControllerWebMvcTest {
                 .content("{\"role\":\"TENANT_ADMIN\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
+  }
+
+  // --- POST /api/tenant/users/invite ---
+
+  @Test
+  @WithMockTenantAdmin
+  void inviteUser_returns201_whenTenantAdmin() throws Exception {
+    doNothing().when(inviteUserUseCase).execute(eq(TENANT_ID), any(), eq("new@example.com"), any());
+
+    mockMvc
+        .perform(
+            post("/api/tenant/users/invite")
+                .header("X-Tenant-Id", TENANT_HEADER)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"new@example.com\",\"role\":\"MEMBER\"}"))
+        .andExpect(status().isCreated());
+  }
+
+  @Test
+  @WithMockMember
+  void inviteUser_returns403_whenMember() throws Exception {
+    when(tenantMembershipPort.findActiveRole(anyLong(), eq(TENANT_ID)))
+        .thenReturn(Optional.of(TenantRole.MEMBER));
+
+    mockMvc
+        .perform(
+            post("/api/tenant/users/invite")
+                .header("X-Tenant-Id", TENANT_HEADER)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"new@example.com\",\"role\":\"MEMBER\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockSaasAdmin
+  void inviteUser_returns403_whenSaasAdmin() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/tenant/users/invite")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"new@example.com\",\"role\":\"MEMBER\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void inviteUser_returns400_whenInvalidEmail() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/tenant/users/invite")
+                .header("X-Tenant-Id", TENANT_HEADER)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\",\"role\":\"MEMBER\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void inviteUser_returns409_whenAlreadyMember() throws Exception {
+    doThrow(new UserAlreadyMemberException("dup@example.com", TENANT_ID))
+        .when(inviteUserUseCase)
+        .execute(eq(TENANT_ID), any(), eq("dup@example.com"), any());
+
+    mockMvc
+        .perform(
+            post("/api/tenant/users/invite")
+                .header("X-Tenant-Id", TENANT_HEADER)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"dup@example.com\",\"role\":\"MEMBER\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("E_CONFLICT"));
   }
 }

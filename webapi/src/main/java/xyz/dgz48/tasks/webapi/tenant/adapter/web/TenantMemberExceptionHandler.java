@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserAlreadyMemberException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantNotFoundException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
 
@@ -23,6 +24,16 @@ public class TenantMemberExceptionHandler {
         HttpStatus.NOT_FOUND,
         ErrorCode.E_NOT_FOUND,
         Objects.requireNonNullElse(ex.getMessage(), "メンバーが見つかりません"),
+        request);
+  }
+
+  @ExceptionHandler(UserAlreadyMemberException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ErrorResponse handleConflict(UserAlreadyMemberException ex, HttpServletRequest request) {
+    return error(
+        HttpStatus.CONFLICT,
+        ErrorCode.E_CONFLICT,
+        Objects.requireNonNullElse(ex.getMessage(), "既にメンバーとして登録されています"),
         request);
   }
 
