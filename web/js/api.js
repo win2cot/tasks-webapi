@@ -448,6 +448,43 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/tenants/{id} — テナント詳細取得(A-25、S-14、SaaS Admin)。
+   * X-Tenant-Id 不要(プラットフォーム API)。呼び出し前に setTenantId(null) でクリアすること。
+   * @param {number} id
+   * @returns {Promise<Tenant>}
+   */
+  function getTenant(id) {
+    return request(`/api/tenants/${id}`);
+  }
+
+  /**
+   * PUT /api/tenants/{id} — テナント名更新(A-06、S-14、SaaS Admin)。操作は監査ログに記録される。
+   * @param {number} id
+   * @param {string} name
+   * @returns {Promise<Tenant>}
+   */
+  function updateTenant(id, name) {
+    return request(`/api/tenants/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  /**
+   * PATCH /api/tenants/{id}/status — テナント状態切替(A-26、S-14、SaaS Admin)。
+   * Suspend/Reactivate。操作は監査ログに記録される。
+   * @param {number} id
+   * @param {'ACTIVE'|'SUSPENDED'} status
+   * @returns {Promise<Tenant>}
+   */
+  function updateTenantStatus(id, status) {
+    return request(`/api/tenants/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  /**
    * GET /api/platform/metrics — プラットフォーム全体メトリクス(A-27、S-12、SaaS Admin)。
    * X-Tenant-Id 不要(プラットフォーム API)。呼び出し前に setTenantId(null) でクリアすること。
    * @returns {Promise<PlatformMetrics>}
@@ -585,6 +622,9 @@ const Api = (() => {
     selectTenant,
     createTenant,
     listTenants,
+    getTenant,
+    updateTenant,
+    updateTenantStatus,
     listTasks,
     getTask,
     createTask,
