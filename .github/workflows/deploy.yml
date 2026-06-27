@@ -478,7 +478,7 @@ jobs:
 
   # --------------------------------------------------------------------------
   # deploy-web — S3 バンドルを live/ prefix に sync + CloudFront invalidation。
-  # バージョン付きアセットは immutable cache、index.html は no-cache で配信。
+  # vendor/ は immutable cache、アプリ資産(html/js/css)は no-cache(ETag 再検証)で配信。
   # --------------------------------------------------------------------------
   deploy-web:
     name: Deploy web (${{ inputs.version }})
