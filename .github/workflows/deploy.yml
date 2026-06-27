@@ -510,18 +510,20 @@ jobs:
 
           echo "Syncing ${SRC} → ${DST}"
 
-          # バージョン付きアセット(JS/CSS/フォント等): 長期 immutable cache
-          # index.html は後続ステップで上書きするので --exclude で除外
+          # vendor/ はサードパーティ依存(bootstrap / keycloak-js / フォント等)で内容が安定し
+          # バージョン更新時のみ変わるため長期 immutable で配信する(prefix 単位で --delete)。
+          aws s3 sync "${SRC}vendor/" "${DST}vendor/" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable"
+
+          # アプリ資産(*.html / js/*.js / css/*.css)はコンテンツハッシュでフィンガープリント
+          # していない(ファイル名固定)。immutable で配信すると内容更新後もブラウザが旧版を最大 1 年
+          # 保持し、CloudFront invalidation(エッジのみ)では解消しない。ETag 再検証前提の no-cache で
+          # 配信し、常に最新を取得させる(vendor/ は上で配信済みのため除外)。
           aws s3 sync "${SRC}" "${DST}" \
             --delete \
-            --cache-control "public, max-age=31536000, immutable" \
-            --exclude "index.html"
-
-          # index.html: 常に最新を取得させる(no-cache)
-          aws s3 cp \
-            "${SRC}index.html" \
-            "${DST}index.html" \
-            --cache-control "no-cache, no-store, must-revalidate"
+            --cache-control "no-cache" \
+            --exclude "vendor/*"
 
           echo "S3 sync complete"
 
