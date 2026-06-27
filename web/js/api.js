@@ -127,6 +127,16 @@
  */
 
 /**
+ * @typedef {object} PlatformMetrics
+ * @property {number} totalTenants
+ * @property {number} activeTenants
+ * @property {number} suspendedTenants
+ * @property {number} totalUsers
+ * @property {number} totalTasks
+ * @property {number} newTenantsLast24h
+ */
+
+/**
  * @typedef {object} TenantDashboardSummary
  * @property {number} totalTaskCount
  * @property {number} todayDueCount
@@ -409,6 +419,15 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/platform/metrics — プラットフォーム全体メトリクス(A-27、S-12、SaaS Admin)。
+   * X-Tenant-Id 不要(プラットフォーム API)。呼び出し前に setTenantId(null) でクリアすること。
+   * @returns {Promise<PlatformMetrics>}
+   */
+  function getPlatformMetrics() {
+    return request('/api/platform/metrics');
+  }
+
+  /**
    * GET /api/tenant/dashboard/summary — テナント運営者向けダッシュボード集計(A-28、S-15、Tenant Admin)。
    * @returns {Promise<TenantDashboardSummary>}
    */
@@ -547,6 +566,7 @@ const Api = (() => {
     inviteUser,
     updateMemberRole,
     removeMember,
+    getPlatformMetrics,
     getTenantDashboardSummary,
     getMyProfile,
     getNotificationSettings,

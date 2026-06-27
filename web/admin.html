@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プラットフォーム監視 — Tasks</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a href="#main-content" class="visually-hidden-focusable position-absolute p-2 m-2 bg-primary text-white rounded">
+  メインコンテンツへスキップ
+</a>
+
+<!-- ===== Top navbar (SaaS Admin。テナントスイッチャは持たない) ===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top" aria-label="グローバルナビゲーション">
+  <a class="app-brand d-flex align-items-center gap-2" href="admin.html">
+    <i class="bi bi-shield-lock fs-5" aria-hidden="true"></i><span>Tasks 運営</span>
+  </a>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div id="user-avatar"
+        class="rounded-circle bg-primary-subtle text-primary d-grid"
+        aria-hidden="true">?</div>
+      <span id="nav-username" class="small d-none d-lg-inline"></span>
+    </div>
+    <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>ログアウト
+    </button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar (SaaS 運営) ===== -->
+  <aside class="app-sidebar d-none d-lg-block" aria-label="サイドナビゲーション">
+    <div class="nav-group-label" aria-hidden="true">SaaS 運営</div>
+    <a class="side-link active" href="admin.html" aria-current="page">
+      <i class="bi bi-speedometer2" aria-hidden="true"></i>プラットフォーム監視
+    </a>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main id="main-content" class="app-main">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <h1 class="page-title">プラットフォーム監視</h1>
+    </div>
+
+    <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2 text-muted">メトリクスを取得中...</p>
+    </div>
+
+    <div id="metrics" class="d-none">
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="text-muted small">総テナント数</div>
+              <div id="m-total-tenants" class="display-6 fw-semibold">—</div>
+              <div class="small text-muted">
+                ACTIVE <span id="m-active-tenants" class="fw-semibold text-success">—</span>
+                / SUSPENDED <span id="m-suspended-tenants" class="fw-semibold text-warning">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="text-muted small">総ユーザー数</div>
+              <div id="m-total-users" class="display-6 fw-semibold">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="text-muted small">総タスク数</div>
+              <div id="m-total-tasks" class="display-6 fw-semibold">—</div>
+              <div class="small text-muted">削除済みを除く</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="text-muted small">新規テナント(直近24h)</div>
+              <div id="m-new-24h" class="display-6 fw-semibold">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="vendor/keycloak-js/keycloak.min.js"></script>
+<script src="js/dom.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

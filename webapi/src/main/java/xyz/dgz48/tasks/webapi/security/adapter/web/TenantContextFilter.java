@@ -122,14 +122,18 @@ public class TenantContextFilter extends OncePerRequestFilter {
   /**
    * 初期テナント自動解決を行わない免除パスか判定する。
    *
-   * <p>/api/auth/** (me / select / logout)、/api/tenants/** (SaaS Admin)、/actuator/** はテナントコンテキスト不要。
-   * /api/users/me (A-07 プロフィール取得) もテナント選択非依存のため免除する。ただし完全一致のみ免除し、
-   * /api/users/me/notification-settings (S-10、テナントスコープ) は免除しない。
+   * <p>/api/auth/** (me / select / logout)、/api/tenants/** (SaaS Admin)、/api/platform/** (SaaS
+   * Admin プラットフォーム API、A-27)、/actuator/** はテナントコンテキスト不要(基本設計書 §5.2 X-Tenant-Id 不要枠)。 /api/users/me
+   * (A-07 プロフィール取得) もテナント選択非依存のため免除する。ただし完全一致のみ免除し、 /api/users/me/notification-settings
+   * (S-10、テナントスコープ) は免除しない。
+   *
+   * <p>SaaS Admin はテナント未所属が通常のため、/api/platform を免除しないと初期テナント解決で 403 になる。
    */
   private static boolean isExemptPath(HttpServletRequest request) {
     String uri = request.getRequestURI();
     return uri.startsWith("/api/auth/")
         || uri.startsWith("/api/tenants")
+        || uri.startsWith("/api/platform")
         || uri.startsWith("/actuator/")
         || uri.equals("/actuator")
         || uri.equals("/api/users/me");

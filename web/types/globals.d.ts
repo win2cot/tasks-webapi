@@ -24,8 +24,10 @@ interface KeycloakInstance {
   authenticated?: boolean;
   token?: string;
   idTokenParsed?: Record<string, unknown>;
+  realmAccess?: { roles: string[] };
   init(options: KeycloakInitOptions): Promise<boolean>;
   updateToken(minValidity: number): Promise<boolean>;
+  hasRealmRole(role: string): boolean;
   login(options?: { redirectUri?: string }): void;
   logout(options?: { redirectUri?: string }): void;
 }

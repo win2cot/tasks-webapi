@@ -43,6 +43,7 @@ import xyz.dgz48.tasks.webapi.task.usecase.ListStakeholdersUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ListTasksUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.RemoveStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.UpdateTaskUseCase;
+import xyz.dgz48.tasks.webapi.tenant.domain.PlatformMetrics;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
@@ -265,6 +266,17 @@ class TenantContextFilterTest {
   @WithMockMember
   void noHeader_exemptAuthPath_resolverNotCalled() throws Exception {
     mockMvc.perform(get("/api/auth/tenants/1/select"));
+    org.mockito.Mockito.verify(userTenantsResolverService, org.mockito.Mockito.never())
+        .resolveInitial(org.mockito.ArgumentMatchers.anyLong());
+  }
+
+  @Test
+  @WithMockSaasAdmin
+  void noHeader_exemptPlatformPath_reachesController_withoutTenantResolution() throws Exception {
+    // SaaS Admin はテナント未所属が通常。/api/platform は免除パスのため初期テナント解決を行わず到達できる(A-27)。
+    given(getPlatformMetricsUseCase.execute(org.mockito.ArgumentMatchers.anyLong()))
+        .willReturn(new PlatformMetrics(0L, 0L, 0L, 0L, 0L, 0L));
+    mockMvc.perform(get("/api/platform/metrics")).andExpect(status().isOk());
     org.mockito.Mockito.verify(userTenantsResolverService, org.mockito.Mockito.never())
         .resolveInitial(org.mockito.ArgumentMatchers.anyLong());
   }
