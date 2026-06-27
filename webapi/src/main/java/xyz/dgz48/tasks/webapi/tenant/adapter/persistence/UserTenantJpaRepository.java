@@ -13,6 +13,9 @@ interface UserTenantJpaRepository extends JpaRepository<UserTenantJpaEntity, Use
   Optional<UserTenantJpaEntity> findByIdUserIdAndIdTenantIdAndStatus(
       Long userId, Long tenantId, UserTenantStatus status);
 
+  /** status 問わず、当該ユーザー×テナントの user_tenants 行が存在するか(招待の重複検出に使用)。 */
+  boolean existsByIdUserIdAndIdTenantId(Long userId, Long tenantId);
+
   List<UserTenantJpaEntity> findByIdUserIdAndStatusOrderByJoinedAtAsc(
       Long userId, UserTenantStatus status);
 
