@@ -1,15 +1,19 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.web;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,17 +32,23 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConvert
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
-import xyz.dgz48.tasks.webapi.tenant.domain.TenantCrossBoundaryException;
-import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantAlreadyExistsException;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
+import xyz.dgz48.tasks.webapi.tenant.domain.TenantUserInfo;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantNotFoundException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
-import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
+/**
+ * メンバー管理 API(DELETE /api/tenant/users/{userId}・PUT /api/tenant/users/{userId}/role)のスライステスト。
+ *
+ * <p>テナント暗黙(X-Tenant-Id 駆動)・Tenant Admin 専用・SaaS Admin = 403(#792)を検証する。SaaS Admin は当該パスで {@code
+ * TenantContextFilter} がテナント解決に失敗(所属なし)するため 403 となる。
+ */
 @WebMvcTest(TenantMemberController.class)
 @Import({
   SecurityConfig.class,
@@ -56,165 +66,129 @@ class TenantMemberControllerWebMvcTest {
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
-  @MockitoBean AddMemberUseCase addMemberUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
 
   @Autowired MockMvc mockMvc;
 
+  private static final String TENANT_HEADER = "10";
   private static final Long TENANT_ID = 10L;
   private static final Long USER_ID = 99L;
 
-  // --- POST /api/tenants/{tenantId}/users ---
+  private static final TenantUserInfo UPDATED_USER =
+      new TenantUserInfo(
+          USER_ID,
+          "bob@example.com",
+          "Bob",
+          null,
+          TenantRole.TENANT_ADMIN,
+          UserTenantStatus.ACTIVE,
+          LocalDateTime.of(2026, 1, 1, 0, 0));
 
-  @Test
-  @WithMockSaasAdmin
-  void addMember_returns201_whenSaasAdmin() throws Exception {
-    doNothing().when(addMemberUseCase).execute(any(), eq(TENANT_ID), eq(USER_ID), any());
-
-    mockMvc
-        .perform(
-            post("/api/tenants/{tenantId}/users", TENANT_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"userId\":99,\"role\":\"MEMBER\"}"))
-        .andExpect(status().isCreated());
+  @BeforeEach
+  void stubFilterDefaults() {
+    // X-Tenant-Id 駆動でメンバーシップを解決させる(ロールはアノテーションの権限と合わせる)
+    when(tenantMembershipPort.findActiveRole(anyLong(), eq(TENANT_ID)))
+        .thenReturn(Optional.of(TenantRole.TENANT_ADMIN));
+    // SaaS Admin(ヘッダなし)は所属テナント 0 件で 403
+    when(userTenantsResolverService.resolveInitial(anyLong())).thenReturn(Optional.empty());
   }
+
+  // --- DELETE /api/tenant/users/{userId} ---
 
   @Test
   @WithMockTenantAdmin
-  void addMember_returns201_whenTenantAdmin() throws Exception {
-    doNothing().when(addMemberUseCase).execute(any(), eq(TENANT_ID), eq(USER_ID), any());
+  void removeMember_returns204_whenTenantAdmin() throws Exception {
+    doNothing().when(removeMemberUseCase).execute(any(), eq(TENANT_ID), eq(USER_ID));
 
     mockMvc
-        .perform(
-            post("/api/tenants/{tenantId}/users", TENANT_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"userId\":99,\"role\":\"MEMBER\"}"))
-        .andExpect(status().isCreated());
-  }
-
-  @Test
-  @WithMockMember
-  void addMember_returns403_whenMember() throws Exception {
-    mockMvc
-        .perform(
-            post("/api/tenants/{tenantId}/users", TENANT_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"userId\":99,\"role\":\"MEMBER\"}"))
-        .andExpect(status().isForbidden());
-  }
-
-  @Test
-  void addMember_returns401_whenUnauthenticated() throws Exception {
-    mockMvc
-        .perform(
-            post("/api/tenants/{tenantId}/users", TENANT_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"userId\":99,\"role\":\"MEMBER\"}"))
-        .andExpect(status().isUnauthorized());
-  }
-
-  @Test
-  @WithMockSaasAdmin
-  void addMember_returns409_whenAlreadyExists() throws Exception {
-    doThrow(new UserTenantAlreadyExistsException(USER_ID, TENANT_ID))
-        .when(addMemberUseCase)
-        .execute(any(), eq(TENANT_ID), eq(USER_ID), any());
-
-    mockMvc
-        .perform(
-            post("/api/tenants/{tenantId}/users", TENANT_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"userId\":99,\"role\":\"MEMBER\"}"))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("E_CONFLICT"));
-  }
-
-  @Test
-  @WithMockTenantAdmin
-  void addMember_returns403_whenCrossTenant() throws Exception {
-    doThrow(new TenantCrossBoundaryException(TENANT_ID))
-        .when(addMemberUseCase)
-        .execute(any(), eq(TENANT_ID), eq(USER_ID), any());
-
-    mockMvc
-        .perform(
-            post("/api/tenants/{tenantId}/users", TENANT_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"userId\":99,\"role\":\"MEMBER\"}"))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
-  }
-
-  // --- DELETE /api/tenants/{tenantId}/users/{userId} ---
-
-  @Test
-  @WithMockSaasAdmin
-  void removeMember_returns204_whenSaasAdmin() throws Exception {
-    doNothing().when(removeMemberUseCase).execute(any(), any(), eq(TENANT_ID), eq(USER_ID));
-
-    mockMvc
-        .perform(delete("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID))
+        .perform(delete("/api/tenant/users/{userId}", USER_ID).header("X-Tenant-Id", TENANT_HEADER))
         .andExpect(status().isNoContent());
   }
 
   @Test
   @WithMockMember
   void removeMember_returns403_whenMember() throws Exception {
+    when(tenantMembershipPort.findActiveRole(anyLong(), eq(TENANT_ID)))
+        .thenReturn(Optional.of(TenantRole.MEMBER));
+
     mockMvc
-        .perform(delete("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID))
+        .perform(delete("/api/tenant/users/{userId}", USER_ID).header("X-Tenant-Id", TENANT_HEADER))
         .andExpect(status().isForbidden());
   }
 
   @Test
   @WithMockSaasAdmin
+  void removeMember_returns403_whenSaasAdmin() throws Exception {
+    mockMvc
+        .perform(delete("/api/tenant/users/{userId}", USER_ID))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void removeMember_returns401_whenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(delete("/api/tenant/users/{userId}", USER_ID).header("X-Tenant-Id", TENANT_HEADER))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @WithMockTenantAdmin
   void removeMember_returns404_whenNotFound() throws Exception {
     doThrow(new UserTenantNotFoundException(USER_ID, TENANT_ID))
         .when(removeMemberUseCase)
-        .execute(any(), any(), eq(TENANT_ID), eq(USER_ID));
+        .execute(any(), eq(TENANT_ID), eq(USER_ID));
 
     mockMvc
-        .perform(delete("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID))
+        .perform(delete("/api/tenant/users/{userId}", USER_ID).header("X-Tenant-Id", TENANT_HEADER))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("E_NOT_FOUND"));
   }
 
   @Test
-  @WithMockSaasAdmin
+  @WithMockTenantAdmin
   void removeMember_returns403_whenSelfRemoval() throws Exception {
     doThrow(new UserTenantSelfOperationException())
         .when(removeMemberUseCase)
-        .execute(any(), any(), eq(TENANT_ID), eq(USER_ID));
+        .execute(any(), eq(TENANT_ID), eq(USER_ID));
 
     mockMvc
-        .perform(delete("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID))
+        .perform(delete("/api/tenant/users/{userId}", USER_ID).header("X-Tenant-Id", TENANT_HEADER))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("E_FORBIDDEN"));
   }
 
-  // --- PATCH /api/tenants/{tenantId}/users/{userId} ---
+  // --- PUT /api/tenant/users/{userId}/role ---
 
   @Test
-  @WithMockSaasAdmin
-  void changeMemberRole_returns204_whenSaasAdmin() throws Exception {
-    doNothing()
-        .when(changeMemberRoleUseCase)
-        .execute(any(), any(), eq(TENANT_ID), eq(USER_ID), any());
+  @WithMockTenantAdmin
+  void updateRole_returns200WithUpdatedMember_whenTenantAdmin() throws Exception {
+    when(changeMemberRoleUseCase.execute(any(), eq(TENANT_ID), eq(USER_ID), any()))
+        .thenReturn(UPDATED_USER);
 
     mockMvc
         .perform(
-            patch("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID)
+            put("/api/tenant/users/{userId}/role", USER_ID)
+                .header("X-Tenant-Id", TENANT_HEADER)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\":\"TENANT_ADMIN\"}"))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.userId").value(99))
+        .andExpect(jsonPath("$.email").value("bob@example.com"))
+        .andExpect(jsonPath("$.role").value("TENANT_ADMIN"))
+        .andExpect(jsonPath("$.status").value("ACTIVE"));
   }
 
   @Test
   @WithMockMember
-  void changeMemberRole_returns403_whenMember() throws Exception {
+  void updateRole_returns403_whenMember() throws Exception {
+    when(tenantMembershipPort.findActiveRole(anyLong(), eq(TENANT_ID)))
+        .thenReturn(Optional.of(TenantRole.MEMBER));
+
     mockMvc
         .perform(
-            patch("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID)
+            put("/api/tenant/users/{userId}/role", USER_ID)
+                .header("X-Tenant-Id", TENANT_HEADER)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\":\"TENANT_ADMIN\"}"))
         .andExpect(status().isForbidden());
@@ -222,14 +196,26 @@ class TenantMemberControllerWebMvcTest {
 
   @Test
   @WithMockSaasAdmin
-  void changeMemberRole_returns404_whenNotFound() throws Exception {
+  void updateRole_returns403_whenSaasAdmin() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/tenant/users/{userId}/role", USER_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"TENANT_ADMIN\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockTenantAdmin
+  void updateRole_returns404_whenNotFound() throws Exception {
     doThrow(new UserTenantNotFoundException(USER_ID, TENANT_ID))
         .when(changeMemberRoleUseCase)
-        .execute(any(), any(), eq(TENANT_ID), eq(USER_ID), any());
+        .execute(any(), eq(TENANT_ID), eq(USER_ID), any());
 
     mockMvc
         .perform(
-            patch("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID)
+            put("/api/tenant/users/{userId}/role", USER_ID)
+                .header("X-Tenant-Id", TENANT_HEADER)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\":\"TENANT_ADMIN\"}"))
         .andExpect(status().isNotFound())
@@ -237,15 +223,16 @@ class TenantMemberControllerWebMvcTest {
   }
 
   @Test
-  @WithMockSaasAdmin
-  void changeMemberRole_returns403_whenSelfChange() throws Exception {
+  @WithMockTenantAdmin
+  void updateRole_returns403_whenSelfChange() throws Exception {
     doThrow(new UserTenantSelfOperationException())
         .when(changeMemberRoleUseCase)
-        .execute(any(), any(), eq(TENANT_ID), eq(USER_ID), any());
+        .execute(any(), eq(TENANT_ID), eq(USER_ID), any());
 
     mockMvc
         .perform(
-            patch("/api/tenants/{tenantId}/users/{userId}", TENANT_ID, USER_ID)
+            put("/api/tenant/users/{userId}/role", USER_ID)
+                .header("X-Tenant-Id", TENANT_HEADER)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\":\"TENANT_ADMIN\"}"))
         .andExpect(status().isForbidden())

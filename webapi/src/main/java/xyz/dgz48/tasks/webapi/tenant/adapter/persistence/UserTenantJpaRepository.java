@@ -13,8 +13,6 @@ interface UserTenantJpaRepository extends JpaRepository<UserTenantJpaEntity, Use
   Optional<UserTenantJpaEntity> findByIdUserIdAndIdTenantIdAndStatus(
       Long userId, Long tenantId, UserTenantStatus status);
 
-  boolean existsByIdUserIdAndIdTenantId(Long userId, Long tenantId);
-
   List<UserTenantJpaEntity> findByIdUserIdAndStatusOrderByJoinedAtAsc(
       Long userId, UserTenantStatus status);
 

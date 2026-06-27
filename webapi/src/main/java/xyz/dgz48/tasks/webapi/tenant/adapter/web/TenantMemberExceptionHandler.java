@@ -3,7 +3,6 @@ package xyz.dgz48.tasks.webapi.tenant.adapter.web;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.Objects;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -11,8 +10,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import xyz.dgz48.tasks.webapi.shared.infra.AppZones;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorCode;
 import xyz.dgz48.tasks.webapi.shared.web.ErrorResponse;
-import xyz.dgz48.tasks.webapi.tenant.domain.TenantCrossBoundaryException;
-import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantAlreadyExistsException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantNotFoundException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
 
@@ -29,32 +26,15 @@ public class TenantMemberExceptionHandler {
         request);
   }
 
-  @ExceptionHandler({TenantCrossBoundaryException.class, UserTenantSelfOperationException.class})
+  @ExceptionHandler(UserTenantSelfOperationException.class)
   @ResponseStatus(HttpStatus.FORBIDDEN)
-  public ErrorResponse handleForbidden(RuntimeException ex, HttpServletRequest request) {
+  public ErrorResponse handleForbidden(
+      UserTenantSelfOperationException ex, HttpServletRequest request) {
     return error(
         HttpStatus.FORBIDDEN,
         ErrorCode.E_FORBIDDEN,
         Objects.requireNonNullElse(ex.getMessage(), "操作権限がありません"),
         request);
-  }
-
-  @ExceptionHandler(UserTenantAlreadyExistsException.class)
-  @ResponseStatus(HttpStatus.CONFLICT)
-  public ErrorResponse handleConflict(
-      UserTenantAlreadyExistsException ex, HttpServletRequest request) {
-    return error(
-        HttpStatus.CONFLICT,
-        ErrorCode.E_CONFLICT,
-        Objects.requireNonNullElse(ex.getMessage(), "既にメンバーとして登録されています"),
-        request);
-  }
-
-  @ExceptionHandler(DataIntegrityViolationException.class)
-  @ResponseStatus(HttpStatus.CONFLICT)
-  public ErrorResponse handleDataIntegrity(
-      DataIntegrityViolationException ex, HttpServletRequest request) {
-    return error(HttpStatus.CONFLICT, ErrorCode.E_CONFLICT, "既にメンバーとして登録されています", request);
   }
 
   private static ErrorResponse error(
