@@ -56,7 +56,6 @@ import xyz.dgz48.tasks.webapi.task.usecase.RemoveStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.UpdateTaskUseCase;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
-import xyz.dgz48.tasks.webapi.tenant.usecase.AddMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.CreateTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.GetPlatformMetricsUseCase;
@@ -101,7 +100,6 @@ class SecurityConfigTest {
   @MockitoBean AddStakeholderUseCase addStakeholderUseCase;
   @MockitoBean RemoveStakeholderUseCase removeStakeholderUseCase;
   @MockitoBean SwitchTenantUseCase switchTenantUseCase;
-  @MockitoBean AddMemberUseCase addMemberUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
   @MockitoBean ListTenantsUseCase listTenantsUseCase;

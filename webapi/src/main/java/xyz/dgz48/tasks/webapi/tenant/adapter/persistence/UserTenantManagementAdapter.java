@@ -20,12 +20,6 @@ class UserTenantManagementAdapter implements UserTenantManagementPort {
   private final Clock clock;
 
   @Override
-  @Transactional(readOnly = true)
-  public boolean existsMember(Long userId, Long tenantId) {
-    return repository.existsByIdUserIdAndIdTenantId(userId, tenantId);
-  }
-
-  @Override
   @Transactional
   public UserTenant addMember(Long userId, Long tenantId, TenantRole role) {
     var entity = new UserTenantJpaEntity(userId, tenantId, role, LocalDateTime.now(clock));

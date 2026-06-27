@@ -366,85 +366,6 @@ paths:
           $ref: "#/components/responses/NotFound"
           description: 指定 ID のテナントが存在しない。
 
-  # --- テナントメンバー管理 (SaaS Admin / Tenant Admin) ---
-  /api/tenants/{tenantId}/users:
-    post:
-      tags: [Tenant]
-      summary: テナントへのメンバー追加 (SaaS Admin / Tenant Admin)
-      description: |
-        認可: SaaS Admin または Tenant Admin のみ。
-        SaaS Admin は `X-Tenant-Id` ヘッダ不要。Tenant Admin は `X-Tenant-Id` == パスの `tenantId` が必須。
-        既に登録済み(status 問わず)のユーザーは 409 を返す。
-      operationId: addTenantMember
-      security:
-        - bearerAuth: []
-      parameters:
-        - { name: tenantId, in: path, required: true, description: "テナントID", schema: { type: integer, format: int64 } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [userId, role]
-              properties:
-                userId: { type: integer, format: int64, description: "追加するユーザーID" }
-                role: { type: string, enum: [TENANT_ADMIN, MEMBER] }
-      responses:
-        "201": { description: Created }
-        "400": { $ref: "#/components/responses/Validation" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/tenants/{tenantId}/users/{userId}:
-    delete:
-      tags: [Tenant]
-      summary: テナントからのメンバー削除 (SaaS Admin / Tenant Admin)
-      description: |
-        認可: SaaS Admin または Tenant Admin のみ。
-        SaaS Admin は `X-Tenant-Id` ヘッダ不要。Tenant Admin は `X-Tenant-Id` == パスの `tenantId` が必須。
-        自分自身を削除しようとした場合は 403 を返す。ACTIVE メンバーでない場合は 404 を返す。
-      operationId: removeTenantMember
-      security:
-        - bearerAuth: []
-      parameters:
-        - { name: tenantId, in: path, required: true, description: "テナントID", schema: { type: integer, format: int64 } }
-        - { name: userId, in: path, required: true, description: "削除対象ユーザーID", schema: { type: integer, format: int64 } }
-      responses:
-        "204": { description: No Content }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    patch:
-      tags: [Tenant]
-      summary: テナントメンバーのロール変更 (SaaS Admin / Tenant Admin)
-      description: |
-        認可: SaaS Admin または Tenant Admin のみ。
-        SaaS Admin は `X-Tenant-Id` ヘッダ不要。Tenant Admin は `X-Tenant-Id` == パスの `tenantId` が必須。
-        自分自身のロールは変更不可(自己ロックアウト防止)。ACTIVE メンバーでない場合は 404 を返す。
-      operationId: changeTenantMemberRole
-      security:
-        - bearerAuth: []
-      parameters:
-        - { name: tenantId, in: path, required: true, description: "テナントID", schema: { type: integer, format: int64 } }
-        - { name: userId, in: path, required: true, description: "ロール変更対象ユーザーID", schema: { type: integer, format: int64 } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [role]
-              properties:
-                role: { type: string, enum: [TENANT_ADMIN, MEMBER] }
-      responses:
-        "204": { description: No Content }
-        "400": { $ref: "#/components/responses/Validation" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
   # --- プラットフォーム監視 (SaaS Admin) ---
   /api/platform/metrics:
     get:
@@ -522,11 +443,33 @@ paths:
           description: 招待対象が既に `user_tenants` に登録済み(重複招待)。
         "422": { $ref: "#/components/responses/UnprocessableContent" }
 
+  /api/tenant/users/{userId}:
+    delete:
+      tags: [User]
+      summary: テナントメンバー削除 (Tenant Admin)
+      description: |
+        認可: Tenant Admin のみ。テナントは `X-Tenant-Id` ヘッダ駆動(テナント暗黙)。
+        指定ユーザーの現在テナントにおける membership をハード削除する(Phase 2 の `DISABLED` 遷移とは別)。
+        自分自身を削除しようとした場合は 403(自己ロックアウト防止)。ACTIVE メンバーでない場合は 404 を返す。
+        SaaS Admin はメンバー管理権限を持たないため 403(基本設計書 §6.2.1)。
+      operationId: removeTenantMember
+      parameters:
+        - { name: userId, in: path, required: true, description: "削除対象ユーザーID", schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: No Content }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/tenant/users/{userId}/role:
     put:
       tags: [User]
       summary: ロール変更 (Tenant Admin)
-      description: "認可: Tenant Admin のみ。指定ユーザーの `user_tenants.role` を `TENANT_ADMIN` / `MEMBER` に変更する。"
+      description: |
+        認可: Tenant Admin のみ。テナントは `X-Tenant-Id` ヘッダ駆動(テナント暗黙)。
+        指定ユーザーの `user_tenants.role` を `TENANT_ADMIN` / `MEMBER` に変更する。
+        自分自身のロールは変更不可(自己ロックアウト防止、403)。ACTIVE メンバーでない場合は 404 を返す。
+        SaaS Admin はメンバー管理権限を持たないため 403(基本設計書 §6.2.1)。
       operationId: updateRole
       parameters:
         - { name: userId, in: path, required: true, description: "ロール変更対象のユーザーID", schema: { type: integer, format: int64 } }
@@ -545,8 +488,10 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/TenantUser" }
+        "400": { $ref: "#/components/responses/Validation" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # --- タスク ---
   /api/tasks:

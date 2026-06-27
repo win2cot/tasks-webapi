@@ -1,14 +1,16 @@
 package xyz.dgz48.tasks.webapi.tenant.usecase;
 
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import xyz.dgz48.tasks.webapi.tenant.domain.TenantCrossBoundaryException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantNotFoundException;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantSelfOperationException;
 
-/** テナントからのメンバー削除ユースケース。 */
+/**
+ * 現在のテナント(X-Tenant-Id 駆動)から ACTIVE メンバーを削除するユースケース(A-10 系・Tenant Admin 専用)。
+ *
+ * <p>テナントは呼び出し側の {@code TenantContext} で暗黙に決まるため、越境チェックは不要(設計規約 X-Tenant-Id 不変則)。
+ */
 @Service
 @RequiredArgsConstructor
 public class RemoveMemberUseCase {
@@ -16,11 +18,7 @@ public class RemoveMemberUseCase {
   private final UserTenantManagementPort managementPort;
 
   @Transactional
-  public void execute(
-      Long callerId, @Nullable Long callerTenantId, Long tenantId, Long targetUserId) {
-    if (callerTenantId != null && !callerTenantId.equals(tenantId)) {
-      throw new TenantCrossBoundaryException(tenantId);
-    }
+  public void execute(Long callerId, Long tenantId, Long targetUserId) {
     if (callerId.equals(targetUserId)) {
       throw new UserTenantSelfOperationException();
     }

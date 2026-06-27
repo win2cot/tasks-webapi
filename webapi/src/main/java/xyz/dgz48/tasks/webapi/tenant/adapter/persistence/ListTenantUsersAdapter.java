@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantUserInfo;
+import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantUsersPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
@@ -49,5 +50,26 @@ class ListTenantUsersAdapter implements ListTenantUsersPort {
                                 m.getJoinedAt()))
                     .stream())
         .toList();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Optional<TenantUserInfo> findActiveTenantUser(Long userId, Long tenantId) {
+    return userTenantRepository
+        .findByIdUserIdAndIdTenantIdAndStatus(userId, tenantId, UserTenantStatus.ACTIVE)
+        .flatMap(
+            membership ->
+                userRepository
+                    .findById(userId)
+                    .map(
+                        user ->
+                            new TenantUserInfo(
+                                userId,
+                                user.getEmail(),
+                                user.getFullName(),
+                                user.getDepartmentName(),
+                                membership.getRole(),
+                                membership.getStatus(),
+                                membership.getJoinedAt())));
   }
 }
