@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テナント詳細 — Tasks</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a href="#main-content" class="visually-hidden-focusable position-absolute p-2 m-2 bg-primary text-white rounded">
+  メインコンテンツへスキップ
+</a>
+
+<!-- ===== Top navbar (SaaS Admin。テナントスイッチャは持たない) ===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top" aria-label="グローバルナビゲーション">
+  <a class="app-brand d-flex align-items-center gap-2" href="admin.html">
+    <i class="bi bi-shield-lock fs-5" aria-hidden="true"></i><span>Tasks 運営</span>
+  </a>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div id="user-avatar"
+        class="rounded-circle bg-primary-subtle text-primary d-grid"
+        aria-hidden="true">?</div>
+      <span id="nav-username" class="small d-none d-lg-inline"></span>
+    </div>
+    <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>ログアウト
+    </button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar (SaaS 運営) ===== -->
+  <aside class="app-sidebar d-none d-lg-block" aria-label="サイドナビゲーション">
+    <div class="nav-group-label" aria-hidden="true">SaaS 運営</div>
+    <a class="side-link" href="admin.html">
+      <i class="bi bi-speedometer2" aria-hidden="true"></i>プラットフォーム監視
+    </a>
+    <a class="side-link active" href="admin-tenants.html" aria-current="page">
+      <i class="bi bi-building" aria-hidden="true"></i>テナント管理
+    </a>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main id="main-content" class="app-main">
+    <nav aria-label="パンくず" class="mb-2">
+      <ol class="breadcrumb mb-0 small">
+        <li class="breadcrumb-item"><a href="admin-tenants.html">テナント管理</a></li>
+        <li class="breadcrumb-item active" aria-current="page">詳細</li>
+      </ol>
+    </nav>
+
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <h1 id="page-title" class="page-title">テナント詳細</h1>
+    </div>
+
+    <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2 text-muted">テナント情報を取得中...</p>
+    </div>
+
+    <div id="detail" class="d-none">
+      <div class="row g-3">
+        <!-- ===== 基本情報 ===== -->
+        <div class="col-12 col-lg-7">
+          <div class="card h-100">
+            <div class="card-body">
+              <h2 class="h5 card-title mb-3">基本情報</h2>
+              <dl class="row mb-0">
+                <dt class="col-sm-4 text-muted">テナント ID</dt>
+                <dd id="d-id" class="col-sm-8 font-monospace">—</dd>
+                <dt class="col-sm-4 text-muted">コード</dt>
+                <dd id="d-code" class="col-sm-8 font-monospace">—</dd>
+                <dt class="col-sm-4 text-muted">プラン</dt>
+                <dd id="d-plan" class="col-sm-8">—</dd>
+                <dt class="col-sm-4 text-muted">状態</dt>
+                <dd class="col-sm-8"><span id="d-status" class="badge text-bg-secondary">—</span></dd>
+                <dt class="col-sm-4 text-muted">ユーザー数</dt>
+                <dd id="d-user-count" class="col-sm-8">—</dd>
+                <dt class="col-sm-4 text-muted">タスク数</dt>
+                <dd id="d-task-count" class="col-sm-8">—</dd>
+                <dt class="col-sm-4 text-muted">作成日時</dt>
+                <dd id="d-created" class="col-sm-8 small text-muted">—</dd>
+                <dt class="col-sm-4 text-muted">更新日時</dt>
+                <dd id="d-updated" class="col-sm-8 small text-muted">—</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 操作 ===== -->
+        <div class="col-12 col-lg-5">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h2 class="h6 card-title mb-3">テナント名の編集</h2>
+              <form id="name-form" aria-label="テナント名編集">
+                <div class="mb-2">
+                  <label for="name-input" class="form-label small mb-1">テナント名</label>
+                  <input id="name-input" type="text" class="form-control form-control-sm"
+                    maxlength="255" required autocomplete="off">
+                </div>
+                <button id="btn-save-name" type="submit" class="btn btn-primary btn-sm">
+                  <i class="bi bi-check-lg me-1" aria-hidden="true"></i>名称を保存
+                </button>
+                <span id="name-feedback" class="small ms-2 d-none"></span>
+              </form>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <h2 class="h6 card-title mb-3">状態の切替</h2>
+              <p id="status-desc" class="small text-muted mb-2"></p>
+              <button id="btn-toggle-status" type="button" class="btn btn-sm">
+                <span id="btn-toggle-label">—</span>
+              </button>
+              <span id="status-feedback" class="small ms-2 d-none"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="vendor/keycloak-js/keycloak.min.js"></script>
+<script src="js/dom.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/admin-tenant-detail.js"></script>
+</body>
+</html>

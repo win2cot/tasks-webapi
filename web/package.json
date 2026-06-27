@@ -11,7 +11,7 @@
   },
   "scripts": {
     "copy-vendor": "node scripts/copy-vendor.js",
-    "html-validate": "html-validate index.html tasks.html tenants-new.html tenant-dashboard.html notification-settings.html profile.html tenant-users.html admin.html admin-tenants.html",
+    "html-validate": "html-validate index.html tasks.html tenants-new.html tenant-dashboard.html notification-settings.html profile.html tenant-users.html admin.html admin-tenants.html admin-tenant-detail.html",
     "serve": "node serve.mjs"
   },
   "engines": {
