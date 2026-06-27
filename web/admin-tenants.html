@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テナント管理 — Tasks</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a href="#main-content" class="visually-hidden-focusable position-absolute p-2 m-2 bg-primary text-white rounded">
+  メインコンテンツへスキップ
+</a>
+
+<!-- ===== Top navbar (SaaS Admin。テナントスイッチャは持たない) ===== -->
+<nav class="app-navbar d-flex align-items-center px-3 gap-3 sticky-top" aria-label="グローバルナビゲーション">
+  <a class="app-brand d-flex align-items-center gap-2" href="admin.html">
+    <i class="bi bi-shield-lock fs-5" aria-hidden="true"></i><span>Tasks 運営</span>
+  </a>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div id="user-avatar"
+        class="rounded-circle bg-primary-subtle text-primary d-grid"
+        aria-hidden="true">?</div>
+      <span id="nav-username" class="small d-none d-lg-inline"></span>
+    </div>
+    <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>ログアウト
+    </button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <!-- ===== Sidebar (SaaS 運営) ===== -->
+  <aside class="app-sidebar d-none d-lg-block" aria-label="サイドナビゲーション">
+    <div class="nav-group-label" aria-hidden="true">SaaS 運営</div>
+    <a class="side-link" href="admin.html">
+      <i class="bi bi-speedometer2" aria-hidden="true"></i>プラットフォーム監視
+    </a>
+    <a class="side-link active" href="admin-tenants.html" aria-current="page">
+      <i class="bi bi-building" aria-hidden="true"></i>テナント管理
+    </a>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main id="main-content" class="app-main">
+    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+      <h1 class="page-title">テナント管理</h1>
+    </div>
+
+    <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+
+    <!-- ===== Filters ===== -->
+    <form id="filter-form" class="row g-2 align-items-end mb-3" aria-label="テナント絞り込み">
+      <div class="col-12 col-sm-4 col-lg-3">
+        <label for="filter-status" class="form-label small mb-1">状態</label>
+        <select id="filter-status" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="SUSPENDED">SUSPENDED</option>
+        </select>
+      </div>
+      <div class="col-12 col-sm-5 col-lg-4">
+        <label for="filter-keyword" class="form-label small mb-1">名前 / コード検索</label>
+        <input id="filter-keyword" type="search" class="form-control form-control-sm"
+          placeholder="テナント名またはコード" autocomplete="off">
+      </div>
+      <div class="col-12 col-sm-3 col-lg-2">
+        <button id="btn-search" type="submit" class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-search me-1" aria-hidden="true"></i>検索
+        </button>
+      </div>
+    </form>
+
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2 text-muted">テナントを取得中...</p>
+    </div>
+
+    <div id="result" class="d-none">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" aria-label="テナント一覧">
+          <thead>
+            <tr>
+              <th scope="col">テナント名</th>
+              <th scope="col">コード</th>
+              <th scope="col">プラン</th>
+              <th scope="col">状態</th>
+              <th scope="col" class="text-end">ユーザー</th>
+              <th scope="col" class="text-end">タスク</th>
+              <th scope="col">作成日</th>
+            </tr>
+          </thead>
+          <tbody id="tenants-tbody"></tbody>
+        </table>
+      </div>
+
+      <p id="empty-message" class="text-muted text-center py-4 d-none">
+        該当するテナントはありません。
+      </p>
+
+      <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="ページネーション">
+        <span id="page-info" class="small text-muted"></span>
+        <div class="btn-group">
+          <button id="btn-prev" type="button" class="btn btn-outline-secondary btn-sm" disabled>
+            <i class="bi bi-chevron-left" aria-hidden="true"></i>前へ
+          </button>
+          <button id="btn-next" type="button" class="btn btn-outline-secondary btn-sm" disabled>
+            次へ<i class="bi bi-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </main>
+</div>
+
+<script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="vendor/keycloak-js/keycloak.min.js"></script>
+<script src="js/dom.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/admin-tenants.js"></script>
+</body>
+</html>

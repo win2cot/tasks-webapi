@@ -91,6 +91,15 @@
  */
 
 /**
+ * @typedef {object} TenantPage
+ * @property {Tenant[]} content
+ * @property {number} totalElements
+ * @property {number} totalPages
+ * @property {number} number
+ * @property {number} size
+ */
+
+/**
  * @typedef {object} TenantCreatedResponse
  * @property {Tenant} tenant
  * @property {TenantUser} initialAdmin
@@ -419,6 +428,26 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/tenants — テナント一覧(A-04、S-13、SaaS Admin)。
+   * X-Tenant-Id 不要(プラットフォーム API)。呼び出し前に setTenantId(null) でクリアすること。
+   * @param {Object} [params]
+   * @param {'ACTIVE'|'SUSPENDED'} [params.status] - 状態フィルタ(未指定はすべて)
+   * @param {string} [params.keyword] - テナント名/コード部分一致
+   * @param {number} [params.page] - ページ番号(0 始まり)
+   * @param {number} [params.size] - 1 ページ件数(max 100、default 50)
+   * @returns {Promise<TenantPage>}
+   */
+  function listTenants(params = {}) {
+    const q = new URLSearchParams();
+    if (params.status) q.set('status', params.status);
+    if (params.keyword) q.set('keyword', params.keyword);
+    if (params.page !== undefined) q.set('page', String(params.page));
+    if (params.size !== undefined) q.set('size', String(params.size));
+    const qs = q.toString();
+    return request(`/api/tenants${qs ? `?${qs}` : ''}`);
+  }
+
+  /**
    * GET /api/platform/metrics — プラットフォーム全体メトリクス(A-27、S-12、SaaS Admin)。
    * X-Tenant-Id 不要(プラットフォーム API)。呼び出し前に setTenantId(null) でクリアすること。
    * @returns {Promise<PlatformMetrics>}
@@ -555,6 +584,7 @@ const Api = (() => {
     getMe,
     selectTenant,
     createTenant,
+    listTenants,
     listTasks,
     getTask,
     createTask,
