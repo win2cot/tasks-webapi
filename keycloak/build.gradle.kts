@@ -69,7 +69,7 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.27.7")
     // component テスト(SPI クラスを JVM 内で直接駆動 → JaCoCo 計測対象)で Keycloak SPI 型を mock する。
     testImplementation("org.mockito:mockito-core:5.14.2")
-    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.17")
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.18")
 
     errorprone("com.google.errorprone:error_prone_core:2.49.0")
     errorprone("com.uber.nullaway:nullaway:0.13.6")
