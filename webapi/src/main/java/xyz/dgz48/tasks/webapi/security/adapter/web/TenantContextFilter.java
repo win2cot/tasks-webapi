@@ -35,9 +35,9 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
  * <p>ヘッダ指定時: 認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は ROLE_TENANT_ADMIN または ROLE_MEMBER
  * を SecurityContext に付与する。
  *
- * <p>ヘッダ未指定時: 免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /actuator/**})および
- * 非認証リクエストはそのまま通過。それ以外の認証済みリクエストは {@link UserTenantsResolverService} で初期テナントを自動解決する(ADR-0016)。
- * 所属テナント 0 件の場合は 403 を返す。
+ * <p>ヘッダ未指定時: 免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /api/platform/**}, {@code
+ * /actuator/**})および非認証リクエストはそのまま通過。それ以外の認証済みリクエストは {@link UserTenantsResolverService}
+ * で初期テナントを自動解決する(ADR-0016)。 所属テナント 0 件の場合は 403 を返す。
  *
  * <p>エラー応答は ADR-0011 の {@link ErrorResponse} 形式で返す。
  */
