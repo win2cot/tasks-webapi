@@ -10,6 +10,12 @@ async function main() {
     return;
   }
 
+  // SaaS Admin(APP_ADMIN)は業務ダッシュボードではなくプラットフォーム監視へ誘導する(S-12)。
+  if (Auth.isAppAdmin()) {
+    window.location.replace('admin.html');
+    return;
+  }
+
   const user = Auth.getUser();
   /** @type {HTMLElement} */ (mustQuery(document, '#nav-username')).textContent =
     user?.name || user?.preferred_username || '';

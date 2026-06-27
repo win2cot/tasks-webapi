@@ -96,6 +96,15 @@ const Auth = (() => {
   }
 
   /**
+   * ログイン中ユーザーが SaaS Admin(Keycloak realm role APP_ADMIN)か判定する。
+   * UI 導線の出し分け用。API の認可はサーバ側(app_admin_users)が正本で、これは表示制御のみ。
+   * @returns {boolean}
+   */
+  function isAppAdmin() {
+    return _keycloak ? _keycloak.hasRealmRole('APP_ADMIN') : false;
+  }
+
+  /**
    * Keycloak ログアウトエンドポイントへリダイレクト。
    */
   function logout() {
@@ -118,5 +127,5 @@ const Auth = (() => {
     }, 30000);
   }
 
-  return { init, getToken, refreshToken, getUser, logout };
+  return { init, getToken, refreshToken, getUser, isAppAdmin, logout };
 })();
