@@ -1,6 +1,6 @@
 # ADR-0040: オンボーディング(会員登録)と Keycloak credential プロビジョニング方式
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-06-28
 - **Deciders**: @win2cot
 - **Tags**: security, onboarding, keycloak, frontend, backend
