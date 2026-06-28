@@ -25,7 +25,8 @@ public class RegisterMemberUseCase {
    * 会員登録を実行し、登録した {@code users} 行の id を返す。
    *
    * @throws CredentialProvisioningException Keycloak への credential 設定に失敗した場合(① の行は残る)
-   * @throws IllegalStateException email が既に correlation 済みの登録ユーザーに一致した場合
+   * @throws xyz.dgz48.tasks.webapi.user.domain.UserAlreadyRegisteredException email が既に correlation
+   *     済みの登録ユーザーに一致した場合
    */
   public Long register(RegisterMemberCommand cmd) {
     Long userId =

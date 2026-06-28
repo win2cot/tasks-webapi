@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 import xyz.dgz48.tasks.webapi.TestcontainersConfiguration;
+import xyz.dgz48.tasks.webapi.user.domain.UserAlreadyRegisteredException;
 import xyz.dgz48.tasks.webapi.user.usecase.UserRegistrationPort;
 
 /** 会員登録の {@code users} 行 upsert(ADR-0040 §3.3 ①)の統合テスト(Testcontainers MySQL)。 */
@@ -99,6 +100,6 @@ class UserRegistrationPersistenceAdapterIT {
     createdIds.add(id);
 
     assertThatThrownBy(() -> port.upsertPendingMember("corr@example.com", "別名", "ベツメイ", null))
-        .isInstanceOf(IllegalStateException.class);
+        .isInstanceOf(UserAlreadyRegisteredException.class);
   }
 }

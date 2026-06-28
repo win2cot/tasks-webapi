@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.dgz48.tasks.webapi.user.domain.UserAlreadyRegisteredException;
 import xyz.dgz48.tasks.webapi.user.usecase.UserRegistrationPort;
 
 /**
@@ -19,14 +20,13 @@ public class UserRegistrationPersistenceAdapter implements UserRegistrationPort 
   private final UserRepository userRepository;
 
   @Override
-  @Transactional
+  @Transactional(readOnly = false)
   public Long upsertPendingMember(
       String email, String fullName, String fullNameKana, @Nullable String departmentName) {
     UserJpaEntity entity =
         userRepository
             .findByEmail(email)
-            .map(
-                existing -> updateExisting(existing, email, fullName, fullNameKana, departmentName))
+            .map(existing -> updateExisting(existing, fullName, fullNameKana, departmentName))
             .orElseGet(
                 () ->
                     new UserJpaEntity(
@@ -36,12 +36,11 @@ public class UserRegistrationPersistenceAdapter implements UserRegistrationPort 
 
   private UserJpaEntity updateExisting(
       UserJpaEntity existing,
-      String email,
       String fullName,
       String fullNameKana,
       @Nullable String departmentName) {
     if (!existing.isPendingCorrelation()) {
-      throw new IllegalStateException("既に登録・correlation 済みの email です: " + email);
+      throw new UserAlreadyRegisteredException();
     }
     existing.updateProfile(fullName, fullNameKana, departmentName);
     return existing;

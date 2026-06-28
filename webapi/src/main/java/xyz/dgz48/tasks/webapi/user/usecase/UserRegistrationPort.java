@@ -15,7 +15,8 @@ public interface UserRegistrationPort {
    * correlation(pending)の行が あれば profile を更新する。
    *
    * @return 対象 {@code users} 行の id
-   * @throws IllegalStateException email が既に correlation 済み(本物の sub に紐付く登録済み)の行に一致した場合
+   * @throws xyz.dgz48.tasks.webapi.user.domain.UserAlreadyRegisteredException email が既に correlation
+   *     済み(本物の sub に紐付く登録済み)の行に一致した場合
    */
   Long upsertPendingMember(
       String email, String fullName, String fullNameKana, @Nullable String departmentName);
