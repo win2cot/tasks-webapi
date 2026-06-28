@@ -193,6 +193,7 @@
   ],
   "defaultLocale": "en",
   "adminTheme": "tasks-admin",
+  "loginTheme": "tasks-login",
   "components": {
     "org.keycloak.userprofile.UserProfileProvider": [
       {

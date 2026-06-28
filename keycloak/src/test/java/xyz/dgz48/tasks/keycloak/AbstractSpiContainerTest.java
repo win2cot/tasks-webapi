@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.List;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.testcontainers.utility.MountableFile;
 
 /**
  * {@link AbstractMySqlContainerTest} の MySQL に加え、SPI を配備した Keycloak 26.6.3 を共有 singleton
@@ -30,6 +31,10 @@ abstract class AbstractSpiContainerTest extends AbstractMySqlContainerTest {
             .withNetwork(NETWORK)
             .withProviderLibsFrom(List.of(spiJar(), mysqlDriverJar()))
             .withRealmImportFile("/tasks-test-realm.json")
+            // tasks-test-realm の loginTheme=tasks-login(#832)を解決できるよう、テーマを焼き込み済イメージと
+            // 同じ /opt/keycloak/themes/ へ投入する(本イメージは vanilla なため明示コピーが要る)。
+            .withCopyFileToContainer(
+                MountableFile.forHostPath("themes/tasks-login"), "/opt/keycloak/themes/tasks-login")
             .withFeaturesEnabled("update-email");
     keycloak.start();
     return keycloak;

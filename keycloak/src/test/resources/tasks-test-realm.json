@@ -10,6 +10,7 @@
   "internationalizationEnabled": true,
   "supportedLocales": ["en", "ja"],
   "defaultLocale": "en",
+  "loginTheme": "tasks-login",
   "smtpServer": {
     "host": "mailpit",
     "port": "1025",
