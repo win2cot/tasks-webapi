@@ -463,6 +463,10 @@ app-task-row {
   place-items: center;
   font-weight: 700;
   font-size: 12px;
+  /* <button> 化(#814 プロフィールダイアログのトリガー)に伴うボタン既定装飾の打ち消し */
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .skel-placeholder {
