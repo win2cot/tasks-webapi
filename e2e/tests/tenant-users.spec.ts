@@ -21,6 +21,24 @@ test.describe('S-08 ユーザー管理', () => {
     await expect(page.locator('#users-tbody')).toContainText('自分');
   });
 
+  test('メンバー削除はブラウザ標準ダイアログでなく共通確認モーダルで確認する (#811)', async ({
+    page,
+  }) => {
+    const row = page.locator('#users-tbody tr', { hasText: 'tenant1-member1@example.com' });
+    await expect(row).toBeVisible();
+    await row.getByRole('button', { name: /削除/ }).click();
+
+    // 共通確認モーダルが表示され、対象メンバーの文言を含む(window.confirm ではない)。
+    const dialog = page.locator('#confirm-dialog .modal');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('tenant1-member1@example.com');
+
+    // キャンセルすると削除されず行が残る(非破壊)。
+    await page.locator('#confirm-dialog [data-role="cancel"]').click();
+    await expect(dialog).toBeHidden();
+    await expect(row).toBeVisible();
+  });
+
   test('ユーザーを招待できる', async ({ page }) => {
     const email = `invitee-${Date.now()}@example.com`;
     await page.fill('#invite-email', email);

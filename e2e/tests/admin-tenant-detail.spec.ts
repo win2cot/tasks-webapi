@@ -17,10 +17,16 @@ async function openFirstTenantDetail(page: Page): Promise<void> {
   await expect(page.locator('#detail')).toBeVisible({ timeout: 15_000 });
 }
 
+// 状態切替は共通確認モーダル(#811)で確認する。ボタン押下 → モーダルの確認ボタンを押す。
+async function toggleStatus(page: Page): Promise<void> {
+  await page.click('#btn-toggle-status');
+  const confirmBtn = page.locator('#confirm-dialog [data-role="confirm"]');
+  await expect(confirmBtn).toBeVisible({ timeout: 10_000 });
+  await confirmBtn.click();
+}
+
 test.describe('S-14 テナント詳細・状態切替', () => {
   test.beforeEach(async ({ page }) => {
-    // confirm ダイアログ(状態切替)は常に自動承認する。ハンドラは 1 度だけ登録する。
-    page.on('dialog', (d) => d.accept());
     await loginAsSaasAdmin(page, SAAS_ADMIN.username, SAAS_ADMIN.password);
   });
 
@@ -30,7 +36,7 @@ test.describe('S-14 テナント詳細・状態切替', () => {
     await expect(page.locator('#detail')).toBeVisible({ timeout: 15_000 });
     const badge = page.locator('#d-status');
     if ((await badge.textContent())?.trim() === 'SUSPENDED') {
-      await page.click('#btn-toggle-status');
+      await toggleStatus(page);
       await expect(badge).toHaveText('ACTIVE', { timeout: 10_000 });
     }
   });
@@ -59,12 +65,12 @@ test.describe('S-14 テナント詳細・状態切替', () => {
     await expect(page.locator('#page-title')).toHaveText(original, { timeout: 10_000 });
 
     // 状態切替: Suspend → 反映。
-    await page.click('#btn-toggle-status');
+    await toggleStatus(page);
     await expect(page.locator('#d-status')).toHaveText('SUSPENDED', { timeout: 10_000 });
     await expect(page.locator('#status-feedback')).toContainText('Suspend');
 
     // Reactivate → 反映(ACTIVE に戻す)。
-    await page.click('#btn-toggle-status');
+    await toggleStatus(page);
     await expect(page.locator('#d-status')).toHaveText('ACTIVE', { timeout: 10_000 });
     await expect(page.locator('#status-feedback')).toContainText('Reactivate');
   });

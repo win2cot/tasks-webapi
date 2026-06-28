@@ -156,7 +156,15 @@ function wireStatusToggle() {
     if (!detailTenant) return;
     const next = detailTenant.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     const verb = next === 'SUSPENDED' ? 'Suspend' : 'Reactivate';
-    if (!window.confirm(`テナント「${detailTenant.name}」を ${verb} しますか?`)) return;
+    const ok = await /** @type {AppConfirmDialogElement} */ (
+      mustQuery(document, '#confirm-dialog')
+    ).open({
+      title: `テナントを ${verb}`,
+      body: `テナント「${detailTenant.name}」を ${verb} しますか?`,
+      confirmLabel: verb,
+      confirmVariant: next === 'SUSPENDED' ? 'danger' : 'primary',
+    });
+    if (!ok) return;
     btn.disabled = true;
     try {
       const updated = await Api.updateTenantStatus(detailTenantId, next);

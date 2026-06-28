@@ -119,6 +119,9 @@
           }
         }
       },
+      "app-confirm-dialog": {
+        "flow": true
+      },
       "app-conflict-banner": {
         "flow": true
       },

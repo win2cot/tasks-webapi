@@ -118,7 +118,15 @@ function buildRow(u) {
   delBtn.append(icon);
   delBtn.disabled = isSelf;
   delBtn.addEventListener('click', async () => {
-    if (!window.confirm(`${u.fullName}(${u.email})をテナントから削除しますか?`)) return;
+    const ok = await /** @type {AppConfirmDialogElement} */ (
+      mustQuery(document, '#confirm-dialog')
+    ).open({
+      title: 'メンバーを削除',
+      body: `${u.fullName}(${u.email})をテナントから削除しますか?`,
+      confirmLabel: '削除',
+      confirmVariant: 'danger',
+    });
+    if (!ok) return;
     delBtn.disabled = true;
     try {
       await Api.removeMember(u.userId);

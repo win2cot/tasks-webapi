@@ -57,6 +57,12 @@ interface BootstrapToast {
   dispose(): void;
 }
 
+interface BootstrapModal {
+  show(): void;
+  hide(): void;
+  dispose(): void;
+}
+
 declare const bootstrap: {
   Offcanvas: {
     new (element: Element, options?: Record<string, unknown>): BootstrapOffcanvas;
@@ -65,6 +71,11 @@ declare const bootstrap: {
   };
   Toast: {
     new (element: Element, options?: Record<string, unknown>): BootstrapToast;
+  };
+  Modal: {
+    new (element: Element, options?: Record<string, unknown>): BootstrapModal;
+    getInstance(element: Element | null): BootstrapModal | null;
+    getOrCreateInstance(element: Element): BootstrapModal;
   };
 };
 
@@ -78,6 +89,16 @@ interface AppErrorBannerElement extends HTMLElement {
 interface AppConflictBannerElement extends HTMLElement {
   show(): void;
   hide(): void;
+}
+
+interface AppConfirmDialogElement extends HTMLElement {
+  open(opts: {
+    title: string;
+    body: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    confirmVariant?: string;
+  }): Promise<boolean>;
 }
 
 interface AppDescPopoverElement extends HTMLElement {
