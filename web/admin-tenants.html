@@ -21,9 +21,9 @@
   </a>
   <div class="ms-auto d-flex align-items-center gap-3">
     <div class="d-flex align-items-center gap-2">
-      <button id="user-avatar" type="button"
-        class="rounded-circle bg-primary-subtle text-primary d-grid border-0"
-        aria-label="プロフィールを表示">?</button>
+      <div id="user-avatar"
+        class="rounded-circle bg-primary-subtle text-primary d-grid"
+        aria-hidden="true">?</div>
       <span id="nav-username" class="small d-none d-lg-inline"></span>
     </div>
     <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm">
@@ -118,14 +118,11 @@
   </main>
 </div>
 
-<app-profile-dialog id="profile-dialog"></app-profile-dialog>
-
 <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="vendor/keycloak-js/keycloak.min.js"></script>
 <script src="js/dom.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
-<script src="js/components/app-profile-dialog.js"></script>
 <script src="js/admin-tenants.js"></script>
 </body>
 </html>
