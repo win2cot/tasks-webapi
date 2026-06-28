@@ -45,16 +45,20 @@ async function main() {
     return;
   }
 
+  // 非 APP_ADMIN にはシェルを一切描画せず、自分のホーム(個人ダッシュボード)へ即時退避する。
+  // 静的 SPA のためファイル存在自体は隠せないが、ログイン中ユーザーへの casual disclosure を防ぐ
+  // (#812, NIST AC-4)。認可確定後にゲート(admin-gated)を解除してシェルを表示する。
+  if (!Auth.isAppAdmin()) {
+    window.location.replace('dashboard.html');
+    return;
+  }
+  document.body.classList.remove('admin-gated');
+
   const user = Auth.getUser();
   const displayName = user?.name || user?.preferred_username || '';
   /** @type {HTMLElement} */ (mustQuery(document, '#nav-username')).textContent = displayName;
   /** @type {HTMLElement} */ (mustQuery(document, '#user-avatar')).textContent =
     displayName.slice(0, 1) || '?';
-
-  if (!Auth.isAppAdmin()) {
-    showError('このページは SaaS 運営者(APP_ADMIN)のみ利用できます。');
-    return;
-  }
 
   // プラットフォーム API はテナント非依存。残存する X-Tenant-Id を送らないようクリアする。
   Api.setTenantId(null);
