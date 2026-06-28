@@ -64,10 +64,14 @@
     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
       <h1 class="page-title">通知設定</h1>
     </div>
-    <p class="text-muted small mb-3">現在のテナントにおける、自分宛てのメール通知の ON/OFF を設定します。</p>
+    <p class="text-muted small mb-3">
+      現在のテナントにおける、自分宛てのメール通知の ON/OFF を設定します。変更は自動で保存されます。
+    </p>
 
     <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
-    <div id="saved-alert" class="alert alert-success d-none" role="status">保存しました。</div>
+    <div id="saved-alert" class="text-success small d-none" role="status" aria-live="polite">
+      <i class="bi bi-check2 me-1" aria-hidden="true"></i>保存しました
+    </div>
 
     <div id="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -78,7 +82,7 @@
 
     <div class="row justify-content-center">
       <div class="col-12 col-md-9 col-lg-7">
-        <form id="settings-form" class="card d-none">
+        <div id="settings-form" class="card d-none">
           <div class="card-body">
             <div class="form-check form-switch mb-3">
               <input class="form-check-input" type="checkbox" role="switch" id="email-due-today">
@@ -101,9 +105,8 @@
                 <span class="d-block text-muted small">タスクの関係者として登録されたときに通知します。</span>
               </label>
             </div>
-            <button id="btn-save" type="submit" class="btn btn-primary">保存</button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   </main>
