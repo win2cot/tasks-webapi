@@ -103,3 +103,15 @@ notification:
 tenant:
   invite:
     accept-url-base: ${TENANT_INVITE_ACCEPT_URL_BASE:http://localhost:8080/invitations/accept}
+
+# 会員登録の credential プロビジョニング(ADR-0040 §3.1)。
+# enabled=false(既定)は dev/test のログフォールバック(Keycloak を呼ばない)。
+# 本番は enabled=true + service-account クライアント(realm-management の manage-users 限定)。
+# client-secret は PR1 で用意した SSM SecureString(/tasks/<env>/app/keycloak-admin-client-secret)由来。
+keycloak:
+  admin:
+    enabled: ${KEYCLOAK_ADMIN_ENABLED:false}
+    server-url: ${KEYCLOAK_ADMIN_SERVER_URL:http://localhost:8080}
+    realm: ${KEYCLOAK_ADMIN_REALM:tasks}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:tasks-webapi-admin}
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:}

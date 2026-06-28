@@ -80,9 +80,35 @@
         "pkce.code.challenge.method": "S256"
       },
       "fullScopeAllowed": true
+    },
+    {
+      "clientId": "tasks-webapi-admin",
+      "name": "Tasks WebAPI Admin (service account)",
+      "description": "会員登録の credential プロビジョニング用 service-account クライアント(ADR-0040 §3.1)。realm-management の manage-users 限定。",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-admin-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": false
     }
   ],
   "users": [
+    {
+      "username": "service-account-tasks-webapi-admin",
+      "enabled": true,
+      "serviceAccountClientId": "tasks-webapi-admin",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users"]
+      }
+    },
     {
       "id": "69649e2f-63a3-4b75-ae2e-2916ee22e1b5",
       "username": "admin@example.com",
