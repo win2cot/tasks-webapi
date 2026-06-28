@@ -103,6 +103,10 @@ notification:
 tenant:
   invite:
     accept-url-base: ${TENANT_INVITE_ACCEPT_URL_BASE:http://localhost:8080/invitations/accept}
+  # Flow B セルフサインアップ(ADR-0040 §3.3)。確認メールのリンクのベース URL。
+  # 平文トークンを <confirm-url-base>?token=... の形でメール本文にのみ載せる(本番は実ドメインを設定)。
+  signup:
+    confirm-url-base: ${TENANT_SIGNUP_CONFIRM_URL_BASE:http://localhost:8080/signup-complete}
 
 # 会員登録の credential プロビジョニング(ADR-0040 §3.1)。
 # enabled=false(既定)は dev/test のログフォールバック(Keycloak を呼ばない)。

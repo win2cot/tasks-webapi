@@ -495,6 +495,73 @@ paths:
           $ref: "#/components/responses/Conflict"
           description: 期限切れ / 使用済み / 失効、または既に登録済み(ログインして参加)。
 
+  /api/signup/request:
+    post:
+      tags: [User]
+      summary: セルフサインアップ要求 (公開)
+      description: |
+        認可: なし(公開)。double opt-in の前段。email のみを受け取り、自前 one-time トークンを発行して確認リンクを SES で送る(ADR-0040 §3.3 / §3.4)。
+        **email の存在有無に関わらず常に同一の 200 レスポンス**(列挙耐性)。確認リンクを受信して complete しない限り `users` 行も credential も作られない。
+      operationId: requestSignup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignupRequestRequest" }
+      responses:
+        "200":
+          description: OK(常に同一)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupRequestResponse" }
+        "400": { $ref: "#/components/responses/Validation" }
+
+  /api/signup/{token}:
+    get:
+      tags: [User]
+      summary: サインアップ確認照会 (公開・非消費)
+      description: |
+        認可: なし(公開)。確認画面表示用にトークンから email + 完了可否状態を返す。**トークンは消費しない**。
+        期限切れ / 使用済み / 失効は `status` に状態を載せて 200 を返し、画面側で案内分岐する。トークン不在のみ 404。
+      operationId: getSignup
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, description: "確認トークン(平文)", schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [User]
+      summary: サインアップ確定 (公開)
+      description: |
+        認可: なし(公開)。トークンを消費して会員登録(profile + Keycloak credential)を行う(ADR-0040 §3.3)。テナント紐付けは行わない。
+        完了後はログイン → 既存 `POST /api/tenants` でテナント作成へ続く。既に登録済みの email は 409。期限切れ / 使用済み / 失効は 409。トークン不在は 404。
+      operationId: completeSignup
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, description: "確認トークン(平文)", schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignupCompleteRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignupCompleteResponse" }
+        "400": { $ref: "#/components/responses/Validation" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          $ref: "#/components/responses/Conflict"
+          description: 期限切れ / 使用済み / 失効、または既に登録済み。
+
   /api/tenant/users/{userId}:
     delete:
       tags: [User]
@@ -1376,6 +1443,47 @@ components:
       properties:
         userId:   { type: integer, format: int64, description: 参加したユーザーID }
         tenantId: { type: integer, format: int64, description: 参加先テナントID }
+
+    SignupRequestRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 255 }
+
+    SignupRequestResponse:
+      type: object
+      required: [message]
+      description: email の存在有無に関わらず常に同一(列挙耐性)。
+      properties:
+        message: { type: string }
+
+    SignupDisplayStatus:
+      type: string
+      description: 確認画面の状態。`PENDING` のみ完了可能。
+      enum: [PENDING, EXPIRED, USED, REVOKED]
+
+    SignupDetail:
+      type: object
+      required: [email, status]
+      properties:
+        email:  { type: string, format: email, description: 確認対象メールアドレス }
+        status: { $ref: "#/components/schemas/SignupDisplayStatus" }
+
+    SignupCompleteRequest:
+      type: object
+      required: [fullName, fullNameKana, password]
+      description: 会員登録に使う profile + password。email は確認トークンが保持するため受け取らない。
+      properties:
+        fullName:       { type: string, maxLength: 255 }
+        fullNameKana:   { type: string, maxLength: 255 }
+        departmentName: { type: string, maxLength: 255, nullable: true }
+        password:       { type: string, minLength: 8, maxLength: 255 }
+
+    SignupCompleteResponse:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: integer, format: int64, description: 登録されたユーザーID }
 
     # --- タスク ---
     UserSummary:
