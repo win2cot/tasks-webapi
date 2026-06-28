@@ -2,6 +2,7 @@ package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -15,13 +16,13 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class TasksJwtAuthenticationConverterTest {
 
-  @Mock UserRepository userRepository;
+  @Mock OidcSubCorrelationService correlationService;
   @Mock AppAdminUserRepository appAdminUserRepository;
   @Mock Jwt jwt;
   @Mock UserJpaEntity user;
@@ -30,7 +31,8 @@ class TasksJwtAuthenticationConverterTest {
 
   private void stubValidUser() {
     when(jwt.getSubject()).thenReturn("sub123");
-    when(userRepository.findByOidcSub("sub123")).thenReturn(Optional.of(user));
+    when(jwt.getClaimAsString("email")).thenReturn("user@example.com");
+    when(correlationService.resolve("sub123", "user@example.com")).thenReturn(Optional.of(user));
     when(user.isAnonymized()).thenReturn(false);
     when(user.isInactive()).thenReturn(false);
     when(user.getId()).thenReturn(1L);
@@ -80,9 +82,10 @@ class TasksJwtAuthenticationConverterTest {
   }
 
   @Test
-  void throwsUserNotRegisteredWhenUserNotFound() {
+  void throwsUserNotRegisteredWhenResolveReturnsEmpty() {
     when(jwt.getSubject()).thenReturn("unknown-sub");
-    when(userRepository.findByOidcSub("unknown-sub")).thenReturn(Optional.empty());
+    when(jwt.getClaimAsString("email")).thenReturn(null);
+    when(correlationService.resolve("unknown-sub", null)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserNotRegisteredException.class);
   }
@@ -98,7 +101,8 @@ class TasksJwtAuthenticationConverterTest {
   @Test
   void throwsUserAnonymizedWhenDeletedAtIsSet() {
     when(jwt.getSubject()).thenReturn("sub-anon");
-    when(userRepository.findByOidcSub("sub-anon")).thenReturn(Optional.of(user));
+    when(jwt.getClaimAsString("email")).thenReturn("anon@example.com");
+    when(correlationService.resolve(any(), any())).thenReturn(Optional.of(user));
     when(user.isAnonymized()).thenReturn(true);
 
     assertThatThrownBy(() -> converter.convert(jwt))
@@ -109,7 +113,8 @@ class TasksJwtAuthenticationConverterTest {
   @Test
   void throwsUserInactiveWhenStatusIsInactive() {
     when(jwt.getSubject()).thenReturn("sub-inactive");
-    when(userRepository.findByOidcSub("sub-inactive")).thenReturn(Optional.of(user));
+    when(jwt.getClaimAsString("email")).thenReturn("inactive@example.com");
+    when(correlationService.resolve(any(), any())).thenReturn(Optional.of(user));
     when(user.isAnonymized()).thenReturn(false);
     when(user.isInactive()).thenReturn(true);
 
@@ -121,7 +126,8 @@ class TasksJwtAuthenticationConverterTest {
   @Test
   void anonymizedCheckTakesPriorityOverInactiveCheck() {
     when(jwt.getSubject()).thenReturn("sub-both");
-    when(userRepository.findByOidcSub("sub-both")).thenReturn(Optional.of(user));
+    when(jwt.getClaimAsString("email")).thenReturn("both@example.com");
+    when(correlationService.resolve(any(), any())).thenReturn(Optional.of(user));
     when(user.isAnonymized()).thenReturn(true);
 
     assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserAnonymizedException.class);

@@ -32,6 +32,7 @@ import xyz.dgz48.tasks.webapi.notification.usecase.UpdateNotificationSettingsUse
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.shared.domain.TenantContext;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
@@ -101,6 +102,7 @@ class TenantContextFilterTest {
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean UserRepository userRepository;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean LogoutUseCase logoutUseCase;

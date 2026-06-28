@@ -17,11 +17,11 @@ import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantSummaryInfo;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(MeController.class)
 @Import({
@@ -35,7 +35,7 @@ class MeControllerWebMvcTest {
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
-  @MockitoBean UserRepository userRepository;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;

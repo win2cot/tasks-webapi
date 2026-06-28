@@ -10,19 +10,19 @@ import org.springframework.security.oauth2.server.resource.InvalidBearerTokenExc
 import org.springframework.stereotype.Component;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.domain.TasksPrincipal;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserJpaEntity;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @Component
 public class TasksJwtAuthenticationConverter
     implements Converter<Jwt, AbstractAuthenticationToken> {
 
-  private final UserRepository userRepository;
+  private final OidcSubCorrelationService correlationService;
   private final AppAdminUserRepository appAdminUserRepository;
 
   public TasksJwtAuthenticationConverter(
-      UserRepository userRepository, AppAdminUserRepository appAdminUserRepository) {
-    this.userRepository = userRepository;
+      OidcSubCorrelationService correlationService, AppAdminUserRepository appAdminUserRepository) {
+    this.correlationService = correlationService;
     this.appAdminUserRepository = appAdminUserRepository;
   }
 
@@ -32,8 +32,10 @@ public class TasksJwtAuthenticationConverter
     if (sub == null) {
       throw new InvalidBearerTokenException("JWT missing sub claim");
     }
+    // sub で解決。未ヒット時は email クレームで pending 行を突合し sub を書き戻す(初回ログイン correlation、ADR-0040 §3.2)。
+    String email = jwt.getClaimAsString("email");
     UserJpaEntity user =
-        userRepository.findByOidcSub(sub).orElseThrow(UserNotRegisteredException::new);
+        correlationService.resolve(sub, email).orElseThrow(UserNotRegisteredException::new);
     if (user.isAnonymized()) {
       throw new UserAnonymizedException();
     }

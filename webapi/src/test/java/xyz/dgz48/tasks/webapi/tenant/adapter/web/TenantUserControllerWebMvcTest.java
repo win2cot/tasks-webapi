@@ -27,13 +27,13 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConvert
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantUserInfo;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserTenantStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ListTenantUsersUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(TenantUserController.class)
 @Import({
@@ -47,7 +47,7 @@ class TenantUserControllerWebMvcTest {
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
-  @MockitoBean UserRepository userRepository;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;

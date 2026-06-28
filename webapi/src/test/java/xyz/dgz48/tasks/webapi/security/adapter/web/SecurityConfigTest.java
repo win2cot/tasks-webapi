@@ -44,6 +44,7 @@ import xyz.dgz48.tasks.webapi.notification.usecase.UpdateNotificationSettingsUse
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.GetMeUseCase;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.task.usecase.AddStakeholderUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeTaskStatusUseCase;
 import xyz.dgz48.tasks.webapi.task.usecase.ChangeVisibilityUseCase;
@@ -85,6 +86,7 @@ class SecurityConfigTest {
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean UserRepository userRepository;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean LogoutUseCase logoutUseCase;
@@ -219,7 +221,7 @@ class SecurityConfigTest {
   @Test
   void userNotRegisteredReturns401() throws Exception {
     given(jwtDecoder.decode(any())).willReturn(buildMockJwt("unregistered-sub"));
-    given(userRepository.findByOidcSub("unregistered-sub")).willReturn(Optional.empty());
+    given(oidcSubCorrelationService.resolve("unregistered-sub", null)).willReturn(Optional.empty());
 
     mockMvc
         .perform(get("/api/tasks").header(HttpHeaders.AUTHORIZATION, "Bearer mock.token"))
@@ -237,7 +239,8 @@ class SecurityConfigTest {
     Mockito.when(inactiveUser.isInactive()).thenReturn(true);
 
     given(jwtDecoder.decode(any())).willReturn(buildMockJwt("inactive-sub"));
-    given(userRepository.findByOidcSub("inactive-sub")).willReturn(Optional.of(inactiveUser));
+    given(oidcSubCorrelationService.resolve("inactive-sub", null))
+        .willReturn(Optional.of(inactiveUser));
 
     mockMvc
         .perform(get("/api/tasks").header(HttpHeaders.AUTHORIZATION, "Bearer mock.token"))
@@ -254,7 +257,8 @@ class SecurityConfigTest {
     Mockito.when(anonymizedUser.isAnonymized()).thenReturn(true);
 
     given(jwtDecoder.decode(any())).willReturn(buildMockJwt("anonymized-sub"));
-    given(userRepository.findByOidcSub("anonymized-sub")).willReturn(Optional.of(anonymizedUser));
+    given(oidcSubCorrelationService.resolve("anonymized-sub", null))
+        .willReturn(Optional.of(anonymizedUser));
 
     mockMvc
         .perform(get("/api/tasks").header(HttpHeaders.AUTHORIZATION, "Bearer mock.token"))

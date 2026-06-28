@@ -17,9 +17,9 @@ import xyz.dgz48.tasks.webapi.audit.usecase.AuditLogPort;
 import xyz.dgz48.tasks.webapi.audit.usecase.AuthorizationDeniedAuditService;
 import xyz.dgz48.tasks.webapi.security.adapter.persistence.AppAdminUserRepository;
 import xyz.dgz48.tasks.webapi.security.usecase.LogoutUseCase;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 @WebMvcTest(LogoutController.class)
 @Import({
@@ -41,7 +41,7 @@ class LogoutControllerTest {
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
-  @MockitoBean UserRepository userRepository;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
