@@ -575,6 +575,15 @@ app-task-row {
   color: #c92a2a;
 }
 
+/* ===== SaaS Admin ゲート (#812) =====
+   認可確定(Auth.isAppAdmin)までシェルを隠し、非 APP_ADMIN への
+   casual disclosure を防ぐ。admin.js 等が認可後に admin-gated を外す。
+   非権限ユーザーはシェルを表示する前に dashboard.html へリダイレクトされる。 */
+body.admin-gated .app-navbar,
+body.admin-gated .app-layout {
+  visibility: hidden;
+}
+
 /* ===== Dashboard / 個人ダッシュボード (S-03) ===== */
 .dash-task-item:last-child {
   border-bottom: 0 !important;
