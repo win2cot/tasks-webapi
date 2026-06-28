@@ -23,6 +23,8 @@ const todayJST = () =>
 test.describe('a11y: display:contents 行の role 露出 (#554)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, MEMBER1.username, MEMBER1.password);
+    // ログイン後の既定表示はダッシュボード(S-03)。タスク一覧へ明示遷移する。
+    await page.goto('/tasks.html');
     await expect(page.locator('#task-panel')).toBeVisible({ timeout: 15_000 });
   });
 

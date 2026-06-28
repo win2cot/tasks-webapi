@@ -574,3 +574,12 @@ app-task-row {
 .drawer-chip-rm:hover {
   color: #c92a2a;
 }
+
+/* ===== Dashboard / 個人ダッシュボード (S-03) ===== */
+.dash-task-item:last-child {
+  border-bottom: 0 !important;
+}
+/* flex 子要素での text-truncate を効かせるため min-width をリセットする */
+.dash-task-title {
+  min-width: 0;
+}

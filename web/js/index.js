@@ -28,7 +28,8 @@ async function main() {
     const activeTenantId = Api.resolveActiveTenant(me.tenants);
 
     if (activeTenantId !== null) {
-      window.location.replace('tasks.html');
+      // ログイン後の既定表示は個人ダッシュボード(S-03、基本設計書 §3.2)。
+      window.location.replace('dashboard.html');
       return;
     }
 

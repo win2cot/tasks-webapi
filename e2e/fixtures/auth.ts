@@ -16,9 +16,10 @@ export const SAAS_ADMIN = {
 } as const;
 
 /**
- * Keycloak PKCE ログインを実行して tasks.html に到達するまで待機する。
+ * Keycloak PKCE ログインを実行して dashboard.html に到達するまで待機する。
  * tenant1-member1 は tenant1 に 1 所属しているため index.html が自動でテナントを
- * 選択し tasks.html にリダイレクトする。
+ * 選択し、ログイン後の既定表示である個人ダッシュボード(S-03)へリダイレクトする。
+ * タスク一覧を操作するテストはログイン後に明示的に tasks.html へ遷移すること。
  */
 export async function loginAs(page: Page, username: string, password: string): Promise<void> {
   await page.goto('/');
@@ -26,8 +27,8 @@ export async function loginAs(page: Page, username: string, password: string): P
   await page.fill('#username', username);
   await page.fill('#password', password);
   await page.click('#kc-login');
-  // index.html が /api/auth/me を呼び、単一テナントを自動選択して tasks.html へ転送する。
-  await page.waitForURL(/\/tasks\.html/, { timeout: 15_000 });
+  // index.html が /api/auth/me を呼び、単一テナントを自動選択して dashboard.html へ転送する。
+  await page.waitForURL(/\/dashboard\.html/, { timeout: 15_000 });
 }
 
 /**
