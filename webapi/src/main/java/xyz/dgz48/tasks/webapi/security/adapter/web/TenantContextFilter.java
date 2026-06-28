@@ -32,9 +32,10 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 /**
  * X-Tenant-Id ヘッダを読み取り、user_tenants を検証して TenantContext を設定する。
  *
- * <p>免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /api/platform/**}, {@code
- * /actuator/**}, {@code /api/users/me})はヘッダの有無に関わらず素通りさせる。stale な X-Tenant-Id が付いていても membership
- * 検証しない(#816)。これらはテナントスコープの業務データを読まないため安全。
+ * <p>免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /api/invitations/**}, {@code
+ * /api/platform/**}, {@code /actuator/**}, {@code /api/users/me})はヘッダの有無に関わらず素通りさせる。stale な
+ * X-Tenant-Id が 付いていても membership
+ * 検証しない(#816)。これらはテナントスコープの業務データを読まない、または未認証で参加先テナントをトークンが保持する(招待受諾、ADR-0040)ため安全。
  *
  * <p>ヘッダ指定時(非免除パス): 認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は ROLE_TENANT_ADMIN または
  * ROLE_MEMBER を SecurityContext に付与する。
@@ -146,6 +147,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     String uri = request.getRequestURI();
     return uri.startsWith("/api/auth/")
         || uri.startsWith("/api/tenants")
+        || uri.startsWith("/api/invitations/")
         || uri.startsWith("/api/platform")
         || uri.startsWith("/actuator/")
         || uri.equals("/actuator")

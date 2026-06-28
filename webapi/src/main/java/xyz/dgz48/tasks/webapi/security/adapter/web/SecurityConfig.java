@@ -51,6 +51,9 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
+                    // 招待受諾は未認証で到達する公開フロー(ADR-0040 §3.3)。トークンが参加先テナントを保持。
+                    .requestMatchers("/api/invitations/**")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(

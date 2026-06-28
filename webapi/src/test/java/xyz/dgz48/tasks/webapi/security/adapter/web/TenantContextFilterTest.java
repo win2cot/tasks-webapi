@@ -47,6 +47,7 @@ import xyz.dgz48.tasks.webapi.task.usecase.UpdateTaskUseCase;
 import xyz.dgz48.tasks.webapi.tenant.domain.PlatformMetrics;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
+import xyz.dgz48.tasks.webapi.tenant.usecase.AcceptInvitationUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.ChangeMemberRoleUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.CreateTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.GetPlatformMetricsUseCase;
@@ -60,6 +61,7 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UpdateTenantStatusUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UpdateTenantUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
+import xyz.dgz48.tasks.webapi.tenant.usecase.ViewInvitationUseCase;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 import xyz.dgz48.tasks.webapi.user.usecase.GetMyProfileUseCase;
 
@@ -120,6 +122,8 @@ class TenantContextFilterTest {
   @MockitoBean RemoveStakeholderUseCase removeStakeholderUseCase;
   @MockitoBean SwitchTenantUseCase switchTenantUseCase;
   @MockitoBean InviteUserUseCase inviteUserUseCase;
+  @MockitoBean ViewInvitationUseCase viewInvitationUseCase;
+  @MockitoBean AcceptInvitationUseCase acceptInvitationUseCase;
   @MockitoBean RemoveMemberUseCase removeMemberUseCase;
   @MockitoBean ChangeMemberRoleUseCase changeMemberRoleUseCase;
   @MockitoBean ListTenantsUseCase listTenantsUseCase;

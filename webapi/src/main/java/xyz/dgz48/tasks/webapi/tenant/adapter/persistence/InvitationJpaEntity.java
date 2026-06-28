@@ -81,4 +81,10 @@ class InvitationJpaEntity extends TenantFilteredEntity {
   void revoke() {
     this.status = InvitationStatus.REVOKED;
   }
+
+  /** PENDING を USED に遷移させ consumed_at を記録する(受諾確定。ADR-0040 §3.3)。 */
+  void markUsed(LocalDateTime consumedAt) {
+    this.status = InvitationStatus.USED;
+    this.consumedAt = consumedAt;
+  }
 }

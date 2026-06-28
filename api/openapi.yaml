@@ -446,6 +446,55 @@ paths:
           $ref: "#/components/responses/Conflict"
           description: 招待対象の email が既に `user_tenants` に登録済み(重複招待)。
 
+  /api/invitations/{token}:
+    get:
+      tags: [User]
+      summary: 招待照会 (受諾画面用・公開)
+      description: |
+        認可: なし(公開)。受諾画面表示用にトークンから招待詳細(テナント名・email・ロール・受諾可否状態)を返す。**トークンは消費しない**。
+        トークンが参加先テナントを保持するため `X-Tenant-Id` 不要(ADR-0040 §3.3)。
+        期限切れ / 使用済み / 失効は `status` に状態を載せて 200 を返し(404 にしない)、画面側で案内分岐する。
+        トークンに対応する招待が無い場合のみ 404(存在有無を漏らさない)。
+      operationId: getInvitation
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, description: "受諾トークン(平文)", schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationDetail" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [User]
+      summary: 招待受諾 (公開)
+      description: |
+        認可: なし(公開)。トークンを消費して招待を受諾する(ADR-0040 §3.3)。
+        未登録 email は会員登録(profile + Keycloak credential)+ `user_tenants` 紐付け + 招待 USED を確定する。
+        既に登録済みの email は会員登録不要のため 409 を返し「ログインして参加」へ誘導する(認証済みの参加紐付けは後続フロー)。
+        期限切れ / 使用済み / 失効は 409。トークン不在は 404。
+      operationId: acceptInvitation
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, description: "受諾トークン(平文)", schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcceptInvitationRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcceptInvitationResponse" }
+        "400": { $ref: "#/components/responses/Validation" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          $ref: "#/components/responses/Conflict"
+          description: 期限切れ / 使用済み / 失効、または既に登録済み(ログインして参加)。
+
   /api/tenant/users/{userId}:
     delete:
       tags: [User]
@@ -1295,6 +1344,38 @@ components:
       properties:
         email: { type: string, format: email }
         role:  { $ref: "#/components/schemas/Role" }
+
+    InvitationDisplayStatus:
+      type: string
+      description: 受諾画面の状態。`PENDING` のみ受諾可能。
+      enum: [PENDING, EXPIRED, USED, REVOKED]
+
+    InvitationDetail:
+      type: object
+      required: [email, tenantName, role, status, alreadyRegistered]
+      properties:
+        email:            { type: string, format: email, description: 招待先メールアドレス }
+        tenantName:       { type: string, description: 参加先テナント名 }
+        role:             { $ref: "#/components/schemas/Role" }
+        status:           { $ref: "#/components/schemas/InvitationDisplayStatus" }
+        alreadyRegistered: { type: boolean, description: "true ならログインして参加へ誘導" }
+
+    AcceptInvitationRequest:
+      type: object
+      required: [fullName, fullNameKana, password]
+      description: 未登録ユーザーの会員登録に使う profile + password。email は招待トークンが保持するため受け取らない。
+      properties:
+        fullName:       { type: string, maxLength: 255 }
+        fullNameKana:   { type: string, maxLength: 255 }
+        departmentName: { type: string, maxLength: 255, nullable: true }
+        password:       { type: string, minLength: 8, maxLength: 255 }
+
+    AcceptInvitationResponse:
+      type: object
+      required: [userId, tenantId]
+      properties:
+        userId:   { type: integer, format: int64, description: 参加したユーザーID }
+        tenantId: { type: integer, format: int64, description: 参加先テナントID }
 
     # --- タスク ---
     UserSummary:

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>招待の受諾 — Tasks</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/app.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">Tasks</a>
+      </div>
+    </nav>
+
+    <main class="container mt-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+          <div id="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">招待を確認中...</p>
+          </div>
+
+          <!-- 案内パネル(期限切れ/使用済み/失効/不明トークン/登録済み/受諾完了) -->
+          <div id="notice" class="card d-none">
+            <div class="card-body">
+              <h1 id="notice-title" class="h5 card-title mb-3"></h1>
+              <p id="notice-message" class="text-muted"></p>
+              <a id="notice-link" class="btn btn-primary d-none" href="index.html">ログインへ</a>
+            </div>
+          </div>
+
+          <!-- 受諾フォーム(未登録ユーザーの会員登録) -->
+          <form id="accept-form" class="card d-none" novalidate>
+            <div class="card-body">
+              <h1 class="h5 card-title mb-1">招待を受諾</h1>
+              <p class="text-muted small mb-3">
+                <span id="tenant-label"></span> への招待です(<span id="email-label"></span>)。
+                プロフィールとパスワードを設定して参加します。
+              </p>
+
+              <div id="form-error" class="alert alert-danger d-none" role="alert"></div>
+
+              <div class="mb-3">
+                <label for="full-name" class="form-label">氏名</label>
+                <input id="full-name" type="text" class="form-control" maxlength="255" required
+                  autocomplete="name">
+              </div>
+
+              <div class="mb-3">
+                <label for="full-name-kana" class="form-label">氏名(カナ)</label>
+                <input id="full-name-kana" type="text" class="form-control" maxlength="255" required
+                  autocomplete="off">
+              </div>
+
+              <div class="mb-3">
+                <label for="department-name" class="form-label">
+                  部署名 <span class="text-muted">(任意)</span>
+                </label>
+                <input id="department-name" type="text" class="form-control" maxlength="255"
+                  autocomplete="organization">
+              </div>
+
+              <div class="mb-3">
+                <label for="password" class="form-label">パスワード</label>
+                <input id="password" type="password" class="form-control" minlength="8"
+                  maxlength="255" required autocomplete="new-password">
+                <div class="form-text">8 文字以上で設定してください。</div>
+              </div>
+
+              <button id="btn-accept" type="submit" class="btn btn-primary">参加する</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="js/dom.js"></script>
+    <script src="js/invitation.js"></script>
+  </body>
+</html>
