@@ -29,6 +29,29 @@
       "fullScopeAllowed": true,
       "redirectUris": ["*"],
       "webOrigins": ["*"]
+    },
+    {
+      "clientId": "tasks-webapi-admin",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "test-admin-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-tasks-webapi-admin",
+      "enabled": true,
+      "serviceAccountClientId": "tasks-webapi-admin",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users"]
+      }
     }
   ],
   "components": {

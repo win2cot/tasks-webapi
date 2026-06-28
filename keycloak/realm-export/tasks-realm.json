@@ -97,7 +97,7 @@
       "serviceAccountsEnabled": true,
       "authorizationServicesEnabled": false,
       "protocol": "openid-connect",
-      "fullScopeAllowed": false
+      "fullScopeAllowed": true
     }
   ],
   "users": [
