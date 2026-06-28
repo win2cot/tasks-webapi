@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>運営者ダッシュボード — Tasks</title>
+  <title>ダッシュボード — Tasks</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
@@ -37,7 +37,7 @@
   <!-- ===== Sidebar ===== -->
   <aside class="app-sidebar d-none d-lg-block" aria-label="サイドナビゲーション">
     <div class="nav-group-label" aria-hidden="true">メイン</div>
-    <a class="side-link" href="dashboard.html">
+    <a class="side-link active" href="dashboard.html" aria-current="page">
       <i class="bi bi-speedometer2" aria-hidden="true"></i>ダッシュボード
     </a>
     <a class="side-link" href="tasks.html">
@@ -45,7 +45,7 @@
     </a>
     <div class="admin-only">
       <div class="nav-group-label" aria-hidden="true">テナント運営</div>
-      <a class="side-link active" href="tenant-dashboard.html" aria-current="page">
+      <a class="side-link" href="tenant-dashboard.html">
         <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>運営者ダッシュボード
       </a>
       <a class="side-link" href="tenant-users.html">
@@ -60,11 +60,13 @@
   <!-- ===== Main ===== -->
   <main id="main-content" class="app-main">
     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-      <h1 class="page-title">運営者ダッシュボード</h1>
+      <h1 class="page-title">ダッシュボード</h1>
+      <a href="tasks.html" class="ms-auto btn btn-outline-secondary btn-sm">
+        <i class="bi bi-list-check me-1" aria-hidden="true"></i>タスク一覧へ
+      </a>
     </div>
     <p class="text-muted small mb-3">
-      テナント全体で共有(TENANT)または関係者限定(STAKEHOLDERS)で動いている業務量の集計です。
-      PRIVATE タスクは集計に含まれません。
+      あなたが所有・担当・関係するタスクの当日状況と振り返りです。参照できないタスクは含まれません。
     </p>
 
     <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
@@ -76,17 +78,9 @@
       <p class="mt-2 text-muted">集計を取得中...</p>
     </div>
 
-    <div id="summary" class="d-none">
+    <div id="content" class="d-none">
       <!-- 数値カード -->
-      <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
-        <div class="col">
-          <div class="card h-100">
-            <div class="card-body">
-              <div class="text-muted small">総タスク数</div>
-              <div id="card-total" class="fs-3 fw-semibold">—</div>
-            </div>
-          </div>
-        </div>
+      <div class="row row-cols-2 row-cols-xl-4 g-3 mb-4">
         <div class="col">
           <div class="card h-100">
             <div class="card-body">
@@ -114,36 +108,53 @@
         <div class="col">
           <div class="card h-100">
             <div class="card-body">
-              <div class="text-muted small">メンバー数</div>
-              <div id="card-members" class="fs-3 fw-semibold">—</div>
+              <div class="text-muted small">未完了(自分)</div>
+              <div id="card-my-open" class="fs-3 fw-semibold">—</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ブレークダウン -->
-      <div class="row g-3">
-        <div class="col-12 col-lg-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <h2 class="h6 card-title">ステータス別件数</h2>
-              <table class="table table-sm mb-0">
-                <tbody id="status-breakdown"></tbody>
-              </table>
-            </div>
-          </div>
+      <!-- タスクセクション -->
+      <section class="card mb-3" aria-labelledby="sec-overdue-title">
+        <div class="card-body">
+          <h2 id="sec-overdue-title" class="h6 card-title text-danger">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>期限切れ
+            <span id="count-overdue" class="badge text-bg-danger ms-1">0</span>
+          </h2>
+          <ul id="list-overdue" class="dash-task-list list-unstyled mb-0"></ul>
         </div>
-        <div class="col-12 col-lg-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <h2 class="h6 card-title">優先度別件数</h2>
-              <table class="table table-sm mb-0">
-                <tbody id="priority-breakdown"></tbody>
-              </table>
-            </div>
-          </div>
+      </section>
+
+      <section class="card mb-3" aria-labelledby="sec-today-title">
+        <div class="card-body">
+          <h2 id="sec-today-title" class="h6 card-title">
+            <i class="bi bi-calendar-event me-1" aria-hidden="true"></i>今日対応
+            <span id="count-today" class="badge text-bg-secondary ms-1">0</span>
+          </h2>
+          <ul id="list-today" class="dash-task-list list-unstyled mb-0"></ul>
         </div>
-      </div>
+      </section>
+
+      <section class="card mb-3" aria-labelledby="sec-upcoming-title">
+        <div class="card-body">
+          <h2 id="sec-upcoming-title" class="h6 card-title">
+            <i class="bi bi-calendar-week me-1" aria-hidden="true"></i>今後
+            <span id="count-upcoming" class="badge text-bg-secondary ms-1">0</span>
+          </h2>
+          <ul id="list-upcoming" class="dash-task-list list-unstyled mb-0"></ul>
+        </div>
+      </section>
+
+      <section class="card mb-3" aria-labelledby="sec-completed-title">
+        <div class="card-body">
+          <h2 id="sec-completed-title" class="h6 card-title text-success">
+            <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>本日完了
+            <span id="count-completed" class="badge text-bg-success ms-1">0</span>
+          </h2>
+          <ul id="list-completed" class="dash-task-list list-unstyled mb-0"></ul>
+        </div>
+      </section>
     </div>
   </main>
 </div>
@@ -154,7 +165,9 @@
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
 <script src="js/meta.js"></script>
+<script src="js/components/app-status-badge.js"></script>
+<script src="js/components/app-priority-badge.js"></script>
 <script src="js/components/app-tenant-switcher.js"></script>
-<script src="js/tenant-dashboard.js"></script>
+<script src="js/dashboard.js"></script>
 </body>
 </html>

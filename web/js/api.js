@@ -156,6 +156,24 @@
  * @property {number} memberCount
  */
 
+/**
+ * @typedef {object} DashboardSummary
+ * @property {number} todayDueCount
+ * @property {number} overdueCount
+ * @property {number} completedTodayCount
+ * @property {number} myOpenCount
+ * @property {Record<string, number>} statusBreakdown
+ * @property {Record<string, number>} priorityBreakdown
+ */
+
+/**
+ * @typedef {object} DashboardTaskSections
+ * @property {Task[]} overdue
+ * @property {Task[]} today
+ * @property {Task[]} upcoming
+ * @property {Task[]} completedToday
+ */
+
 const Api = (() => {
   const _envMatch = window.location.hostname.match(/^tasks(?:-(\w+))?\.dgz48\.xyz$/);
   const BASE_URL = _envMatch
@@ -502,6 +520,24 @@ const Api = (() => {
   }
 
   /**
+   * GET /api/dashboard/summary — 個人ダッシュボードの数値カード集計(A-25、S-03、現テナント)。
+   * @returns {Promise<DashboardSummary>}
+   */
+  function getDashboardSummary() {
+    return request('/api/dashboard/summary');
+  }
+
+  /**
+   * GET /api/dashboard/tasks — 個人ダッシュボードの 4 セクション一括(A-26、S-03、現テナント)。
+   * @param {number} [dueWithinDays] - 「今後」に含める期限の先読み日数(1〜14、既定 3)。
+   * @returns {Promise<DashboardTaskSections>}
+   */
+  function getDashboardTasks(dueWithinDays) {
+    const q = dueWithinDays != null ? `?dueWithinDays=${dueWithinDays}` : '';
+    return request(`/api/dashboard/tasks${q}`);
+  }
+
+  /**
    * GET /api/users/me — 自身のプロフィール取得(A-07、S-09)。テナント選択状態に依存しない。
    * @returns {Promise<UserProfile>}
    */
@@ -638,6 +674,8 @@ const Api = (() => {
     removeMember,
     getPlatformMetrics,
     getTenantDashboardSummary,
+    getDashboardSummary,
+    getDashboardTasks,
     getMyProfile,
     getNotificationSettings,
     updateNotificationSettings,
