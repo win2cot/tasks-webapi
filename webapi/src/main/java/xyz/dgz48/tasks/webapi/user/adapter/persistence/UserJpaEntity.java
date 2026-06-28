@@ -87,6 +87,13 @@ public class UserJpaEntity {
     this.oidcSub = realOidcSub;
   }
 
+  /** 会員登録(ADR-0040 §3.3)時の profile 更新。SPI insert 等で先に作られた pending 行に対し、登録画面で入力された profile を書き込む。 */
+  public void updateProfile(String fullName, String fullNameKana, @Nullable String departmentName) {
+    this.fullName = fullName;
+    this.fullNameKana = fullNameKana;
+    this.departmentName = departmentName;
+  }
+
   public UserJpaEntity(
       String oidcSub,
       String email,
