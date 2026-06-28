@@ -5,13 +5,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import xyz.dgz48.tasks.webapi.notification.usecase.EmailSenderPort;
 import xyz.dgz48.tasks.webapi.tenant.adapter.external.InviteMailAdapter;
+import xyz.dgz48.tasks.webapi.tenant.adapter.external.SignupMailAdapter;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantAuditDiffDomainService;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantCodeGenerator;
 import xyz.dgz48.tasks.webapi.tenant.usecase.InviteMailPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.InviteTokenGenerator;
+import xyz.dgz48.tasks.webapi.tenant.usecase.SignupMailPort;
 
 @Configuration
-@EnableConfigurationProperties(InviteProperties.class)
+@EnableConfigurationProperties({InviteProperties.class, SignupProperties.class})
 class TenantInfraConfig {
 
   @Bean
@@ -32,5 +34,10 @@ class TenantInfraConfig {
   @Bean
   InviteMailPort inviteMailPort(EmailSenderPort emailSenderPort, InviteProperties properties) {
     return new InviteMailAdapter(emailSenderPort, properties.acceptUrlBase());
+  }
+
+  @Bean
+  SignupMailPort signupMailPort(EmailSenderPort emailSenderPort, SignupProperties properties) {
+    return new SignupMailAdapter(emailSenderPort, properties.confirmUrlBase());
   }
 }

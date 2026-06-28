@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録 — Tasks</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/app.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">Tasks</a>
+      </div>
+    </nav>
+
+    <main class="container mt-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+          <!-- 入力フォーム -->
+          <form id="signup-form" class="card" novalidate>
+            <div class="card-body">
+              <h1 class="h5 card-title mb-1">新規登録</h1>
+              <p class="text-muted small mb-3">
+                メールアドレスを入力すると確認メールを送信します。メール内のリンクから登録を完了してください。
+              </p>
+
+              <div id="form-error" class="alert alert-danger d-none" role="alert"></div>
+
+              <div class="mb-3">
+                <label for="email" class="form-label">メールアドレス</label>
+                <input id="email" type="email" class="form-control" maxlength="255" required
+                  autocomplete="email">
+              </div>
+
+              <button id="btn-request" type="submit" class="btn btn-primary">確認メールを送信</button>
+              <a class="btn btn-link" href="index.html">ログインへ</a>
+            </div>
+          </form>
+
+          <!-- 送信後の案内 -->
+          <div id="sent-notice" class="card d-none">
+            <div class="card-body">
+              <h1 class="h5 card-title mb-3">確認メールを送信しました</h1>
+              <p class="text-muted">
+                入力されたメールアドレスが登録可能な場合、確認リンクをお送りしました。メールをご確認のうえ、リンクから登録を完了してください。
+              </p>
+              <a class="btn btn-primary" href="index.html">ログインへ</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="js/dom.js"></script>
+    <script src="js/signup.js"></script>
+  </body>
+</html>
