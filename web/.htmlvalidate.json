@@ -122,6 +122,9 @@
       "app-confirm-dialog": {
         "flow": true
       },
+      "app-profile-dialog": {
+        "flow": true
+      },
       "app-conflict-banner": {
         "flow": true
       },

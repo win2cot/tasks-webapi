@@ -22,9 +22,9 @@
   <app-tenant-switcher id="tenant-switcher" class="d-none"></app-tenant-switcher>
   <div class="ms-auto d-flex align-items-center gap-3">
     <div class="d-flex align-items-center gap-2">
-      <div id="user-avatar"
-        class="rounded-circle bg-primary-subtle text-primary d-grid"
-        aria-hidden="true">?</div>
+      <button id="user-avatar" type="button"
+        class="rounded-circle bg-primary-subtle text-primary d-grid border-0"
+        aria-label="プロフィールを表示">?</button>
       <span id="nav-username" class="small d-none d-lg-inline"></span>
     </div>
     <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm">
@@ -53,7 +53,6 @@
       </a>
     </div>
     <div class="nav-group-label" aria-hidden="true">アカウント</div>
-    <a class="side-link" href="profile.html"><i class="bi bi-person-circle" aria-hidden="true"></i>プロフィール</a>
     <a class="side-link" href="notification-settings.html"><i class="bi bi-bell" aria-hidden="true"></i>通知設定</a>
   </aside>
 
@@ -148,11 +147,14 @@
   </main>
 </div>
 
+<app-profile-dialog id="profile-dialog"></app-profile-dialog>
+
 <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="vendor/keycloak-js/keycloak.min.js"></script>
 <script src="js/dom.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/api.js"></script>
+<script src="js/components/app-profile-dialog.js"></script>
 <script src="js/meta.js"></script>
 <script src="js/components/app-tenant-switcher.js"></script>
 <script src="js/tenant-dashboard.js"></script>
