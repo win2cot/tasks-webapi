@@ -55,12 +55,36 @@ public class UserJpaEntity {
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
+  /** 初回ログイン correlation 待ちの oidc_sub placeholder の接頭辞(SPI insert と共通、ADR-0006 §3.2)。 */
+  private static final String PENDING_OIDC_SUB_PREFIX = "pending:";
+
   public boolean isAnonymized() {
     return this.deletedAt != null;
   }
 
   public boolean isInactive() {
     return this.status == UserStatus.INACTIVE;
+  }
+
+  /**
+   * oidc_sub が初回ログイン correlation 待ちの placeholder({@code pending:<email>})かを返す。会員登録(ADR-0040)や SPI の
+   * admin/recovery insert で作られた行は、初回ログインで本物の Keycloak {@code sub} に突合されるまでこの状態になる。
+   */
+  public boolean isPendingCorrelation() {
+    return this.oidcSub.startsWith(PENDING_OIDC_SUB_PREFIX);
+  }
+
+  /**
+   * 初回ログイン時の oidc_sub correlation(ADR-0006 §3.2 / ADR-0040 §3.2):pending placeholder を Keycloak
+   * の本物の {@code sub} に書き戻す。pending 状態の行に対してのみ呼ぶこと。
+   *
+   * @throws IllegalStateException 既に correlation 済み(pending でない)の行に対して呼ばれた場合
+   */
+  public void correlateOidcSub(String realOidcSub) {
+    if (!isPendingCorrelation()) {
+      throw new IllegalStateException("oidc_sub correlation は pending 行に対してのみ許可される");
+    }
+    this.oidcSub = realOidcSub;
   }
 
   public UserJpaEntity(

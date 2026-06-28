@@ -2,6 +2,8 @@ package xyz.dgz48.tasks.webapi.security.adapter.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -85,6 +87,68 @@ class TasksJwtAuthenticationConverterTest {
     when(userRepository.findByOidcSub("unknown-sub")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserNotRegisteredException.class);
+  }
+
+  @Test
+  void correlatesPendingRowByEmailOnFirstLogin() {
+    // 初回ログイン: 本物の sub では未ヒット → email クレームで pending placeholder 行を突合し sub を書き戻す。
+    when(jwt.getSubject()).thenReturn("kc-sub-real");
+    when(userRepository.findByOidcSub("kc-sub-real")).thenReturn(Optional.empty());
+    when(jwt.getClaimAsString("email")).thenReturn("corr@example.com");
+    when(userRepository.findByEmail("corr@example.com")).thenReturn(Optional.of(user));
+    when(user.isPendingCorrelation()).thenReturn(true);
+    when(userRepository.save(user)).thenReturn(user);
+    when(user.isAnonymized()).thenReturn(false);
+    when(user.isInactive()).thenReturn(false);
+    when(user.getId()).thenReturn(7L);
+    when(user.getOidcSub()).thenReturn("kc-sub-real");
+    when(user.getEmail()).thenReturn("corr@example.com");
+    when(user.getFullName()).thenReturn("田中一郎");
+    when(user.getFullNameKana()).thenReturn("タナカイチロウ");
+    when(user.getDepartmentName()).thenReturn(null);
+    when(appAdminUserRepository.existsByOidcSub("kc-sub-real")).thenReturn(false);
+
+    AbstractAuthenticationToken token = converter.convert(jwt);
+
+    verify(user).correlateOidcSub("kc-sub-real");
+    verify(userRepository).save(user);
+    TasksPrincipal principal = (TasksPrincipal) token.getPrincipal();
+    assertThat(principal.getId()).isEqualTo(7L);
+    assertThat(principal.getSub()).isEqualTo("kc-sub-real");
+  }
+
+  @Test
+  void doesNotCorrelateWhenEmailMatchesAlreadyCorrelatedRow() {
+    // email は一致するが pending でない(別 Keycloak アカウントの sub に紐付く)行はなりすまし防止のため突合しない。
+    when(jwt.getSubject()).thenReturn("kc-sub-attacker");
+    when(userRepository.findByOidcSub("kc-sub-attacker")).thenReturn(Optional.empty());
+    when(jwt.getClaimAsString("email")).thenReturn("victim@example.com");
+    when(userRepository.findByEmail("victim@example.com")).thenReturn(Optional.of(user));
+    when(user.isPendingCorrelation()).thenReturn(false);
+
+    assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserNotRegisteredException.class);
+    verify(userRepository, never()).save(user);
+  }
+
+  @Test
+  void doesNotCorrelateWhenEmailClaimMissing() {
+    when(jwt.getSubject()).thenReturn("kc-sub-noemail");
+    when(userRepository.findByOidcSub("kc-sub-noemail")).thenReturn(Optional.empty());
+    when(jwt.getClaimAsString("email")).thenReturn(null);
+
+    assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserNotRegisteredException.class);
+    verify(userRepository, never()).findByEmail(org.mockito.ArgumentMatchers.anyString());
+  }
+
+  @Test
+  void doesNotCorrelateWhenNoRowMatchesEmail() {
+    when(jwt.getSubject()).thenReturn("kc-sub-orphan");
+    when(userRepository.findByOidcSub("kc-sub-orphan")).thenReturn(Optional.empty());
+    when(jwt.getClaimAsString("email")).thenReturn("orphan@example.com");
+    when(userRepository.findByEmail("orphan@example.com")).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> converter.convert(jwt)).isInstanceOf(UserNotRegisteredException.class);
+    verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any());
   }
 
   @Test
