@@ -34,6 +34,7 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConvert
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantMembership;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
@@ -54,6 +55,7 @@ class DashboardControllerWebMvcTest {
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
   @MockitoBean UserRepository userRepository;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;

@@ -33,6 +33,7 @@ import xyz.dgz48.tasks.webapi.security.adapter.web.TasksJwtAuthenticationConvert
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockMember;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockSaasAdmin;
 import xyz.dgz48.tasks.webapi.security.adapter.web.WithMockTenantAdmin;
+import xyz.dgz48.tasks.webapi.security.usecase.OidcSubCorrelationService;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 import xyz.dgz48.tasks.webapi.tenant.domain.TenantUserInfo;
 import xyz.dgz48.tasks.webapi.tenant.domain.UserAlreadyMemberException;
@@ -44,7 +45,6 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.InviteUserUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.RemoveMemberUseCase;
 import xyz.dgz48.tasks.webapi.tenant.usecase.TenantMembershipPort;
 import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
-import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
 /**
  * メンバー管理 API(DELETE /api/tenant/users/{userId}・PUT /api/tenant/users/{userId}/role)のスライステスト。
@@ -65,7 +65,7 @@ class TenantMemberControllerWebMvcTest {
   @MockitoBean JwtDecoder jwtDecoder;
   @MockitoBean AuditLogPort auditLogPort;
   @MockitoBean AuthorizationDeniedAuditService authorizationDeniedAuditService;
-  @MockitoBean UserRepository userRepository;
+  @MockitoBean OidcSubCorrelationService oidcSubCorrelationService;
   @MockitoBean AppAdminUserRepository appAdminUserRepository;
   @MockitoBean TenantMembershipPort tenantMembershipPort;
   @MockitoBean UserTenantsResolverService userTenantsResolverService;
