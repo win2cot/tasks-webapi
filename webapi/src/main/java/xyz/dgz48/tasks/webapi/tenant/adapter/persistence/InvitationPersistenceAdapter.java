@@ -1,6 +1,7 @@
 package xyz.dgz48.tasks.webapi.tenant.adapter.persistence;
 
 import io.micrometer.observation.annotation.Observed;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -9,7 +10,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.InvitationStatus;
 import xyz.dgz48.tasks.webapi.tenant.usecase.InvitationPort;
 import xyz.dgz48.tasks.webapi.user.adapter.persistence.UserRepository;
 
-/** {@link InvitationPort} の JPA 実装(ADR-0017)。 */
+/** {@link InvitationPort} の JPA 実装(ADR-0017 / ADR-0040)。 */
 @Observed(name = "tenant.invitation.repository")
 @Component
 @RequiredArgsConstructor
@@ -56,5 +57,37 @@ class InvitationPersistenceAdapter implements InvitationPort {
   @Transactional(readOnly = true)
   public Optional<String> findTenantName(Long tenantId) {
     return tenantRepository.findById(tenantId).map(TenantJpaEntity::getName);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Optional<InvitationView> findByTokenHash(String tokenHash) {
+    return invitationRepository
+        .findByTokenHash(tokenHash)
+        .map(
+            e ->
+                new InvitationView(
+                    e.getId(),
+                    e.getTenantId(),
+                    e.getEmail(),
+                    e.getRole(),
+                    e.getStatus(),
+                    e.getExpiresAt()));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Optional<Long> findRegisteredUserId(String email) {
+    // pending correlation 行(会員登録のみ・初回ログイン未了)は未登録扱い(ADR-0040 §3.2)。
+    return userRepository
+        .findByEmail(email)
+        .filter(user -> !user.isPendingCorrelation())
+        .map(user -> user.getId());
+  }
+
+  @Override
+  @Transactional
+  public void markUsed(Long invitationId, LocalDateTime consumedAt) {
+    invitationRepository.findById(invitationId).ifPresent(e -> e.markUsed(consumedAt));
   }
 }
