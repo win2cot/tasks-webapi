@@ -514,6 +514,13 @@ async function main() {
   const authenticated = await Auth.init();
   if (!authenticated) return;
 
+  // SaaS Admin(APP_ADMIN)は業務画面の対象外。テナント未所属のため /api/auth/me 等が 403 になる前に
+  // プラットフォーム監視へ誘導する(#816 役割不適合ページ着地のガード)。
+  if (Auth.isAppAdmin()) {
+    window.location.replace('admin.html');
+    return;
+  }
+
   /** @type {MeResponse} */
   let me;
   try {

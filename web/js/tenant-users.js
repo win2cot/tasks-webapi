@@ -219,6 +219,13 @@ async function main() {
     return;
   }
 
+  // SaaS Admin(APP_ADMIN)は業務画面の対象外。テナント未所属のため /api/auth/me 等が 403 になる前に
+  // プラットフォーム監視へ誘導する(#816 役割不適合ページ着地のガード)。
+  if (Auth.isAppAdmin()) {
+    window.location.replace('admin.html');
+    return;
+  }
+
   const user = Auth.getUser();
   const displayName = user?.name || user?.preferred_username || '';
   /** @type {HTMLElement} */ (mustQuery(document, '#nav-username')).textContent = displayName;

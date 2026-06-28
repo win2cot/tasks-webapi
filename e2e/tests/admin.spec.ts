@@ -47,3 +47,18 @@ test.describe('S-12 ロール境界 (#812)', () => {
     await expect(page.getByRole('heading', { name: 'プラットフォーム監視' })).toHaveCount(0);
   });
 });
+
+// #816 役割不適合ページ着地のガード — SaaS Admin(テナント未所属)がテナントスコープの
+// メンバー画面を直接開いても、テナント不要枠以外の API を叩く前に admin.html へ退避する。
+test.describe('S-12 ロール境界 (#816)', () => {
+  test('SaaS Admin が通知設定(メンバー画面)を直接開くと admin.html へ退避する', async ({
+    page,
+  }) => {
+    await loginAsSaasAdmin(page, SAAS_ADMIN.username, SAAS_ADMIN.password);
+
+    await page.goto('/notification-settings.html');
+
+    await page.waitForURL(/\/admin\.html/, { timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'プラットフォーム監視' })).toBeVisible();
+  });
+});
