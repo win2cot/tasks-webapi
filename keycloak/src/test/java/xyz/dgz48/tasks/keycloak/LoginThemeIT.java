@@ -14,9 +14,9 @@ import org.junit.jupiter.api.Test;
  * ログイン画面テーマ {@code tasks-login}(ADR-0040 / #832)が realm の {@code loginTheme} 経由で適用され、セルフサインアップ導線用の
  * スクリプト({@code signup-link.js})がログインページに注入されることを実 Keycloak(Testcontainers)で検証する。
  *
- * <p>テーマ未適用 / theme.properties の {@code scripts} 設定ミス / {@code loginTheme} 名の不一致は、いずれもログインページのレンダリングが
- * 静かに壊れる(JVM 単体テストでは非検出)ため、ここで CI 固定する。スクリプトの DOM 注入挙動はブラウザ実行を要するため本テストの対象外で、テーマ配線(=スクリプト
- * タグが出力されること)のみを裏取りする。
+ * <p>テーマ未適用 / theme.properties の {@code scripts} 設定ミス / {@code loginTheme}
+ * 名の不一致は、いずれもログインページのレンダリングが 静かに壊れる(JVM 単体テストでは非検出)ため、ここで CI 固定する。スクリプトの DOM
+ * 注入挙動はブラウザ実行を要するため本テストの対象外で、テーマ配線(=スクリプト タグが出力されること)のみを裏取りする。
  */
 class LoginThemeIT extends AbstractSpiContainerTest {
 

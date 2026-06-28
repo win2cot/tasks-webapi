@@ -34,8 +34,7 @@ abstract class AbstractSpiContainerTest extends AbstractMySqlContainerTest {
             // tasks-test-realm の loginTheme=tasks-login(#832)を解決できるよう、テーマを焼き込み済イメージと
             // 同じ /opt/keycloak/themes/ へ投入する(本イメージは vanilla なため明示コピーが要る)。
             .withCopyFileToContainer(
-                MountableFile.forHostPath("themes/tasks-login"),
-                "/opt/keycloak/themes/tasks-login")
+                MountableFile.forHostPath("themes/tasks-login"), "/opt/keycloak/themes/tasks-login")
             .withFeaturesEnabled("update-email");
     keycloak.start();
     return keycloak;
