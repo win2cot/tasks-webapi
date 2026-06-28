@@ -106,8 +106,12 @@ const Auth = (() => {
 
   /**
    * Keycloak ログアウトエンドポイントへリダイレクト。
+   *
+   * <p>退会前にアクティブテナント(sessionStorage.tenantId)をクリアする。次にログインする
+   * ユーザーへ前ユーザーの X-Tenant-Id が漏れて越境・403 になる事象を防ぐ(#816)。
    */
   function logout() {
+    sessionStorage.removeItem('tenantId');
     if (_keycloak) {
       _keycloak.logout({ redirectUri: window.location.origin + window.location.pathname });
     }

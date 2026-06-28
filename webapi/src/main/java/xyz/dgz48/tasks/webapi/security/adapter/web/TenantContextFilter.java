@@ -32,8 +32,12 @@ import xyz.dgz48.tasks.webapi.tenant.usecase.UserTenantsResolverService;
 /**
  * X-Tenant-Id ヘッダを読み取り、user_tenants を検証して TenantContext を設定する。
  *
- * <p>ヘッダ指定時: 認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は ROLE_TENANT_ADMIN または ROLE_MEMBER
- * を SecurityContext に付与する。
+ * <p>免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /api/platform/**}, {@code
+ * /actuator/**}, {@code /api/users/me})はヘッダの有無に関わらず素通りさせる。stale な X-Tenant-Id が付いていても membership
+ * 検証しない(#816)。これらはテナントスコープの業務データを読まないため安全。
+ *
+ * <p>ヘッダ指定時(非免除パス): 認証済みユーザーが指定テナントの ACTIVE メンバーでない場合は 403 を返す。メンバーの場合は ROLE_TENANT_ADMIN または
+ * ROLE_MEMBER を SecurityContext に付与する。
  *
  * <p>ヘッダ未指定時: 免除パス({@code /api/auth/**}, {@code /api/tenants/**}, {@code /api/platform/**}, {@code
  * /actuator/**})および非認証リクエストはそのまま通過。それ以外の認証済みリクエストは {@link UserTenantsResolverService}
@@ -56,10 +60,19 @@ public class TenantContextFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
+    // テナント不要枠(基本設計書 §5.2)は X-Tenant-Id ヘッダの有無に関わらず素通りさせる。
+    // ヘッダが付いていても membership 検証しないことで、ユーザー切替時に前ユーザーの stale な
+    // X-Tenant-Id が残っても /api/auth/me 等が 403 にならない(#816)。これら経路はテナント
+    // スコープの業務データを読まない(自分の identity / 所属一覧 / プラットフォーム API)ため安全。
+    if (isExemptPath(request)) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
     String tenantIdHeader = request.getHeader(HEADER_X_TENANT_ID);
     if (tenantIdHeader == null) {
       Authentication preAuth = SecurityContextHolder.getContext().getAuthentication();
-      if (!(preAuth instanceof TasksAuthenticationToken preToken) || isExemptPath(request)) {
+      if (!(preAuth instanceof TasksAuthenticationToken preToken)) {
         filterChain.doFilter(request, response);
         return;
       }

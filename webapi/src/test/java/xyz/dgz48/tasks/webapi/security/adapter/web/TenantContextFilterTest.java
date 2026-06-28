@@ -271,6 +271,18 @@ class TenantContextFilterTest {
   }
 
   @Test
+  @WithMockMember
+  void staleHeader_exemptPath_membershipNotValidated() throws Exception {
+    // ユーザー切替で残った非メンバーの X-Tenant-Id が付いていても、免除パスは membership 検証せず
+    // 素通りさせ /api/auth/me 等が 403 にならない(#816)。フィルタが findActiveRole を呼ばないことを検証する。
+    mockMvc.perform(
+        get("/api/auth/tenants/1/select").header(TenantContextFilter.HEADER_X_TENANT_ID, "999"));
+    org.mockito.Mockito.verify(tenantMembershipPort, org.mockito.Mockito.never())
+        .findActiveRole(
+            org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
+  }
+
+  @Test
   @WithMockSaasAdmin
   void noHeader_exemptPlatformPath_reachesController_withoutTenantResolution() throws Exception {
     // SaaS Admin はテナント未所属が通常。/api/platform は免除パスのため初期テナント解決を行わず到達できる(A-27)。
