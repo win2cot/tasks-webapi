@@ -65,6 +65,13 @@ variable "audit_hmac_key_v1" {
   description = "Audit hash-chain HMAC key (id v1) placeholder; set actual value in SSM after apply (ADR-0038)"
 }
 
+variable "keycloak_admin_client_secret" {
+  type        = string
+  sensitive   = true
+  default     = "CHANGE_ME"
+  description = "Keycloak Admin REST API client secret placeholder; set actual value in SSM after apply (ADR-0040)"
+}
+
 # ---------------------------------------------------------------------------
 # Parameter Store — String values
 # ---------------------------------------------------------------------------

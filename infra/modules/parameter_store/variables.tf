@@ -45,6 +45,12 @@ variable "audit_hmac_key_v1" {
   description = "HMAC-SHA256 key (id v1) for audit_logs hash-chain tamper evidence (ADR-0038); webapi reads it via ssm:GetParameter"
 }
 
+variable "keycloak_admin_client_secret" {
+  type        = string
+  sensitive   = true
+  description = "Client secret for the Keycloak Admin REST API service-account client (ADR-0040); webapi reads it via ssm:GetParameter"
+}
+
 variable "jwt_issuer" {
   type        = string
   description = "OAuth2 JWT issuer URI (e.g. https://auth-dev.dgz48.xyz/realms/tasks)"

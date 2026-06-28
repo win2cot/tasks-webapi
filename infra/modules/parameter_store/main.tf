@@ -103,6 +103,27 @@ resource "aws_ssm_parameter" "audit_hmac_key_v1" {
   }
 }
 
+# Keycloak Admin REST API client secret (ADR-0040). The webapi calls the Keycloak
+# Admin API (credential provisioning / reset-password) via a confidential
+# service-account client. Stored under app/* so the existing webapi task-role
+# policy (ssm:GetParameter* on parameter/tasks/<env>/app/* + kms:Decrypt) already
+# grants read; no IAM change required. The consuming Keycloak client + client code
+# land in a later PR (ADR-0040 §6 PR2); this provisions the secret slot ahead of it
+# (same precedent as audit_hmac_key_v1 / ADR-0038).
+resource "aws_ssm_parameter" "keycloak_admin_client_secret" {
+  name  = "/tasks/${var.env}/app/keycloak-admin-client-secret"
+  type  = "SecureString"
+  value = var.keycloak_admin_client_secret
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = {
+    Name = "tasks-${var.env}-app-keycloak-admin-client-secret"
+  }
+}
+
 # ---------------------------------------------------------------------------
 # String parameters — config values fully managed by Terraform
 # ---------------------------------------------------------------------------
