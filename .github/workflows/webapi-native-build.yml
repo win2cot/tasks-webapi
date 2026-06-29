@@ -72,7 +72,7 @@ jobs:
 
     env:
       # processAot starts the production Spring context (Flyway + Hibernate validate).
-      # These env vars are picked up by the aotEnv() fallback in webapi/build.gradle.
+      # These env vars are picked up by the aotEnv() fallback in webapi/build.gradle.kts.
       DB_HOST: "localhost"
       DATASOURCE_USERNAME: tasks_webapi
       DATASOURCE_PASSWORD: tasks_webapi
@@ -93,7 +93,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Native compile
-        # -PciNativeBuild activates GHA-only memory-reduction flags in webapi/build.gradle:
+        # -PciNativeBuild activates GHA-only memory-reduction flags in webapi/build.gradle.kts:
         #   -Ob           quick build mode (less optimization, lower memory + time)
         #   -J-Xmx12g     cap native-image JVM heap on the 16 GB GHA standard runner
         #   --parallelism=2  reduce concurrent compilation threads

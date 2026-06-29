@@ -34,7 +34,7 @@
 ## 診断バリアントは不要(単一イメージ方針)
 
 ADR-0029 §6.3(2026-06-22 #587 改訂)により、`--enable-monitoring=heapdump,jfr` は
-**全環境共通の単一イメージに常時付与**される([build.gradle](../../webapi/build.gradle) の
+**全環境共通の単一イメージに常時付与**される([build.gradle.kts](../../webapi/build.gradle.kts) の
 `BP_NATIVE_IMAGE_BUILD_ARGUMENTS`)。したがって**ソークテスト用に別ビルドを作る必要はない**。
 通常のリリースイメージ(`vX.Y.Z`)をそのまま使う。
 
@@ -349,7 +349,7 @@ aws ecs update-service --cluster tasks-dev-cluster --service tasks-dev-webapi \
   --task-definition "${DIAG_ARN}" --desired-count 1 --force-new-deployment --region ap-northeast-1
 ```
 
-> **前提**: 稼働イメージが `--enable-monitoring=heapdump` を含むこと(本リポジトリは [build.gradle](../../webapi/build.gradle) で常時付与済み)。
+> **前提**: 稼働イメージが `--enable-monitoring=heapdump` を含むこと(本リポジトリは [build.gradle.kts](../../webapi/build.gradle.kts) で常時付与済み)。
 > 含まないイメージでは SIGUSR1 を送っても `dumpHeap` が起動しない。
 
 #### ダンプ生成・取り出しの確認(CloudWatch Logs + S3)

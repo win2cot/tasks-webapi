@@ -190,7 +190,7 @@ tasks-webapi/(repo root)
 │   ├─ src/main/resources/
 │   │   ├─ application.yml         # 単一、環境差は env vars
 │   │   └─ db/migration/           # Flyway
-│   ├─ build.gradle
+│   ├─ build.gradle.kts
 │   └─ Dockerfile                  # tasks-webapi(全環境共通)
 │
 ├─ web/                     # フロントエンド(Bootstrap 5 + 素 JS SPA)
@@ -198,7 +198,7 @@ tasks-webapi/(repo root)
 ├─ keycloak/                # Keycloak Custom(独立 Gradle project)
 │   ├─ src/main/java/...           # User Storage SPI 等
 │   ├─ src/main/resources/META-INF/services/...
-│   ├─ build.gradle               # Spring とは別ビルド
+│   ├─ build.gradle.kts           # Spring とは別ビルド
 │   ├─ Dockerfile                  # Custom Image(公式 + SPI JAR)
 │   └─ realm-export/               # Realm JSON export
 │
@@ -228,7 +228,7 @@ tasks-webapi/(repo root)
 ├─ docker-compose.local.yml
 ├─ .github/workflows/(ci, deploy-* x4, claude-* shim)
 ├─ renovate.json            # 多 path packageRules
-└─ settings.gradle          # multi-project: webapi + keycloak
+└─ settings.gradle.kts      # multi-project: webapi + keycloak
 ```
 
 ### 3.4 環境変数による設定注入(Spring プロファイル不使用)
@@ -345,7 +345,7 @@ flowchart TB
 
 ### 3.7 Keycloak Custom Image(`keycloak/` subdir)
 
-独立 Gradle project として `keycloak/src/main/java/` 配下に User Storage SPI 等を実装、`META-INF/services/` で SPI 登録、`keycloak/build.gradle` で JAR を生成。
+独立 Gradle project として `keycloak/src/main/java/` 配下に User Storage SPI 等を実装、`META-INF/services/` で SPI 登録、`keycloak/build.gradle.kts` で JAR を生成。
 
 `keycloak/Dockerfile`(全環境共通、公式 Keycloak image + 自作 SPI JAR の 2 段ビルド):
 
