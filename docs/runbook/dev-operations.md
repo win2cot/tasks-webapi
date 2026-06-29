@@ -203,7 +203,7 @@ AWS Console: CloudWatch → Logs → Log groups → 対象グループ → Logs 
 
 診断バリアントの**別ビルドは不要**。ADR-0029 §6.3(#587)により
 `--enable-monitoring=heapdump,jfr` は全環境共通の単一イメージに常時付与されている
-([webapi/build.gradle](../../webapi/build.gradle))。取得手順は
+([webapi/build.gradle.kts](../../webapi/build.gradle.kts))。取得手順は
 [soak-test.md](soak-test.md)(メモリリーク検知・ヒープダンプ取得)を参照。
 
 詳細は [ADR-0029](../adr/0029-performance-measurement-and-diagnostics.md)(性能測定・診断)。

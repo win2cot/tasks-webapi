@@ -1,4 +1,0 @@
-rootProject.name = 'tasks-webapi-monorepo'
-
-include 'webapi'
-include 'keycloak'

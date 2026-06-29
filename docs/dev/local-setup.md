@@ -539,7 +539,7 @@ curl -s http://localhost:18080/realms/tasks/.well-known/openid-configuration | g
 | `hashicorp.terraform` | Terraform: Lint — fmt/validate | `terraform fmt` on save を有効化することで fmt -check の違反をゼロにできる |
 | `redhat.java` | Webapi: CI — コンパイル | Language Server for Java。Build Server for Gradle と組み合わせることで ErrorProne/NullAway を保存時ビルドに反映 |
 | `vscjava.vscode-gradle` | Webapi: CI — コンパイル | Build Server for Gradle を有効化すると Gradle タスクがコンパイルに使われる。有効化: コマンドパレット → `Java: Enable Build Server for Gradle` |
-| `JoseVSeb.google-java-format-for-vs-code` | Webapi: CI — Spotless(GJF) | `java.format.settings.google.version` を `1.34.0` に pin(webapi `build.gradle` と同期)。keycloak は GJF 1.24.0 を使用(CI が JDK 21 のため 1.34.0 非対応)。keycloak Java 編集後は `./gradlew :keycloak:spotlessApply` で整形差分を解消してからコミット |
+| `JoseVSeb.google-java-format-for-vs-code` | Webapi: CI — Spotless(GJF) | `java.format.settings.google.version` を `1.34.0` に pin(webapi `build.gradle.kts` と同期)。keycloak は GJF 1.24.0 を使用(CI が JDK 21 のため 1.34.0 非対応)。keycloak Java 編集後は `./gradlew :keycloak:spotlessApply` で整形差分を解消してからコミット |
 | `ritwickdey.LiveServer` | — | `web/index.html` 等の静的 HTML をワンクリックで配信(開発サーバー代替) |
 
 > **注意 — エディタで出ないチェック**:

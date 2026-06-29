@@ -5,13 +5,13 @@ FROM eclipse-temurin:21.0.11_10-jdk-jammy AS spi-builder
 WORKDIR /workspace
 
 # Copy Gradle wrapper and root build scripts first for layer caching.
-# settings.gradle includes all monorepo subprojects; we create a minimal one
+# settings.gradle.kts includes all monorepo subprojects; we create a minimal one
 # that only declares the keycloak subproject so that webapi/ is not required.
-COPY gradlew gradlew.bat build.gradle ./
+COPY gradlew gradlew.bat build.gradle.kts ./
 COPY gradle/ gradle/
 COPY keycloak/ keycloak/
 
-RUN printf "rootProject.name = 'tasks-webapi-monorepo'\ninclude 'keycloak'\n" > settings.gradle && \
+RUN printf 'rootProject.name = "tasks-monorepo"\ninclude("keycloak")\n' > settings.gradle.kts && \
     chmod +x ./gradlew && \
     ./gradlew :keycloak:jar --no-daemon -x test
 

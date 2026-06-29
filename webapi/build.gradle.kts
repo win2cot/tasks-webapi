@@ -1,0 +1,234 @@
+import net.ltgt.gradle.errorprone.errorprone
+import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
+
+plugins {
+    java
+    jacoco
+    id("org.springframework.boot") version "4.1.0"
+    id("io.spring.dependency-management") version "1.1.7"
+    id("org.graalvm.buildtools.native") version "1.1.3"
+    id("net.ltgt.errorprone") version "5.1.0"
+    id("com.diffplug.spotless") version "8.6.0"
+}
+
+group = "xyz.dgz48"
+version = "0.0.1-SNAPSHOT"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.modulith:spring-modulith-bom:2.1.0")
+    }
+}
+
+dependencies {
+    // Spring Boot dependencies
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.jspecify:jspecify")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    testCompileOnly("org.projectlombok:lombok")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testAnnotationProcessor("org.projectlombok:lombok")
+
+    // Spring Modulith
+    implementation("org.springframework.modulith:spring-modulith-starter-core")
+    testImplementation("org.springframework.modulith:spring-modulith-starter-test")
+
+    // Flyway
+    implementation("org.springframework.boot:spring-boot-flyway")
+    implementation("org.flywaydb:flyway-mysql")
+
+    // MySQL
+    runtimeOnly("com.mysql:mysql-connector-j")
+
+    // OpenTelemetry (traces + metrics via OTLP; OFF by default — ADR-0029 §3.2)
+    implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
+
+    // JDBC observation: DataSource をラップし SQL クエリ単位のスパンを生成(ADR-0029 §3.1 / §6.1)
+    implementation("net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.1")
+
+    // Testcontainers
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-mysql")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+
+    // JsonNullable for PATCH partial-update DTOs (ADR-0014)
+    // jackson-databind-nullable は Jackson 2/3 両対応だが当プロジェクトは Jackson 3 (tools.jackson) のみ使用する。
+    // Jackson 2 の transitive 依存は Flyway / Logback から別途持ち込まれるため機能上問題なく除外可能。
+    implementation("org.openapitools:jackson-databind-nullable:0.2.10") {
+        exclude(group = "com.fasterxml.jackson.core")
+    }
+
+    // AWS SDK v2 — RDS IAM auth token generation (ECS Fargate runtime identity) + SES v2 (通知メール送出)
+    //   + SSM Parameter Store (監査ハッシュチェーンの HMAC 鍵ロード、ADR-0038 §3.3)
+    implementation(platform("software.amazon.awssdk:bom:2.46.15"))
+    implementation("software.amazon.awssdk:rds")
+    implementation("software.amazon.awssdk:sesv2")
+    implementation("software.amazon.awssdk:ssm")
+
+    // ShedLock — スケジュールバッチの多重起動排他制御(設計規約 §7、shedlock テーブル使用)
+    implementation("net.javacrumbs.shedlock:shedlock-spring:6.10.0")
+    implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.10.0")
+
+    // Other dependencies
+    errorprone("com.google.errorprone:error_prone_core:2.50.0")
+    errorprone("com.uber.nullaway:nullaway:0.13.7")
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.errorprone.excludedPaths.set(".*/build/generated/.*")
+}
+
+tasks.named<JavaCompile>("compileJava") {
+    options.errorprone {
+        error("NullAway")
+        option("NullAway:AnnotatedPackages", "xyz.dgz48")
+        option("NullAway:JSpecifyMode", "true")
+        error("BadImport")
+        error("JavaTimeDefaultTimeZone")
+    }
+}
+
+tasks.named<JavaCompile>("compileTestJava") {
+    options.errorprone {
+        disable("NullAway")
+    }
+}
+
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    finalizedBy(tasks.named("jacocoTestReport"))
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named("test"))
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named("test"))
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
+spotless {
+    // OS に依存せず常に LF を正とする(CI は Linux=LF、Windows ローカルでの CRLF 誤検知を防ぐ)。
+    lineEndings = com.diffplug.spotless.LineEnding.UNIX
+    java {
+        // target は source set ベース(デフォルト)ではなく Ant 形式のファイルパターンで指定する。
+        // デフォルトの java {} は全 source set の Java を対象にするため、Spring Boot AOT が
+        // source set に登録する生成ソース(build/generated/aot*)まで対象に含まれ、Gradle の
+        // 入出力依存検証を満たすために spotlessJava が processAot / compileAotJava へ dependsOn を
+        // 自動付与してしまう(spotlessApply のたびに AOT パイプラインが走る)。静的ファイルパターンに
+        // すれば source set 由来の依存推論が行われず、手書き src/ のみを整形対象にできる。
+        target("src/*/java/**/*.java")
+        googleJavaFormat("1.34.0")
+    }
+}
+
+tasks.named("check") {
+    dependsOn("spotlessCheck", "jacocoTestCoverageVerification")
+}
+
+tasks.named<BootBuildImage>("bootBuildImage") {
+    imageName.set("tasks-webapi:${project.version}")
+    // builder/run image: Spring Boot 4 の既定 (paketobuildpacks/builder-noble-java-tiny /
+    // paketobuildpacks/ubuntu-noble-run-tiny) を使用し、明示指定・digest 固定は行わない。
+    // CVE 追従はリビルド+再 push で対応する方針 (ADR-0018 §3/§5)。
+    // Paketo Spring Boot buildpack 5.36+ requires GraalVM >= 25 when Spring Boot >= 4.0.0.
+    // (https://github.com/paketo-buildpacks/spring-boot/issues/562)
+    // Set explicitly to match the project toolchain and ensure the buildpack
+    // downloads BellSoft Liberica NIK 25 to compile the native image.
+    environment.set(
+        mapOf(
+            "BP_JVM_VERSION" to "25",
+            // Native Image build-time flags (closed-world, cannot be toggled per environment):
+            // 1. --initialize-at-run-time: Password$ConsoleHolder has a static final field set to
+            //    System.console() at class-init time. On Java 25 that returns java.io.ProxyingConsole
+            //    (new in JDK 25), which GraalVM cannot store in the image heap because ProxyingConsole
+            //    defaults to run-time initialization. Deferring to run time prevents the heap conflict.
+            // 2. --enable-monitoring=heapdump,jfr: bundle diagnostic capabilities in the single
+            //    all-environments image (ADR-0029 §6.3, #587). Including the flags adds ~zero runtime
+            //    overhead until a heap dump (SIGUSR1/OOM) or JFR recording (JFR.start) is triggered.
+            //    Production safety is enforced by infra controls (ECS Exec disabled, no persistent
+            //    dump volume) — the flag presence is harmless without a trigger/extraction path.
+            "BP_NATIVE_IMAGE_BUILD_ARGUMENTS" to listOf(
+                "--initialize-at-run-time=sun.security.util.Password\$ConsoleHolder",
+                "--enable-monitoring=heapdump,jfr",
+            ).joinToString(" "),
+        ),
+    )
+}
+
+graalvmNative {
+    // Native test support is not used — JVM tests cover all scenarios (ADR-0008).
+    // Disabling prevents nativeTest/processTestAot from being wired into 'check'.
+    testSupport.set(false)
+    binaries.named("main") {
+        imageName.set("tasks-webapi")
+        // CI-only memory flags activated by -PciNativeBuild=true (native-build.yml).
+        // -Ob reduces optimization level to cut build time/memory on 16 GB GHA runners.
+        // Does NOT affect bootBuildImage (#481) which bypasses this Gradle config.
+        if (project.hasProperty("ciNativeBuild")) {
+            buildArgs.addAll("-Ob", "-J-Xmx12g", "--parallelism=2")
+        }
+    }
+    toolchainDetection.set(false)
+    // Enable GraalVM Reachability Metadata Repository so community-maintained reflection configs
+    // for software.amazon.awssdk:* and other libraries are applied automatically.
+    metadataRepository {
+        enabled.set(true)
+    }
+}
+
+// AOT processing runs a trimmed Spring context at build time and requires
+// the same env vars as the runtime application (OIDC_ISSUER_URI, DB_HOST, DATASOURCE_*).
+// Fall back to local-dev defaults so 'bootBuildImage' and 'nativeCompile' work
+// when the caller has already started Docker Compose but hasn't sourced .env.local.
+fun aotEnv(key: String, fallback: String): String {
+    val v = System.getenv(key)
+    return if (v != null && !v.isBlank()) v else fallback
+}
+
+tasks.named<JavaExec>("processAot") {
+    environment("OIDC_ISSUER_URI", aotEnv("OIDC_ISSUER_URI", "http://localhost:18080/realms/tasks"))
+    environment("DB_HOST", aotEnv("DB_HOST", "localhost"))
+    environment("DATASOURCE_USERNAME", aotEnv("DATASOURCE_USERNAME", "tasks_webapi"))
+    environment("DATASOURCE_PASSWORD", aotEnv("DATASOURCE_PASSWORD", "tasks_webapi"))
+    // Force RDS IAM auth branch into the native image so @ConditionalOnProperty resolves to 'true'
+    // at AOT time. GraalVM bakes the condition result in; local JVM tests are unaffected because
+    // they never run the native image.
+    environment("RDS_IAM_AUTH_ENABLED", "true")
+}
+
+tasks.named<JavaExec>("processTestAot") {
+    environment("OIDC_ISSUER_URI", aotEnv("OIDC_ISSUER_URI", "http://localhost:18080/realms/tasks"))
+    environment("DB_HOST", aotEnv("DB_HOST", "localhost"))
+    environment("DATASOURCE_USERNAME", aotEnv("DATASOURCE_USERNAME", "tasks_webapi"))
+    environment("DATASOURCE_PASSWORD", aotEnv("DATASOURCE_PASSWORD", "tasks_webapi"))
+}
