@@ -23,6 +23,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.SignupRequestStatus;
 @Table(name = "signup_requests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
 class SignupRequestJpaEntity {
 
   @Id

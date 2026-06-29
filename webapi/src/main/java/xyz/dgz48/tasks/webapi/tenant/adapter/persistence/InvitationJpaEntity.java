@@ -22,6 +22,7 @@ import xyz.dgz48.tasks.webapi.tenant.domain.TenantRole;
 @Table(name = "invitations")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@SuppressWarnings("NullAway.Init") // JPA requires no-args constructor; fields initialized via JPA
 class InvitationJpaEntity extends TenantFilteredEntity {
 
   @Id
