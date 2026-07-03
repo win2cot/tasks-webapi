@@ -20,7 +20,7 @@ repositories {
     mavenCentral()
 }
 
-val keycloakVersion = "26.6.3"
+val keycloakVersion = "26.6.4"
 val keycloakAdminClientVersion = "26.0.10"
 val testcontainersVersion = "2.0.5"
 val mysqlConnectorVersion = "9.1.0"
