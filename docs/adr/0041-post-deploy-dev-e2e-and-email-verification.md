@@ -35,7 +35,7 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 - **(b) ブラウザ E2E のみ**: 実画面 + 全層(UI→API→native→Keycloak→DB)を貫くが、①障害の切り分けが甘い、②UI から踏めない不変条件(越境 404/403・ETag 競合)を検証できない、③native カバレッジが UI の通り道に限定される。
 - **(c) ハイブリッド = ブラウザ主軸 + 薄い API 補完(採用)**: ブラウザで実ジャーニーと native/画面/Keycloak を担保し、**UI から踏めない不変条件だけ**を薄い API アサーションで補う。二重フルスイートは避ける。
 
-### 2.2 会員登録メールの受信手段(dev, SES sandbox)
+### 2.2 メール依存フロー全般の受信手段(dev, SES sandbox)
 
 - **Mailpit**: OSS の SMTP キャッチャ。**ローカル/CI 専用**(実 SES を覗けない)。dev では使えない。
 - **メール受信 SaaS(Mailosaur / MailSlurp 等)**: 一意アドレス + 取得 API。外部依存(Mailosaur は有料、MailSlurp 無料枠)。
@@ -52,10 +52,14 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 
 ## 3. 決定(Decision)
 
-1. **ブラウザ主軸 + 薄い API 補完(2.1(c))** を dev post-deploy テスト戦略とする。
-   - ブラウザ E2E(Playwright、`BASE_URL` を dev に向ける)で **実ジャーニー**(ログイン → 一覧 → タスク作成 → ステータス変更)を検証。ログインは **Keycloak OIDC(認可コード + PKCE)経由 = カスタム User Storage SPI を実機で通す**。ログインテーマ / 新規登録リンク描画も対象。
-   - **UI から踏めない不変条件のみ** API で補完: クロステナント参照が 404 / 更新が 403、`If-Match` 競合(412)、未認証 401、エラースキーマ等。
-2. **会員登録(ADR-0040 Flow B double opt-in)は SES 受信 → S3 方式(2.2)で実配信込みに検証**する。専用サブドメイン `e2e.dgz48.xyz` を SES 検証(sandbox の recipient 制限を満たす)+ SES receiving(ap-northeast-1)→ S3。テストは `run-<uuid>@e2e.dgz48.xyz` で登録 → S3 の受信メールをポーリング → MIME から確認リンク抽出 → complete。
+1. **ブラウザ主軸 + 薄い API 補完(2.1(c))** を dev post-deploy テスト戦略とする。網羅的なケースは pre-deploy スイート担当、dev は **主要フロー型を1本ずつ実機で通す**(smoke/ジャーニー水準)。対象フロー(全体):
+   - **認証 / Keycloak**: ログイン(OIDC 認可コード + PKCE = カスタム User Storage SPI を実機で通す)/ ログアウト / **パスワードリセット**(メール)/ ログインテーマ・新規登録リンク描画
+   - **オンボーディング**: セルフサインアップ(メール)/ 招待受諾(メール)
+   - **コア業務**: タスク一覧・作成・編集・ステータス・公開範囲・削除 / ダッシュボード / 関係者 / テナント切替
+   - **テナント運営**: 招待 / メンバー管理 / 監査ログ参照
+   - **通知**: 通知メールの送出・到達(メール)
+   - **UI から踏めない不変条件のみ API で補完**: クロステナント参照が 404 / 更新が 403、`If-Match` 競合(412)、未認証 401、エラースキーマ等(NIST AC-4)
+2. **メール依存フロー全般を SES 受信 → S3 方式(2.2)で実配信込みに検証**する。専用サブドメイン `e2e.dgz48.xyz` を SES 検証(sandbox の recipient 制限を満たす)+ SES receiving(ap-northeast-1)→ S3 で `*@e2e.dgz48.xyz` 宛の**あらゆるメールを捕捉**する汎用機構。会員登録に限らず **① サインアップ確認 / ② 招待受諾 / ③ Keycloak パスワードリセット / ④ 通知メール** をこの1機構で検証する。テストは一意アドレス(例 `signup-<uuid>@e2e.dgz48.xyz`)でフローを起動 → S3 の受信メールをポーリング → MIME からリンク/トークン抽出 → 後続へ。
 3. **メール中身の厚い検証はローカル/CI(Mailpit)** に置き、**dev では実配信の到達性を最小限**に確認する(カバレッジ分割)。ただし dev の実配信検証(本 ADR の 2)は **必須**とする。
 4. **トリガーは手動 `workflow_dispatch` を基本**(2.3(a))。将来 deploy 後 job 化の余地は残す。
 5. dev データ汚染を避けるため、書き込みは **冪等 create + cleanup**、または **専用スモークテナント**に閉じる。
@@ -96,7 +100,7 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 - **dev SES 現状(2026-07-04 確認)**: sandbox(`ProductionAccessEnabled=false`、200/日・1/秒)。送信 identity に `dgz48.xyz` / `mail.dgz48.xyz` を登録済。sandbox 受信用に Gmail 2 件を検証済(現行の signup メール到達手段)。**receipt rule set は未設定**(受信は greenfield)。
 - **SES 受信の配線**: `e2e.dgz48.xyz` を SES domain identity として検証 → Route53 に `MX e2e.dgz48.xyz → inbound-smtp.ap-northeast-1.amazonaws.com`(優先度 10)→ active receipt rule set に「recipients=`e2e.dgz48.xyz`、action=S3(bucket + prefix)」を追加。DKIM/SPF は受信のみなら必須ではない。
 - **一意アドレス**: `run-<uuid>@e2e.dgz48.xyz`。ドメイン検証が効くためアドレス個別検証は不要。
-- **E2E フロー(会員登録)**: `POST /api/signup/request` → S3 prefix をポーリング(到着待ち)→ 最新オブジェクトの MIME を取得・パース → 確認リンク/トークン抽出 → `GET /api/signup/{token}` → `POST .../complete` → ログインまで到達確認。
+- **E2E フロー(メール依存の共通パターン)**: フロー起動(例 サインアップ `POST /api/signup/request` / 招待発行 / Keycloak「パスワードをお忘れですか」/ 通知トリガー)→ S3 prefix をポーリング(到着待ち、送信先の一意アドレスで絞込)→ MIME を取得・パース → リンク/トークン抽出 → 後続(サインアップ complete / 招待受諾 / パスワード再設定 / 通知内容検証)→ 必要なら到達確認。1 つの S3 受信ヘルパを全メールフローで共有する。
 - **資格情報**: 既存ジャーニーは dev テストユーザー(`tasks-webapi` public client の password grant、realm-export / e2e fixtures の固定ユーザー)。CI からは GitHub secret か SSM(OIDC ロール)で取得。
 - **対象ホスト**: API=`https://api-dev.tasks.dgz48.xyz` / SPA=`https://tasks-dev.dgz48.xyz` / Keycloak=`https://auth-dev.dgz48.xyz`。いずれも公開 ALB のため GitHub Actions ランナーから到達可能(VPC 不要)。
 - **夜間停止対応**: 手動トリガー時は dev 稼働中に実行。完全自動化する場合のみ「RDS→ECS 起動 + health 待ち」の前段 job を追加(AWS OIDC ロール要)。
