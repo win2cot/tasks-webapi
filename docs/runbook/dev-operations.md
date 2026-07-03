@@ -12,7 +12,8 @@
 
 - AWS CLI が設定済み(`aws sts get-caller-identity` で疎通確認、リージョンは `ap-northeast-1`)
 - `gh` CLI が認証済み(`gh auth status`)
-- 関連 runbook: [fullstack-startup.md](fullstack-startup.md)(ローカル起動)/
+- 関連 runbook: [release-checklist.md](release-checklist.md)(リリース前チェックリスト)/
+  [fullstack-startup.md](fullstack-startup.md)(ローカル起動)/
   [soak-test.md](soak-test.md)(ソークテスト・ヒープダンプ)/
   [authentication.md](authentication.md)(OIDC)/ [browser-verification.md](browser-verification.md)(UI 検証)
 
