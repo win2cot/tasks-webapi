@@ -170,7 +170,7 @@ aws ssm get-parameters-by-path --path /tasks/dev --recursive --region ap-northea
 
 ### 6.3 未配線ギャップ(リリース前に要判断)
 
-- **infra レベルの CloudWatch Alarm / SNS / metric filter は未配線**(`infra/modules/logging/main.tf` で ADR-0005 §3.5 として明示的に後回し)。現状のアラートはアプリ側(B-05 バッチ + 構造化ログ)のみ。
+- **infra レベルの CloudWatch Alarm / SNS / metric filter は未配線**(`infra/modules/logging/main.tf` のコメントで、infra ADR-0005(ログ基盤、`infra/docs/adr/0005-logging-platform.md`。app の [ADR-0005](../adr/0005-task-authorization-three-roles.md) とは番号衝突する別 ADR)の Alarm/SNS 連携として明示的に後回し)。現状のアラートはアプリ側(B-05 バッチ + 構造化ログ)のみ。
 - 対応: MVP のアラート要件を確定し、metric filter → Alarm → SNS 配線を別 Issue 化する(本チェックリストで **既知ギャップ**として記録)。
 
 チェック:
