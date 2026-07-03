@@ -48,6 +48,18 @@ module "ses" {
   region      = "ap-northeast-1"
 }
 
+# SES 受信(dev E2E メール検証、ADR-0041 / #843)。e2e.dgz48.xyz 宛メールを受信 → S3。
+# depends_on: 新規リソースが必要とする apply 権限(iam_oidc の platform_apply)を先に反映する(規約 §1.3)。
+module "ses_receiving" {
+  source = "../../modules/ses_receiving"
+
+  env         = "dev"
+  base_domain = "dgz48.xyz"
+  region      = "ap-northeast-1"
+
+  depends_on = [module.iam_oidc]
+}
+
 # ---------------------------------------------------------------------------
 # SSM: publish network outputs for tasks stack (ADR-0004)
 # ---------------------------------------------------------------------------
