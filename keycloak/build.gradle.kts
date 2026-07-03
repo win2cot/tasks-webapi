@@ -21,7 +21,7 @@ repositories {
 }
 
 val keycloakVersion = "26.6.3"
-val keycloakAdminClientVersion = "26.0.9"
+val keycloakAdminClientVersion = "26.0.10"
 val testcontainersVersion = "2.0.5"
 val mysqlConnectorVersion = "9.1.0"
 
