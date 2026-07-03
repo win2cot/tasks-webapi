@@ -69,6 +69,11 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-mysql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 
+    // datasource-proxy — N+1 回帰固定用のクエリ本数計数(test scope、ADR-0039 §3 選択肢 B)。
+    // 実 DataSource を proxy 化して実行クエリを QueryCountHolder に記録する。テストは JVM 実行のため
+    // Native Image 互換の検証対象外(ADR-0039)。
+    testImplementation("net.ttddyy:datasource-proxy:1.10.1")
+
     // JsonNullable for PATCH partial-update DTOs (ADR-0014)
     // jackson-databind-nullable は Jackson 2/3 両対応だが当プロジェクトは Jackson 3 (tools.jackson) のみ使用する。
     // Jackson 2 の transitive 依存は Flyway / Logback から別途持ち込まれるため機能上問題なく除外可能。
