@@ -83,7 +83,7 @@ dependencies {
 
     // AWS SDK v2 — RDS IAM auth token generation (ECS Fargate runtime identity) + SES v2 (通知メール送出)
     //   + SSM Parameter Store (監査ハッシュチェーンの HMAC 鍵ロード、ADR-0038 §3.3)
-    implementation(platform("software.amazon.awssdk:bom:2.46.15"))
+    implementation(platform("software.amazon.awssdk:bom:2.46.21"))
     implementation("software.amazon.awssdk:rds")
     implementation("software.amazon.awssdk:sesv2")
     implementation("software.amazon.awssdk:ssm")
