@@ -49,6 +49,9 @@
 | `/tasks/<env>/keycloak/smtp-password` | SecureString | Keycloak SMTP メール送信用（SES SMTP interface 経由、ADR-0006 派生）。IAM Access Key から生成 | Keycloak ECS Task Role（platform stack 管理） | IAM Access Key ローテーション時に再生成・更新 |
 | `/tasks/<env>/app/jwt-issuer` | String | OAuth2 issuer URI（ECS Task Definition の `OIDC_ISSUER_URI` 注入元）| ECS Task Role（tasks-webapi）| Keycloak ホスト変更時に更新 |
 | `/tasks/<env>/app/tenant-default-id` | String | デフォルト tenant ID | ECS Task Role（tasks-webapi）| テナント構成変更時に手動更新 |
+| `/tasks/<env>/db/keycloak-spi-read-username` | String | Keycloak SPI federation 用 read-only DB ユーザー名（ADR-0006、既定 `keycloak_spi_read`）| Keycloak ECS Task Role（platform stack 管理）| DB ユーザー再作成時に手動更新 |
+| `/tasks/<env>/db/keycloak-spi-read-password` | SecureString | 同上ユーザーのパスワード（SPI が app `users` を read federation する接続）| Keycloak ECS Task Role（platform stack 管理）| 手動（DB ユーザーと連動、四半期目安） |
+| `/tasks/<env>/db/spi-jdbc-url` | String | SPI federation の JDBC URL（tasks RDS エンドポイントから組み立て、KC task-def の `SPI_DB_JDBC_URL` 注入元）| Keycloak ECS Task Role（platform stack 管理）| RDS 再作成時に `terraform apply` |
 
 ### dev 環境の具体値
 
@@ -60,6 +63,9 @@
 | `/tasks/dev/keycloak/smtp-password` | 初回 apply 後に AWS SSM コンソールで設定 |
 | `/tasks/dev/app/jwt-issuer` | `https://auth-dev.dgz48.xyz/realms/tasks` |
 | `/tasks/dev/app/tenant-default-id` | `1` |
+| `/tasks/dev/db/keycloak-spi-read-username` | `keycloak_spi_read`（既定値、terraform 管理）|
+| `/tasks/dev/db/keycloak-spi-read-password` | DB ユーザー作成時に SSM コンソール/CLI で実値設定（EICE 経由で作成する MySQL ユーザーと一致させる）|
+| `/tasks/dev/db/spi-jdbc-url` | `jdbc:mysql://<rds-endpoint>:3306/tasks?...`（terraform が RDS エンドポイントから自動設定）|
 
 ---
 
@@ -223,6 +229,9 @@ aws ssm get-parameter \
 | `keycloak/smtp-password` | 手動（IAM Access Key 連動） | IAM Access Key ローテーション時に SES SMTP パスワードを再生成・更新 |
 | `app/jwt-issuer` | Terraform 管理（String） | Keycloak ホスト・Realm 変更時に `terraform apply` |
 | `app/tenant-default-id` | Terraform 管理（String） | テナント構成変更時に `terraform apply` |
+| `db/keycloak-spi-read-username` | Terraform 管理（String、既定 `keycloak_spi_read`） | DB ユーザー再作成時 |
+| `db/keycloak-spi-read-password` | 手動（DB ユーザー連動） | 四半期ごと、または DB ユーザー再作成時 |
+| `db/spi-jdbc-url` | Terraform 管理（String） | RDS 再作成時に `terraform apply` |
 
 > AWS Secrets Manager の自動ローテーションは **不使用**（確定前提 #9: コスト面で Parameter Store SecureString を採用）。
 
@@ -232,8 +241,6 @@ aws ssm get-parameter \
 
 以下は本 Issue のスコープ外。Sprint 1 以降で追加する際に本 doc に追記する。
 
-| パラメータパス（予定） | 型 | 用途 | 追加タイミング |
-|---|---|---|---|
-| `/tasks/<env>/db/keycloak-spi-read-password` | SecureString | Keycloak SPI federation 用 read-only DB user（`infrastructure-plan.md` §3.6） | S1Infra-1（RDS 構築時） |
+（現時点で予定パラメータなし。SPI federation 用 `db/keycloak-spi-read-*` は §2 に実装済みとして掲載。ADR-0006 / #862。）
 
 > `db/password`（RDS master）は S1Infra-1 で IAM 認証移行後、apps からは参照されなくなるが DBA 業務用として保持する。
