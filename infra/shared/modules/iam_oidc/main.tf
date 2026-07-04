@@ -108,11 +108,18 @@ data "aws_iam_policy_document" "platform_plan" {
     resources = ["*"]
   }
 
-  # SES read (ses: domain identity / DKIM / Config Set)
+  # SES read (ses: domain identity / DKIM / Config Set / receipt rule)
   statement {
     sid       = "SesRead"
     actions   = ["ses:Get*", "ses:List*", "ses:Describe*"]
     resources = ["*"]
+  }
+
+  # S3 read (e2e-mail バケットの plan 中 refresh。規約 R2: 対象 bucket ARN に限定。ADR-0041 / #843)
+  statement {
+    sid       = "E2eMailS3Read"
+    actions   = ["s3:Get*", "s3:List*"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
   }
 
   # Route53 read (shared public zone records / cert validation)
@@ -493,10 +500,45 @@ data "aws_iam_policy_document" "platform_apply" {
       "ses:PutConfigurationSetReputationOptions",
       "ses:PutConfigurationSetSendingOptions",
       "ses:PutConfigurationSetTrackingOptions",
+      # SES 受信(ADR-0041 / #843): receipt rule set / rule(classic ses API、resource-level 非対応)
+      "ses:CreateReceiptRuleSet",
+      "ses:DeleteReceiptRuleSet",
+      "ses:CreateReceiptRule",
+      "ses:DeleteReceiptRule",
+      "ses:UpdateReceiptRule",
+      "ses:ReorderReceiptRuleSet",
+      "ses:SetActiveReceiptRuleSet",
       "ses:TagResource",
       "ses:UntagResource",
     ]
     resources = ["*"]
+  }
+
+  # S3 write (e2e-mail: 受信メール保存バケット / policy / PAB / SSE / versioning / lifecycle)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: scoped to platform-<env>-e2e-mail bucket ARN(ADR-0041 / #843)
+  statement {
+    sid = "E2eMailS3Write"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:PutBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:PutBucketTagging",
+      "s3:DeleteBucketTagging",
+      "s3:PutEncryptionConfiguration",
+      "s3:PutBucketVersioning",
+      "s3:PutLifecycleConfiguration",
+    ]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
+  }
+
+  # S3 read (e2e-mail バケットの apply 中 refresh。規約 R2: 対象 bucket ARN に限定)
+  statement {
+    sid       = "E2eMailS3Read"
+    actions   = ["s3:Get*", "s3:List*"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
   }
 
   # Route53 write (shared public zone records / cert validation)
