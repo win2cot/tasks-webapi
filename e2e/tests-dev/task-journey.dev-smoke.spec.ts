@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { forceDeleteTasksByTitle } from './support/api';
 import { DEV_MEMBER, devLogin } from './support/dev-auth';
 
 /**
@@ -14,6 +15,22 @@ test.describe('dev-smoke: task journey', { tag: '@dev-smoke' }, () => {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date());
   }
 
+  // 作成〜削除の途中で失敗しても共有テナントにゴミを残さないよう、作成したタスクを afterEach で
+  // 強制削除する(ADR-0041 決定5)。正常に UI 削除できた場合は createdTitle を消して二重削除を避ける。
+  let createdTitle: string | undefined;
+
+  test.afterEach(async ({ request }) => {
+    if (createdTitle) {
+      await forceDeleteTasksByTitle(
+        request,
+        DEV_MEMBER.username,
+        DEV_MEMBER.password,
+        createdTitle,
+      );
+      createdTitle = undefined;
+    }
+  });
+
   test('タスクを作成・ステータス変更・削除できる', async ({ page }) => {
     await devLogin(page, DEV_MEMBER.username, DEV_MEMBER.password);
 
@@ -21,6 +38,7 @@ test.describe('dev-smoke: task journey', { tag: '@dev-smoke' }, () => {
     await expect(page.locator('#task-panel')).toBeVisible();
 
     const title = `dev-smoke ${Date.now()}`;
+    createdTitle = title; // 失敗時 afterEach が掃除できるよう先に記録
 
     // --- 作成(POST /api/tasks, @Valid 経路)---
     await page.click('#btn-new-task');
@@ -47,5 +65,6 @@ test.describe('dev-smoke: task journey', { tag: '@dev-smoke' }, () => {
     await drawer.locator('button.btn-danger').click();
     await expect(drawer).toBeHidden();
     await expect(page.locator('app-task-row').filter({ hasText: title })).toHaveCount(0);
+    createdTitle = undefined; // 正常に UI 削除できたので afterEach の掃除は不要
   });
 });
