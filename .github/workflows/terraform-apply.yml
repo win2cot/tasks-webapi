@@ -264,7 +264,9 @@ jobs:
 
       - name: terraform apply (platform/dev)
         working-directory: infra/shared/environments/dev
-        run: terraform apply -no-color tfplan.binary
+        # tfplan.binary は artifact のルート(= repo ルート)に download されるため、
+        # スタック dir で apply する際は $GITHUB_WORKSPACE 絶対パスで参照する。
+        run: terraform apply -no-color "$GITHUB_WORKSPACE/tfplan.binary"
 
   # --------------------------------------------------------------------------
   # apply-tasks — platform apply 後に tasks tfplan を適用
@@ -332,4 +334,6 @@ jobs:
 
       - name: terraform apply (tasks/dev)
         working-directory: infra/environments/dev
-        run: terraform apply -no-color tfplan.binary
+        # tfplan.binary は artifact のルート(= repo ルート)に download されるため、
+        # スタック dir で apply する際は $GITHUB_WORKSPACE 絶対パスで参照する。
+        run: terraform apply -no-color "$GITHUB_WORKSPACE/tfplan.binary"
