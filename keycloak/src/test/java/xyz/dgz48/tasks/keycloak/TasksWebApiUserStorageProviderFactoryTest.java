@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.ServiceLoader;
 import org.junit.jupiter.api.Test;
 import org.keycloak.component.ComponentModel;
@@ -57,7 +58,32 @@ class TasksWebApiUserStorageProviderFactoryTest {
     KeycloakSession session = mock(KeycloakSession.class);
     ComponentModel model = mock(ComponentModel.class);
     when(model.get(TasksWebApiUserStorageProviderFactory.CONFIG_JDBC_URL)).thenReturn("  ");
-    assertThrows(ModelException.class, () -> factory.create(session, model));
+    // config も env も未設定 → 例外(env は常に null を返すダミー)。
+    assertThrows(ModelException.class, () -> factory.create(session, model, envKey -> null));
+  }
+
+  @Test
+  void create_buildsProvider_fromEnvFallback_whenConfigBlank() {
+    var factory = new TasksWebApiUserStorageProviderFactory();
+    KeycloakSession session = mock(KeycloakSession.class);
+    ComponentModel model = mock(ComponentModel.class);
+    // コンポーネント config は空(未設定)。realm-export で provider を有効化しただけの状態を模す。
+    when(model.get(TasksWebApiUserStorageProviderFactory.CONFIG_JDBC_URL)).thenReturn("");
+    when(model.get(TasksWebApiUserStorageProviderFactory.CONFIG_DB_USERNAME)).thenReturn(null);
+    when(model.get(TasksWebApiUserStorageProviderFactory.CONFIG_DB_PASSWORD)).thenReturn("  ");
+    // 接続情報は環境変数から解決される(env キー名の typo 回帰も検知する)。
+    var env =
+        Map.of(
+            TasksWebApiUserStorageProviderFactory.ENV_JDBC_URL,
+            "jdbc:mysql://mysql:3306/tasks",
+            TasksWebApiUserStorageProviderFactory.ENV_DB_USERNAME,
+            "tasks_webapi",
+            TasksWebApiUserStorageProviderFactory.ENV_DB_PASSWORD,
+            "tasks_webapi");
+    // JDBC 接続は遅延生成のため create 自体は DB へ接続しない。
+    var provider = factory.create(session, model, env::get);
+    assertNotNull(provider);
+    provider.close();
   }
 
   @Test

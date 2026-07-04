@@ -23,6 +23,8 @@ services:
       context: .
       dockerfile: keycloak/Dockerfile
     # Override production CMD for local development: use start-dev (H2 embedded) with realm import.
+    # KC 自身のストアは H2 のまま。User Storage SPI(ADR-0006)は下記 SPI_DB_* で compose の MySQL
+    # (app の users テーブル)へ別途 JDBC 接続して federation する。
     command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
@@ -31,11 +33,18 @@ services:
       # matching what the browser sees. Without this, start-dev derives the URL from the incoming
       # Host header, which would differ between browser and webapi backchannel calls.
       KC_HOSTNAME: "http://localhost:18080"
+      # User Storage SPI の接続先(realm-export のコンポーネントは有効化のみ、接続情報は env で与える)。
+      SPI_DB_JDBC_URL: "jdbc:mysql://mysql:3306/tasks?allowPublicKeyRetrieval=true&useSSL=false"
+      SPI_DB_USERNAME: tasks_webapi
+      SPI_DB_PASSWORD: tasks_webapi
     ports:
       - "18080:8080"
     volumes:
       - ./keycloak/realm-export:/opt/keycloak/data/import
-    # start-dev は H2 embedded を使用するため mysql への depends_on は不要
+    # SPI が起動直後から MySQL(app users)を参照できるよう mysql の healthy を待つ。
+    depends_on:
+      mysql:
+        condition: service_healthy
     healthcheck:
       # curl は Keycloak 26 の slim イメージに含まれないため bash /dev/tcp で代用する。
       # /realms/tasks が 200 を返す = サーバ起動 + realm import 完了の両方を同時に確認できる。

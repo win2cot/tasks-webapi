@@ -13,15 +13,16 @@ COPY keycloak/ keycloak/
 
 RUN printf 'rootProject.name = "tasks-monorepo"\ninclude("keycloak")\n' > settings.gradle.kts && \
     chmod +x ./gradlew && \
-    ./gradlew :keycloak:jar --no-daemon -x test
+    ./gradlew :keycloak:stageProviders --no-daemon -x test
 
 # ─── Stage 2: Keycloak optimized build (kc.sh build) ───────────────────────
-# Installs the SPI JAR into Keycloak's providers/ directory and runs kc.sh build
-# to produce an optimized Quarkus augmentation for MySQL. No DB connection is
+# Installs the SPI JAR + MySQL JDBC driver into Keycloak's providers/ directory and runs
+# kc.sh build to produce an optimized Quarkus augmentation for MySQL. No DB connection is
 # needed at this stage — kc.sh build only sets compile-time configuration.
+# ドライバは SPI(User Storage federation)が app users テーブルへ DriverManager 接続するのに必要(ADR-0006)。
 FROM quay.io/keycloak/keycloak:26.6.4 AS kc-builder
 
-COPY --from=spi-builder /workspace/keycloak/build/libs/*.jar /opt/keycloak/providers/
+COPY --from=spi-builder /workspace/keycloak/build/providers/*.jar /opt/keycloak/providers/
 
 ENV KC_DB=mysql
 ENV KC_HEALTH_ENABLED=true
