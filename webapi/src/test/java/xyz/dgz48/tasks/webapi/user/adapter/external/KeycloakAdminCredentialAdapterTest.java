@@ -66,7 +66,7 @@ class KeycloakAdminCredentialAdapterTest {
         .andExpect(header("Authorization", "Bearer tok-123"))
         .andRespond(withSuccess());
 
-    adapter.provisionCredential("a@example.com", "raw-password");
+    adapter.provisionCredential("a@example.com", "既存 太郎", "raw-password");
 
     server.verify();
   }
@@ -81,13 +81,16 @@ class KeycloakAdminCredentialAdapterTest {
         .expect(requestTo(Matchers.startsWith(BASE + "/admin/realms/tasks/users?")))
         .andExpect(method(HttpMethod.GET))
         .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
-    // ② 作成: username=email, enabled=true。201 + Location ヘッダで id を返す
+    // ② 作成: username=email, enabled=true, firstName/lastName=displayName(realm profile 必須項目)。
+    //   201 + Location ヘッダで id を返す
     server
         .expect(requestTo(BASE + "/admin/realms/tasks/users"))
         .andExpect(method(HttpMethod.POST))
         .andExpect(header("Authorization", "Bearer tok-123"))
         .andExpect(jsonPath("$.username").value("new@example.com"))
         .andExpect(jsonPath("$.email").value("new@example.com"))
+        .andExpect(jsonPath("$.firstName").value("新規 太郎"))
+        .andExpect(jsonPath("$.lastName").value("新規 太郎"))
         .andExpect(jsonPath("$.enabled").value(true))
         .andRespond(withCreatedEntity(URI.create(BASE + "/admin/realms/tasks/users/99")));
     // ③ reset-password → ④ emailVerified を新規 id に対して実施
@@ -100,7 +103,7 @@ class KeycloakAdminCredentialAdapterTest {
         .andExpect(method(HttpMethod.PUT))
         .andRespond(withSuccess());
 
-    adapter.provisionCredential("new@example.com", "raw-password");
+    adapter.provisionCredential("new@example.com", "新規 太郎", "raw-password");
 
     server.verify();
   }
@@ -134,7 +137,7 @@ class KeycloakAdminCredentialAdapterTest {
         .andExpect(method(HttpMethod.PUT))
         .andRespond(withSuccess());
 
-    adapter.provisionCredential("race@example.com", "raw-password");
+    adapter.provisionCredential("race@example.com", "競合 太郎", "raw-password");
 
     server.verify();
   }
@@ -158,7 +161,7 @@ class KeycloakAdminCredentialAdapterTest {
         .andExpect(method(HttpMethod.GET))
         .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
 
-    assertThatThrownBy(() -> adapter.provisionCredential("missing@example.com", "pw"))
+    assertThatThrownBy(() -> adapter.provisionCredential("missing@example.com", "欠番 太郎", "pw"))
         .isInstanceOf(CredentialProvisioningException.class);
   }
 
@@ -168,7 +171,7 @@ class KeycloakAdminCredentialAdapterTest {
         .expect(requestTo(BASE + "/realms/tasks/protocol/openid-connect/token"))
         .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-    assertThatThrownBy(() -> adapter.provisionCredential("a@example.com", "pw"))
+    assertThatThrownBy(() -> adapter.provisionCredential("a@example.com", "太郎", "pw"))
         .isInstanceOf(CredentialProvisioningException.class);
   }
 }
