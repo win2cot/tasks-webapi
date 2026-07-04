@@ -1299,14 +1299,16 @@ resource "aws_iam_role_policy" "release_build" {
 }
 
 # ---------------------------------------------------------------------------
-# <env>-smoke  (read-only; post-deploy dev-smoke E2E — ADR-0041 / #843)
-# Trust: environment:<env>-smoke。dev-smoke.yml が SES 受信メールを S3 から取得して
-# signup フルフローを検証するための最小権限(e2e-mail バケットの inbound/ プレフィックス読取のみ)。
-# Keycloak/SPA へは公開 HTTPS で到達するため AWS 権限は S3 読取だけで足りる。
+# platform-<env>-smoke  (read-only; post-deploy dev-smoke E2E — ADR-0041 / #843)
+# Trust: environment:<env>-smoke(GitHub Environment 名は "<env>-smoke")。dev-smoke.yml が
+# SES 受信メールを S3 から取得して signup フルフローを検証するための最小権限(e2e-mail バケットの
+# inbound/ プレフィックス読取のみ)。Keycloak/SPA へは公開 HTTPS で到達するため AWS 権限は S3 読取だけで足りる。
+# ロール名は platform-* とする: platform_apply の IAM 管理スコープ(role/platform-* + role/tasks-*)で
+# 作成でき、かつ platform 所有の e2e-mail バケットを読むため。GitHub Environment 名(<env>-smoke)とは別。
 # ---------------------------------------------------------------------------
 
 resource "aws_iam_role" "dev_smoke" {
-  name               = "${var.env}-smoke"
+  name               = "platform-${var.env}-smoke"
   assume_role_policy = data.aws_iam_policy_document.trust["dev_smoke"].json
 }
 
@@ -1332,7 +1334,7 @@ data "aws_iam_policy_document" "dev_smoke" {
 }
 
 resource "aws_iam_role_policy" "dev_smoke" {
-  name   = "${var.env}-smoke-policy"
+  name   = "platform-${var.env}-smoke-policy"
   role   = aws_iam_role.dev_smoke.id
   policy = data.aws_iam_policy_document.dev_smoke.json
 }
