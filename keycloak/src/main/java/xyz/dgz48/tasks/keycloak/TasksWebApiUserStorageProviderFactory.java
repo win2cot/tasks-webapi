@@ -1,6 +1,8 @@
 package xyz.dgz48.tasks.keycloak;
 
 import java.util.List;
+import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 import org.keycloak.Config;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
@@ -41,19 +43,29 @@ public class TasksWebApiUserStorageProviderFactory
 
   @Override
   public TasksWebApiUserStorageProvider create(KeycloakSession session, ComponentModel model) {
+    return create(session, model, System::getenv);
+  }
+
+  /** env 解決を注入可能にした {@link #create} 本体(env フォールバックのテスト用に package-private)。 */
+  TasksWebApiUserStorageProvider create(
+      KeycloakSession session, ComponentModel model, Function<String, @Nullable String> env) {
     UserRepository repository =
         new UserRepository(
-            resolveConfig(model, CONFIG_JDBC_URL, ENV_JDBC_URL),
-            resolveConfig(model, CONFIG_DB_USERNAME, ENV_DB_USERNAME),
-            resolveConfig(model, CONFIG_DB_PASSWORD, ENV_DB_PASSWORD));
+            resolveConfig(model, CONFIG_JDBC_URL, ENV_JDBC_URL, env),
+            resolveConfig(model, CONFIG_DB_USERNAME, ENV_DB_USERNAME, env),
+            resolveConfig(model, CONFIG_DB_PASSWORD, ENV_DB_PASSWORD, env));
     return new TasksWebApiUserStorageProvider(session, model, repository);
   }
 
-  /** コンポーネント config を優先し、未設定(null/空)なら環境変数へフォールバックして解決する。両方とも未設定なら {@link ModelException} を投げる。 */
-  private static String resolveConfig(ComponentModel model, String configKey, String envKey) {
+  /** コンポーネント config を優先し、未設定(null/空)なら env へフォールバックして解決する。両方とも未設定なら {@link ModelException} を投げる。 */
+  private static String resolveConfig(
+      ComponentModel model,
+      String configKey,
+      String envKey,
+      Function<String, @Nullable String> env) {
     String value = model.get(configKey);
     if (value == null || value.isBlank()) {
-      value = System.getenv(envKey);
+      value = env.apply(envKey);
     }
     if (value == null || value.isBlank()) {
       throw new ModelException(
