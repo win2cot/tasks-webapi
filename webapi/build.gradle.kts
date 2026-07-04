@@ -229,6 +229,12 @@ tasks.named<JavaExec>("processAot") {
     // at AOT time. GraalVM bakes the condition result in; local JVM tests are unaffected because
     // they never run the native image.
     environment("RDS_IAM_AUTH_ENABLED", "true")
+    // Same reason for the SES email sender: NotificationConfig の @ConditionalOnProperty
+    // (notification.email.provider=ses) は AOT 時に評価され native image に焼き込まれる。既定 log の
+    // ままだと SesEmailSender が native から除外され、実行時 env で ses を指定しても LoggingEmailSender
+    // フォールバックのままになる(dev post-deploy E2E / ADR-0041 で検出)。deploy 先(native)は常に SES
+    // 実送信のため AOT で ses を強制する。FROM 等は実行時 env(NOTIFICATION_EMAIL_FROM)で供給。
+    environment("NOTIFICATION_EMAIL_PROVIDER", "ses")
 }
 
 tasks.named<JavaExec>("processTestAot") {
