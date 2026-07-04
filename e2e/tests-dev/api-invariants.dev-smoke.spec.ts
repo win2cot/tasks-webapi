@@ -13,11 +13,15 @@ test.describe('dev-smoke: API invariants (NIST)', { tag: '@dev-smoke' }, () => {
     expect(res.status()).toBe(401);
   });
 
-  test('非メンバーのテナント指定は拒否される(403/404、存在を漏らさない)', async ({ request }) => {
+  test('非メンバーのテナント指定は 403(TenantContextFilter 境界、認可マトリクス §4.1)', async ({
+    request,
+  }) => {
     const token = await getAccessToken(request, DEV_MEMBER.username, DEV_MEMBER.password);
     const res = await request.get(`${API_BASE}/api/tasks`, {
       headers: { Authorization: `Bearer ${token}`, 'X-Tenant-Id': '999999' },
     });
-    expect([403, 404]).toContain(res.status());
+    // 非所属テナント指定は TenantContextFilter が 403 で弾く(SSOT: 認可マトリクス §4.1/§5.1)。
+    // 404 は task 単位 Hibernate Filter 到達後の別シナリオであり、ここで許容すると境界層の regression を見逃す。
+    expect(res.status()).toBe(403);
   });
 });
