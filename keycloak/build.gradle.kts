@@ -75,6 +75,17 @@ dependencies {
     errorprone("com.uber.nullaway:nullaway:0.13.7")
 }
 
+// Keycloak イメージの providers/ へ配備する JAR(SPI 本体 + MySQL JDBC ドライバ)を build/providers/ に集める。
+// Dockerfile の spi-builder ステージがこのタスクを実行し、build/providers/ を /opt/keycloak/providers/ へ COPY する。
+// SPI は User Storage federation で app の users テーブルへ DriverManager で JDBC 接続するため、driver を
+// SPI の provider classloader から解決可能にする必要がある(Keycloak 内蔵ストア用の MySQL driver は別 classloader
+// のため SPI からは見えない)。ADR-0006 / #862。
+val stageProviders by tasks.registering(Copy::class) {
+    from(tasks.named("jar"))
+    from(mysqlDriver)
+    into(layout.buildDirectory.dir("providers"))
+}
+
 tasks.named<JavaCompile>("compileJava") {
     options.errorprone {
         error("NullAway")

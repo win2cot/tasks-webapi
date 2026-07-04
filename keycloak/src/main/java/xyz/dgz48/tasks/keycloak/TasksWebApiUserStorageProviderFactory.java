@@ -27,6 +27,14 @@ public class TasksWebApiUserStorageProviderFactory
   static final String CONFIG_DB_USERNAME = "dbUsername";
   static final String CONFIG_DB_PASSWORD = "dbPassword";
 
+  // コンポーネント config が空の場合のフォールバック環境変数。realm-export ではコンポーネントで provider を
+  // 有効化するだけとし、接続情報は環境ごと(compose / dev / stg / prd)に下記の環境変数で与える。realm JSON は
+  // import 時に ${ENV} 置換されない(UserProfile の ${username} 等テーマキーと衝突するため有効化できない)ので、
+  // 環境差のある接続情報はここで解決する。IT は config を明示設定するため従来通り動作する。ADR-0006 / #862。
+  static final String ENV_JDBC_URL = "SPI_DB_JDBC_URL";
+  static final String ENV_DB_USERNAME = "SPI_DB_USERNAME";
+  static final String ENV_DB_PASSWORD = "SPI_DB_PASSWORD";
+
   // Admin Console は getHelpText / 各 config プロパティの label・helpText を i18n メッセージキーとして解決する。
   // 対応する翻訳はカスタム admin テーマ tasks-admin の message bundle(messages_ja/en.properties、#729)で定義する。
   static final String MSG_PREFIX = PROVIDER_ID + ".";
@@ -35,16 +43,28 @@ public class TasksWebApiUserStorageProviderFactory
   public TasksWebApiUserStorageProvider create(KeycloakSession session, ComponentModel model) {
     UserRepository repository =
         new UserRepository(
-            requireConfig(model, CONFIG_JDBC_URL),
-            requireConfig(model, CONFIG_DB_USERNAME),
-            requireConfig(model, CONFIG_DB_PASSWORD));
+            resolveConfig(model, CONFIG_JDBC_URL, ENV_JDBC_URL),
+            resolveConfig(model, CONFIG_DB_USERNAME, ENV_DB_USERNAME),
+            resolveConfig(model, CONFIG_DB_PASSWORD, ENV_DB_PASSWORD));
     return new TasksWebApiUserStorageProvider(session, model, repository);
   }
 
-  private static String requireConfig(ComponentModel model, String key) {
-    String value = model.get(key);
+  /**
+   * コンポーネント config を優先し、未設定(null/空)なら環境変数へフォールバックして解決する。両方とも未設定なら
+   * {@link ModelException} を投げる。
+   */
+  private static String resolveConfig(ComponentModel model, String configKey, String envKey) {
+    String value = model.get(configKey);
     if (value == null || value.isBlank()) {
-      throw new ModelException("tasks-webapi user store: required config '" + key + "' is not set");
+      value = System.getenv(envKey);
+    }
+    if (value == null || value.isBlank()) {
+      throw new ModelException(
+          "tasks-webapi user store: config '"
+              + configKey
+              + "' (or env "
+              + envKey
+              + ") is not set");
     }
     return value;
   }
