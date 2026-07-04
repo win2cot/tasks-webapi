@@ -1,6 +1,7 @@
 package xyz.dgz48.tasks.webapi.user.adapter.external;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.net.URI;
 import org.jspecify.annotations.Nullable;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -23,6 +24,12 @@ import xyz.dgz48.tasks.webapi.user.usecase.CredentialProvisioningPort;
  * パスワード設定(reset-password) → ② {@code emailVerified=true} を設定する(ADR-0040 §3.4)。credential 自体は
  * Keycloak が SoT(ADR-0006 §3.3)。Spring {@link RestClient} を用い、native image(ADR-0008)で重い
  * JAX-RS/RESTEasy 依存(keycloak-admin-client)を避ける。
+ *
+ * <p>email 検索がヒットしない場合はローカル Keycloak ユーザーを新規作成する(ADR-0040 §3.1「必要なら addUser correlation」)。User
+ * Storage SPI federation(ADR-0006)が有効な環境では検索が app {@code users} を federated user
+ * として返すため作成は行われない。federation 未活性の環境では作成したローカルユーザーが、初回ログイン時に app {@code users} の {@code pending} 行と
+ * correlation される(ADR-0040 §3.2 / {@code OidcSubCorrelationService})。いずれの構成でも provisioning が成立するよう
+ * find-or-create とする。
  */
 public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPort {
 
@@ -38,13 +45,22 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
   public void provisionCredential(String email, String rawPassword) {
     try {
       String token = fetchAdminToken();
-      String userId = findUserIdByEmail(email, token);
+      String userId = resolveOrCreateUserId(email, token);
       resetPassword(userId, rawPassword, token);
       markEmailVerified(userId, token);
     } catch (RestClientException e) {
       // PII / パスワードは含めない(規約 §7)
       throw new CredentialProvisioningException("Keycloak Admin API 呼び出しに失敗しました", e);
     }
+  }
+
+  /**
+   * email でユーザーを解決する。既存(federated 含む)ならその id を返し、無ければローカルユーザーを新規作成して id を返す。SPI federation
+   * 有効時は検索がヒットするため作成は行わない。
+   */
+  private String resolveOrCreateUserId(String email, String token) {
+    String existing = findUserIdByEmail(email, token);
+    return existing != null ? existing : createUser(email, token);
   }
 
   private String fetchAdminToken() {
@@ -66,7 +82,7 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
     return resp.accessToken();
   }
 
-  private String findUserIdByEmail(String email, String token) {
+  private @Nullable String findUserIdByEmail(String email, String token) {
     KeycloakUserRef[] users =
         restClient
             .get()
@@ -81,9 +97,48 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
             .retrieve()
             .body(KeycloakUserRef[].class);
     if (users == null || users.length == 0 || users[0].id() == null) {
-      throw new CredentialProvisioningException("Keycloak に対象ユーザーが見つかりません");
+      return null;
     }
     return users[0].id();
+  }
+
+  /**
+   * ローカル Keycloak ユーザーを作成し id を返す({@code username=email}、{@code enabled=true}、{@code emailVerified}
+   * は後続の {@link #markEmailVerified} で設定)。作成レスポンスの {@code Location} ヘッダから id を取り出す。並行 complete による
+   * {@code 409}(既存)は無視し、email 再検索でフォールバックする。
+   */
+  private String createUser(String email, String token) {
+    URI location =
+        restClient
+            .post()
+            .uri("/admin/realms/{realm}/users", props.realm())
+            .header(HttpHeaders.AUTHORIZATION, bearer(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new UserCreateRequest(email, email, true))
+            .retrieve()
+            // 競合(既に存在)は例外にせず、下の再検索でフォールバックする
+            .onStatus(status -> status.value() == 409, (req, res) -> {})
+            .toBodilessEntity()
+            .getHeaders()
+            .getLocation();
+    if (location != null) {
+      String userId = extractUserId(location);
+      if (userId != null && !userId.isBlank()) {
+        return userId;
+      }
+    }
+    String refetched = findUserIdByEmail(email, token);
+    if (refetched == null) {
+      throw new CredentialProvisioningException("Keycloak ユーザーの作成に失敗しました");
+    }
+    return refetched;
+  }
+
+  /** {@code .../users/{id}} 形式の Location パスから末尾の user id を取り出す。 */
+  private static @Nullable String extractUserId(URI location) {
+    String path = location.getPath();
+    int idx = path.lastIndexOf('/');
+    return idx >= 0 && idx < path.length() - 1 ? path.substring(idx + 1) : null;
   }
 
   private void resetPassword(String userId, String rawPassword, String token) {
@@ -121,6 +176,9 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
   /** reset-password の credential 表現。 */
   public record PasswordCredential(String type, String value, boolean temporary) {}
 
+  /** ユーザー新規作成リクエスト(username=email, enabled=true)。emailVerified は後続で設定。 */
+  public record UserCreateRequest(String username, String email, boolean enabled) {}
+
   /** ユーザー更新(emailVerified のみ)。 */
   public record EmailVerifiedUpdate(boolean emailVerified) {}
 
@@ -137,6 +195,7 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
             TokenResponse.class,
             KeycloakUserRef.class,
             PasswordCredential.class,
+            UserCreateRequest.class,
             EmailVerifiedUpdate.class
           }) {
         hints.reflection().registerType(dto, MemberCategory.values());

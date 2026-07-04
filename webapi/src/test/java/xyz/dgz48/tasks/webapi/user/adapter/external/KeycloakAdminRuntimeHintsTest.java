@@ -25,6 +25,8 @@ class KeycloakAdminRuntimeHintsTest {
         .accepts(hints);
     assertThat(reflection().onType(KeycloakAdminCredentialAdapter.PasswordCredential.class))
         .accepts(hints);
+    assertThat(reflection().onType(KeycloakAdminCredentialAdapter.UserCreateRequest.class))
+        .accepts(hints);
     assertThat(reflection().onType(KeycloakAdminCredentialAdapter.EmailVerifiedUpdate.class))
         .accepts(hints);
   }

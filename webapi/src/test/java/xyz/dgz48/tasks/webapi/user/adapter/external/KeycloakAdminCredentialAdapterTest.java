@@ -2,11 +2,14 @@ package xyz.dgz48.tasks.webapi.user.adapter.external;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withCreatedEntity;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import java.net.URI;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,12 +70,56 @@ class KeycloakAdminCredentialAdapterTest {
   }
 
   @Test
-  void throwsWhenUserNotFound() {
+  void createsUserWhenNotFoundThenProvisions() {
+    server
+        .expect(requestTo(BASE + "/realms/tasks/protocol/openid-connect/token"))
+        .andRespond(withSuccess("{\"access_token\":\"tok-123\"}", MediaType.APPLICATION_JSON));
+    // ① email 検索: ヒットなし → 新規作成へ
+    server
+        .expect(requestTo(Matchers.startsWith(BASE + "/admin/realms/tasks/users?")))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+    // ② 作成: username=email, enabled=true。201 + Location ヘッダで id を返す
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users"))
+        .andExpect(method(HttpMethod.POST))
+        .andExpect(header("Authorization", "Bearer tok-123"))
+        .andExpect(jsonPath("$.username").value("new@example.com"))
+        .andExpect(jsonPath("$.email").value("new@example.com"))
+        .andExpect(jsonPath("$.enabled").value(true))
+        .andRespond(withCreatedEntity(URI.create(BASE + "/admin/realms/tasks/users/99")));
+    // ③ reset-password → ④ emailVerified を新規 id に対して実施
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users/99/reset-password"))
+        .andExpect(method(HttpMethod.PUT))
+        .andRespond(withSuccess());
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users/99"))
+        .andExpect(method(HttpMethod.PUT))
+        .andRespond(withSuccess());
+
+    adapter.provisionCredential("new@example.com", "raw-password");
+
+    server.verify();
+  }
+
+  @Test
+  void throwsWhenUserCreationYieldsNoId() {
     server
         .expect(requestTo(BASE + "/realms/tasks/protocol/openid-connect/token"))
         .andRespond(withSuccess("{\"access_token\":\"tok-123\"}", MediaType.APPLICATION_JSON));
     server
         .expect(requestTo(Matchers.startsWith(BASE + "/admin/realms/tasks/users?")))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+    // 作成が Location を返さず(異常)、再検索も空 → プロビジョニング失敗
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users"))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(withSuccess());
+    server
+        .expect(requestTo(Matchers.startsWith(BASE + "/admin/realms/tasks/users?")))
+        .andExpect(method(HttpMethod.GET))
         .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
 
     assertThatThrownBy(() -> adapter.provisionCredential("missing@example.com", "pw"))
