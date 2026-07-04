@@ -7,6 +7,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withCreatedEntity;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.net.URI;
@@ -14,6 +15,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -99,6 +101,40 @@ class KeycloakAdminCredentialAdapterTest {
         .andRespond(withSuccess());
 
     adapter.provisionCredential("new@example.com", "raw-password");
+
+    server.verify();
+  }
+
+  @Test
+  void recoversWhenCreateConflicts409() {
+    server
+        .expect(requestTo(BASE + "/realms/tasks/protocol/openid-connect/token"))
+        .andRespond(withSuccess("{\"access_token\":\"tok-123\"}", MediaType.APPLICATION_JSON));
+    // ① 初回検索: ヒットなし(競合相手がまだ作成していない)→ 作成へ
+    server
+        .expect(requestTo(Matchers.startsWith(BASE + "/admin/realms/tasks/users?")))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+    // ② 作成: 並行 complete が先に作成済 → 409(Location 無し)。例外化せず再検索へ
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users"))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(withStatus(HttpStatus.CONFLICT));
+    // ③ 再検索: 相手が作成したユーザーがヒット → その id で provisioning 継続
+    server
+        .expect(requestTo(Matchers.startsWith(BASE + "/admin/realms/tasks/users?")))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(withSuccess("[{\"id\":\"77\"}]", MediaType.APPLICATION_JSON));
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users/77/reset-password"))
+        .andExpect(method(HttpMethod.PUT))
+        .andRespond(withSuccess());
+    server
+        .expect(requestTo(BASE + "/admin/realms/tasks/users/77"))
+        .andExpect(method(HttpMethod.PUT))
+        .andRespond(withSuccess());
+
+    adapter.provisionCredential("race@example.com", "raw-password");
 
     server.verify();
   }
