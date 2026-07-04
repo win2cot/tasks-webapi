@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { devLogin } from './support/dev-auth';
+import { devLoginNewMember } from './support/dev-auth';
 import { deleteKeycloakUserByEmail } from './support/keycloak-admin';
 import { uniqueRecipient, waitForEmailTo } from './support/mail';
 
@@ -58,7 +58,10 @@ test.describe('dev-smoke: signup email (double opt-in)', { tag: '@dev-smoke' }, 
     await expect(page.locator('#notice')).toBeVisible();
 
     // --- 作成ユーザーでログイン到達(プロビジョニングされた資格が Keycloak/SPI で認証できる)---
-    await devLogin(page, recipient, PASSWORD);
-    await expect(page.locator('#content')).toBeVisible();
+    // 登録直後はテナント未所属(ADR-0040 §3.5)。dashboard ではなく認証済み SPA(`/`)の
+    // 「テナント作成」導線に着地することを確認する(= ログイン成功 + oidc_sub correlation 成立)。
+    await devLoginNewMember(page, recipient, PASSWORD);
+    await expect(page.locator('#content-logged-in')).toBeVisible();
+    await expect(page.locator('#link-create-tenant')).toBeVisible();
   });
 });

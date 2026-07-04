@@ -14,14 +14,32 @@ export const DEV_MEMBER = {
 
 const KEYCLOAK_REALM_URL = /\/realms\/tasks\//;
 
-/** SPA(`/`)→ Keycloak ログイン → dashboard までを通す。 */
-export async function devLogin(page: Page, username: string, password: string): Promise<void> {
+/** SPA(`/`)→ Keycloak ログインフォーム送信までを行う(遷移先の判定は呼び出し側)。 */
+async function submitKeycloakLogin(page: Page, username: string, password: string): Promise<void> {
   await page.goto('/');
   await page.waitForURL(KEYCLOAK_REALM_URL, { timeout: 30_000 });
   await page.fill('#username', username);
   await page.fill('#password', password);
   await page.click('#kc-login');
+}
+
+/** SPA(`/`)→ Keycloak ログイン → dashboard までを通す(テナント所属済みユーザー向け)。 */
+export async function devLogin(page: Page, username: string, password: string): Promise<void> {
+  await submitKeycloakLogin(page, username, password);
   await page.waitForURL(/\/dashboard\.html/, { timeout: 30_000 });
+}
+
+/**
+ * テナント未所属の新規会員のログイン到達を通す。dashboard へは遷移せず、認証済み SPA(`/`)へ戻るまでを待つ
+ * (ADR-0040 §3.5: 登録直後はテナント未所属で、`/` の「テナント作成」導線に着地する)。着地状態の検証は呼び出し側。
+ */
+export async function devLoginNewMember(
+  page: Page,
+  username: string,
+  password: string,
+): Promise<void> {
+  await submitKeycloakLogin(page, username, password);
+  await page.waitForURL((url) => !KEYCLOAK_REALM_URL.test(url.href), { timeout: 30_000 });
 }
 
 /** SPA からログアウトする。 */
