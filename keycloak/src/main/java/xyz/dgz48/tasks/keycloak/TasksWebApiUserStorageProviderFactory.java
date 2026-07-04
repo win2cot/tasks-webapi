@@ -69,11 +69,7 @@ public class TasksWebApiUserStorageProviderFactory
     }
     if (value == null || value.isBlank()) {
       throw new ModelException(
-          "tasks-webapi user store: config '"
-              + configKey
-              + "' (or env "
-              + envKey
-              + ") is not set");
+          "tasks-webapi user store: config '" + configKey + "' (or env " + envKey + ") is not set");
     }
     return value;
   }
