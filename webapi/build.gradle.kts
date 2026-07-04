@@ -235,6 +235,12 @@ tasks.named<JavaExec>("processAot") {
     // フォールバックのままになる(dev post-deploy E2E / ADR-0041 で検出)。deploy 先(native)は常に SES
     // 実送信のため AOT で ses を強制する。FROM 等は実行時 env(NOTIFICATION_EMAIL_FROM)で供給。
     environment("NOTIFICATION_EMAIL_PROVIDER", "ses")
+    // 同理由で会員登録の Keycloak 資格プロビジョニング(ADR-0040): keycloak.admin.enabled の
+    // @ConditionalOnProperty は AOT で評価される。既定 false のままだと KeycloakAdminCredentialAdapter が
+    // native から除外され LoggingCredentialProvisioningAdapter(実プロビジョニングなし)に固定される
+    // (dev post-deploy E2E / ADR-0041 で検出)。deploy 先は常に実プロビジョニングのため AOT で true を強制。
+    // server-url / client-secret 等は実行時 env(KEYCLOAK_ADMIN_*)で供給。
+    environment("KEYCLOAK_ADMIN_ENABLED", "true")
 }
 
 tasks.named<JavaExec>("processTestAot") {
