@@ -34,7 +34,7 @@ class RegisterMemberUseCaseTest {
     assertThat(id).isEqualTo(42L);
     InOrder ordered = inOrder(userRegistrationPort, credentialProvisioningPort);
     ordered.verify(userRegistrationPort).upsertPendingMember("a@example.com", "氏名", "シメイ", null);
-    ordered.verify(credentialProvisioningPort).provisionCredential("a@example.com", "pw");
+    ordered.verify(credentialProvisioningPort).provisionCredential("a@example.com", "氏名", "pw");
   }
 
   @Test
@@ -43,7 +43,7 @@ class RegisterMemberUseCaseTest {
     when(userRegistrationPort.upsertPendingMember(any(), any(), any(), any())).thenReturn(1L);
     doThrow(new CredentialProvisioningException("keycloak down"))
         .when(credentialProvisioningPort)
-        .provisionCredential(any(), any());
+        .provisionCredential(any(), any(), any());
 
     assertThatThrownBy(() -> useCase.register(cmd))
         .isInstanceOf(CredentialProvisioningException.class);
