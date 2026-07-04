@@ -56,7 +56,11 @@ public final class UserAdapter extends AbstractInMemoryUserAdapter {
     setEnabled(STATUS_ACTIVE.equals(row.status()));
     setEmailVerified(true);
     super.setEmail(row.email());
+    // app は表示名を単一の full_name で保持する。Keycloak の firstName/lastName は realm の user profile
+    // 必須項目であり、未設定だと初回ログインで「Update Account Information」に遮られ dashboard へ到達できない。
+    // first/last は本アプリでは vestigial(SoT は users.full_name)のため、両方に full_name を設定して必須制約を満たす。
     setSingleAttribute(FIRST_NAME, row.fullName());
+    setSingleAttribute(LAST_NAME, row.fullName());
     setSingleAttribute(FULL_NAME, row.fullName());
     setSingleAttribute(FULL_NAME_KANA, row.fullNameKana());
     if (row.departmentName() != null) {
