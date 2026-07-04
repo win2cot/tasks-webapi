@@ -120,7 +120,13 @@ resource "aws_iam_role_policy" "webapi_ssm" {
 }
 
 # webapi の SES 実送信(会員登録/招待/通知/リセットのメール、ADR-0040 / ADR-0041)。
-# 規約 R1: 書込み action は完全列挙。R2: 送信元 identity(mail.<base_domain>)の ARN に限定。
+# 規約 R1: 書込み action は完全列挙(ses:SendEmail のみ)。
+# R2: リソースは当アカウント・当リージョンの SES identity に限定(identity/*)。
+# NOTE: SES サンドボックスでは ses:SendEmail が「送信元」identity だけでなく
+#       「宛先」verified identity(dev では E2E 受信ドメイン e2e.dgz48.xyz)に対しても
+#       認可評価される。送信元 mail.dgz48.xyz 単体スコープでは宛先評価で 403 になるため、
+#       アカウント内 SES identity 全体(送信元 + サンドボックス検証済み宛先)に広げる。
+#       本番(サンドボックス解除後)は送信元 identity のみ評価されるため過剰権限は生じない。
 resource "aws_iam_role_policy" "webapi_ses" {
   name = "tasks-${var.env}-webapi-ses"
   role = aws_iam_role.webapi_task.id
@@ -132,7 +138,7 @@ resource "aws_iam_role_policy" "webapi_ses" {
         Sid      = "SesSendFromMailIdentity"
         Effect   = "Allow"
         Action   = "ses:SendEmail"
-        Resource = "arn:aws:ses:${var.region}:${data.aws_caller_identity.current.account_id}:identity/mail.dgz48.xyz"
+        Resource = "arn:aws:ses:${var.region}:${data.aws_caller_identity.current.account_id}:identity/*"
       }
     ]
   })
