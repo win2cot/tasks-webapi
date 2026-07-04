@@ -37,3 +37,8 @@ output "platform_deploy_role_arn" {
   description = "ARN of the platform-<env>-deploy IAM role (used by deploy.yml: deploy-keycloak)"
   value       = aws_iam_role.platform_deploy.arn
 }
+
+output "dev_smoke_role_arn" {
+  description = "ARN of the <env>-smoke IAM role (used by dev-smoke.yml: post-deploy dev-smoke E2E, S3 mail read)"
+  value       = aws_iam_role.dev_smoke.arn
+}
