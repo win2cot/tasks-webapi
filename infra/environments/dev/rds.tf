@@ -45,8 +45,9 @@ output "eice_id" {
 # read federation するための配線。
 #   - spi-jdbc-url: RDS エンドポイントから組み立てた JDBC URL を SSM 公開。KC タスク定義は
 #     valueFrom で ARN 参照し、ECS がコンテナ起動時に解決する(platform→tasks の apply 順に非依存)。
-#   - RDS SG に Keycloak(VPC 内)からの :3306 ingress を追加。cross-stack のため SG 参照不可 →
-#     KC egress(keycloak module、VPC CIDR)と対称に VPC CIDR で許可(規約 R2 例外、既存慣例踏襲)。
+#   - RDS SG への Keycloak(VPC 内)からの :3306 ingress は security_group module の
+#     rds_ingress_cidr_blocks(VPC CIDR)で許可する(security_group.tf)。RDS SG は他 rule も
+#     インライン管理のため、インライン ingress として追加する(aws_security_group_rule 混在を避ける)。
 #   - keycloak_spi_read DB ユーザー(パスワード認証・SELECT のみ)は master 権限が必要なため
 #     EICE トンネル経由で手動作成する(本ファイル冒頭の手順、infrastructure-plan §手動)。
 # ---------------------------------------------------------------------------
@@ -59,14 +60,4 @@ resource "aws_ssm_parameter" "spi_jdbc_url" {
   tags = {
     Name = "tasks-${var.env}-db-spi-jdbc-url"
   }
-}
-
-resource "aws_security_group_rule" "rds_from_keycloak_spi" {
-  type              = "ingress"
-  description       = "MySQL from Keycloak SPI federation (VPC CIDR, cross-stack; ADR-0006)"
-  from_port         = 3306
-  to_port           = 3306
-  protocol          = "tcp"
-  security_group_id = module.security_group.rds_sg_id
-  cidr_blocks       = [data.aws_ssm_parameter.vpc_cidr.value]
 }
