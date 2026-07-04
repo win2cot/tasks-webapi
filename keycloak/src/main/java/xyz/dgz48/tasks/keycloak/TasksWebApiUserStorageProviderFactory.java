@@ -49,10 +49,7 @@ public class TasksWebApiUserStorageProviderFactory
     return new TasksWebApiUserStorageProvider(session, model, repository);
   }
 
-  /**
-   * コンポーネント config を優先し、未設定(null/空)なら環境変数へフォールバックして解決する。両方とも未設定なら
-   * {@link ModelException} を投げる。
-   */
+  /** コンポーネント config を優先し、未設定(null/空)なら環境変数へフォールバックして解決する。両方とも未設定なら {@link ModelException} を投げる。 */
   private static String resolveConfig(ComponentModel model, String configKey, String envKey) {
     String value = model.get(configKey);
     if (value == null || value.isBlank()) {
