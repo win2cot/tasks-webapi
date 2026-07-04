@@ -118,3 +118,22 @@ resource "aws_iam_role_policy" "webapi_ssm" {
     ]
   })
 }
+
+# webapi の SES 実送信(会員登録/招待/通知/リセットのメール、ADR-0040 / ADR-0041)。
+# 規約 R1: 書込み action は完全列挙。R2: 送信元 identity(mail.<base_domain>)の ARN に限定。
+resource "aws_iam_role_policy" "webapi_ses" {
+  name = "tasks-${var.env}-webapi-ses"
+  role = aws_iam_role.webapi_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "SesSendFromMailIdentity"
+        Effect   = "Allow"
+        Action   = "ses:SendEmail"
+        Resource = "arn:aws:ses:${var.region}:${data.aws_caller_identity.current.account_id}:identity/mail.dgz48.xyz"
+      }
+    ]
+  })
+}
