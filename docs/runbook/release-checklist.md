@@ -71,7 +71,7 @@ gh workflow run dev-smoke.yml -f grep='signup email' # 一部のみ
 前提・注意:
 
 - **dev が稼働中であること**。夜間停止中(§5.2、02:00 JST〜)は先に RDS/ECS を起動する([dev-operations.md](dev-operations.md))。
-- GitHub Environment **`dev-smoke`**(OIDC role `dev-smoke` = e2e-mail バケット `inbound/` の S3 読取のみ、`infra/shared/modules/iam_oidc`)と Environment secret **`DEV_SMOKE_KC_ADMIN_CLIENT_SECRET`**(signup で作成した Keycloak ユーザーの後片付け用 `tasks-webapi-admin` client secret)が設定済みであること。
+- GitHub Environment **`dev-smoke`**(OIDC role `platform-dev-smoke` = e2e-mail バケット `inbound/` の S3 読取のみ、`infra/shared/modules/iam_oidc`)と Environment secret **`DEV_SMOKE_KC_ADMIN_CLIENT_SECRET`**(signup で作成した Keycloak ユーザーの後片付け用 `tasks-webapi-admin` client secret)が設定済みであること。
 - `signup-email` は **実メール送信 + 実 Keycloak ユーザー作成**を伴う(afterEach で作成ユーザーを削除)。SES は sandbox のため宛先ドメイン `e2e.dgz48.xyz` は検証済み identity。
 
 ## 2. デプロイ 2 段手順(plan → 承認 → apply)

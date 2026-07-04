@@ -51,8 +51,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          # <env>-smoke ロール(S3 e2e-mail の inbound/ 読取のみ)。ADR-0041 / iam_oidc。
-          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/dev-smoke
+          # platform-<env>-smoke ロール(S3 e2e-mail の inbound/ 読取のみ)。ADR-0041 / iam_oidc。
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/platform-dev-smoke
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Node 24
