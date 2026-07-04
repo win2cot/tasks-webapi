@@ -264,7 +264,10 @@ jobs:
 
       - name: terraform apply (platform/dev)
         working-directory: infra/shared/environments/dev
-        run: terraform apply -no-color tfplan.binary
+        # platform の artifact は upload 対象が全て infra/shared/environments/dev/ 配下のため
+        # upload-artifact の LCA が同 dir になり、tfplan.binary が artifact ルート(= download 先の
+        # repo ルート)に平坦化される。→ working-directory 相対では見つからないため絶対参照する。
+        run: terraform apply -no-color "$GITHUB_WORKSPACE/tfplan.binary"
 
   # --------------------------------------------------------------------------
   # apply-tasks — platform apply 後に tasks tfplan を適用
@@ -332,4 +335,7 @@ jobs:
 
       - name: terraform apply (tasks/dev)
         working-directory: infra/environments/dev
+        # tasks の artifact は baseline_image.txt(repo ルート直下)を同梱するため upload-artifact の
+        # LCA が repo ルートになり、infra/environments/dev/ の構造が保持される(platform と異なる)。
+        # → download 先 . から working-directory 相対の tfplan.binary で正しく解決される。
         run: terraform apply -no-color tfplan.binary
