@@ -11,8 +11,9 @@ import { uniqueRecipient, waitForEmailTo } from './support/mail';
  * データ汚染を避けるため complete(ユーザー作成)は行わず、トークン有効性の確認までに留める。
  */
 test.describe('dev-smoke: signup email (double opt-in)', { tag: '@dev-smoke' }, () => {
-  // メール実配信 + S3 受信ポーリングのため、既定 60s ではなくテスト単位で延長する。
-  test('確認メールが実配信され、確認リンクのトークンが有効', { timeout: 180_000 }, async ({ page }) => {
+  test('確認メールが実配信され、確認リンクのトークンが有効', async ({ page }) => {
+    // メール実配信 + S3 受信ポーリングのため、既定 60s ではなくテスト単位で延長する。
+    test.setTimeout(180_000);
     const recipient = uniqueRecipient('signup');
 
     // --- サインアップ要求(signup.html UI → POST /api/signup/request)---
