@@ -91,6 +91,11 @@ resource "aws_iam_role_policy" "exec_ssm" {
         Resource = [
           "arn:aws:ssm:${var.region}:${var.account_id}:parameter/platform/${var.env}/keycloak-db-password",
           "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/keycloak/admin-password",
+          # SPI federation(ADR-0006): app users DB への read 接続情報。値は tasks スタックが publish、
+          # ここは ARN 参照のみ(apply 時に値を読まないため platform→tasks の適用順に依存しない)。
+          "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/db/spi-jdbc-url",
+          "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/db/keycloak-spi-read-username",
+          "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/db/keycloak-spi-read-password",
         ]
       }
     ]
@@ -242,6 +247,21 @@ resource "aws_ecs_task_definition" "keycloak" {
       {
         name      = "KEYCLOAK_ADMIN_PASSWORD"
         valueFrom = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/keycloak/admin-password"
+      },
+      # User Storage SPI federation の接続情報(ADR-0006)。realm-export のコンポーネントは有効化のみで、
+      # 接続情報は SPI_DB_* 環境変数へフォールバック解決される(TasksWebApiUserStorageProviderFactory)。
+      # ECS がコンテナ起動時に SSM から解決するため apply 時の cross-stack 値依存は無い。
+      {
+        name      = "SPI_DB_JDBC_URL"
+        valueFrom = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/db/spi-jdbc-url"
+      },
+      {
+        name      = "SPI_DB_USERNAME"
+        valueFrom = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/db/keycloak-spi-read-username"
+      },
+      {
+        name      = "SPI_DB_PASSWORD"
+        valueFrom = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/tasks/${var.env}/db/keycloak-spi-read-password"
       },
     ]
 

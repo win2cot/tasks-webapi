@@ -10,6 +10,12 @@ data "aws_ssm_parameter" "vpc_id" {
   name = "/platform/${var.env}/vpc-id"
 }
 
+# VPC CIDR — Keycloak(platform)からの SPI federation ingress(RDS :3306)許可元に使う。
+# cross-stack のため SG 参照不可 → KC egress と対称に VPC CIDR で許可(ADR-0006 / #862、規約 R2 例外)。
+data "aws_ssm_parameter" "vpc_cidr" {
+  name = "/platform/${var.env}/vpc-cidr"
+}
+
 data "aws_ssm_parameter" "alb_sg_id" {
   name = "/platform/${var.env}/alb-sg-id"
 }
