@@ -1,0 +1,117 @@
+name: "Dev Smoke (post-deploy E2E)"
+
+# ADR-0041 / #843 — dev へデプロイ済みの実体に対するブラウザ主軸 E2E スモーク。
+# 手動トリガ(workflow_dispatch)。デプロイ直後の疎通確認や、native-only 退行の検知に用いる。
+# 実 Keycloak ログイン / native write / SES 実配信メール(S3 受信)まで通しで検証する。
+#
+# 前提:
+#   - dev 環境が稼働中であること(夜間停止中は RDS/ECS を起動してから実行)。
+#   - GitHub Environment "dev-smoke" が存在し、OIDC role `dev-smoke`(S3 e2e-mail 読取)へ紐付くこと。
+#   - Environment secret DEV_SMOKE_KC_ADMIN_CLIENT_SECRET(signup ユーザー後片付け用の
+#     tasks-webapi-admin client_credentials secret)が設定されていること。
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'SPA base URL (default: https://tasks-dev.dgz48.xyz)'
+        required: false
+        default: 'https://tasks-dev.dgz48.xyz'
+        type: string
+      grep:
+        description: 'Playwright --grep filter (blank = 全 dev-smoke)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  LANG: ja_JP.UTF-8
+  TZ: Asia/Tokyo
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AWS_REGION: ap-northeast-1
+  AWS_ACCOUNT_ID: "138285070797"
+
+# 同一環境への多重実行を避ける(実 Keycloak ユーザー作成/削除・実メール送信を伴うため)
+concurrency:
+  group: dev-smoke
+  cancel-in-progress: false
+
+jobs:
+  dev-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: dev-smoke
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          # <env>-smoke ロール(S3 e2e-mail の inbound/ 読取のみ)。ADR-0041 / iam_oidc。
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/dev-smoke
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      - name: Run dev-smoke suite
+        working-directory: e2e
+        env:
+          CI: true
+          BASE_URL: ${{ inputs.base_url }}
+          # SES 受信メール(S3)の場所。既定はワークフロー内で解決されるが上書き可能にしておく。
+          DEV_SMOKE_MAIL_BUCKET: platform-dev-e2e-mail
+          # signup フルフローで作成した Keycloak ユーザーの後片付けに使う。
+          DEV_SMOKE_KC_ADMIN_CLIENT_SECRET: ${{ secrets.DEV_SMOKE_KC_ADMIN_CLIENT_SECRET }}
+        run: |
+          if [ -n "${{ inputs.grep }}" ]; then
+            npx playwright test --config playwright.dev-smoke.config.ts --grep "${{ inputs.grep }}"
+          else
+            npx playwright test --config playwright.dev-smoke.config.ts
+          fi
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: dev-smoke-report
+          path: e2e/playwright-report/
+          if-no-files-found: ignore
+
+      - name: Upload test results (trace / video)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: dev-smoke-results
+          path: e2e/test-results/
+          if-no-files-found: ignore

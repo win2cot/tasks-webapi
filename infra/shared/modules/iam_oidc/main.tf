@@ -26,8 +26,9 @@ data "aws_iam_policy_document" "trust" {
     tasks_plan      = "tasks-plan"
     tasks_apply     = "tasks-apply"
     release_build   = "release-build"
-    tasks_deploy    = var.env # "dev" → environment:dev OIDC sub (webapi ECS + web S3/CF + artifact verify)
-    platform_deploy = var.env # "dev" → environment:dev OIDC sub (keycloak ECS on platform cluster)
+    tasks_deploy    = var.env            # "dev" → environment:dev OIDC sub (webapi ECS + web S3/CF + artifact verify)
+    platform_deploy = var.env            # "dev" → environment:dev OIDC sub (keycloak ECS on platform cluster)
+    dev_smoke       = "${var.env}-smoke" # "dev" → environment:dev-smoke OIDC sub (post-deploy dev-smoke E2E, ADR-0041)
   }
 
   statement {
@@ -1295,6 +1296,45 @@ resource "aws_iam_role_policy" "release_build" {
   name   = "release-build-policy"
   role   = aws_iam_role.release_build.id
   policy = data.aws_iam_policy_document.release_build.json
+}
+
+# ---------------------------------------------------------------------------
+# <env>-smoke  (read-only; post-deploy dev-smoke E2E — ADR-0041 / #843)
+# Trust: environment:<env>-smoke。dev-smoke.yml が SES 受信メールを S3 から取得して
+# signup フルフローを検証するための最小権限(e2e-mail バケットの inbound/ プレフィックス読取のみ)。
+# Keycloak/SPA へは公開 HTTPS で到達するため AWS 権限は S3 読取だけで足りる。
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "dev_smoke" {
+  name               = "${var.env}-smoke"
+  assume_role_policy = data.aws_iam_policy_document.trust["dev_smoke"].json
+}
+
+data "aws_iam_policy_document" "dev_smoke" {
+  # SES 受信メール本文(MIME)の取得。規約 R2: inbound/ プレフィックスのオブジェクト ARN に限定。
+  statement {
+    sid       = "E2eMailGet"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail/inbound/*"]
+  }
+
+  # 受信メール一覧(宛先一致ポーリング)。ListBucket は prefix condition で inbound/ に限定。
+  statement {
+    sid       = "E2eMailList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["inbound/*"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "dev_smoke" {
+  name   = "${var.env}-smoke-policy"
+  role   = aws_iam_role.dev_smoke.id
+  policy = data.aws_iam_policy_document.dev_smoke.json
 }
 
 # ---------------------------------------------------------------------------
