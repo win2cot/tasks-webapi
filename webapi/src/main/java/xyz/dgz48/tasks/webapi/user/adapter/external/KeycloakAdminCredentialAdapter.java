@@ -42,10 +42,10 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
   }
 
   @Override
-  public void provisionCredential(String email, String rawPassword) {
+  public void provisionCredential(String email, String displayName, String rawPassword) {
     try {
       String token = fetchAdminToken();
-      String userId = resolveOrCreateUserId(email, token);
+      String userId = resolveOrCreateUserId(email, displayName, token);
       resetPassword(userId, rawPassword, token);
       markEmailVerified(userId, token);
     } catch (RestClientException e) {
@@ -58,9 +58,9 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
    * email でユーザーを解決する。既存(federated 含む)ならその id を返し、無ければローカルユーザーを新規作成して id を返す。SPI federation
    * 有効時は検索がヒットするため作成は行わない。
    */
-  private String resolveOrCreateUserId(String email, String token) {
+  private String resolveOrCreateUserId(String email, String displayName, String token) {
     String existing = findUserIdByEmail(email, token);
-    return existing != null ? existing : createUser(email, token);
+    return existing != null ? existing : createUser(email, displayName, token);
   }
 
   private String fetchAdminToken() {
@@ -106,15 +106,20 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
    * ローカル Keycloak ユーザーを作成し id を返す({@code username=email}、{@code enabled=true}、{@code emailVerified}
    * は後続の {@link #markEmailVerified} で設定)。作成レスポンスの {@code Location} ヘッダから id を取り出す。並行 complete による
    * {@code 409}(既存)は無視し、email 再検索でフォールバックする。
+   *
+   * <p>{@code firstName} / {@code lastName} は realm の user profile 必須項目であり、未設定だと初回ログインで 「Update
+   * Account Information」に遮られ dashboard へ到達できない。app は表示名を単一の {@code full_name} で保持するため、両フィールドに
+   * {@code displayName} を設定して必須制約を満たす(profile SoT は tasks-webapi の {@code users.full_name}。SPI
+   * federation 経路では UserAdapter が {@code firstName=full_name} を返す)。
    */
-  private String createUser(String email, String token) {
+  private String createUser(String email, String displayName, String token) {
     URI location =
         restClient
             .post()
             .uri("/admin/realms/{realm}/users", props.realm())
             .header(HttpHeaders.AUTHORIZATION, bearer(token))
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new UserCreateRequest(email, email, true))
+            .body(new UserCreateRequest(email, email, displayName, displayName, true))
             .retrieve()
             // 競合(既に存在)は例外にせず、下の再検索でフォールバックする
             .onStatus(status -> status.value() == 409, (req, res) -> {})
@@ -176,8 +181,12 @@ public class KeycloakAdminCredentialAdapter implements CredentialProvisioningPor
   /** reset-password の credential 表現。 */
   public record PasswordCredential(String type, String value, boolean temporary) {}
 
-  /** ユーザー新規作成リクエスト(username=email, enabled=true)。emailVerified は後続で設定。 */
-  public record UserCreateRequest(String username, String email, boolean enabled) {}
+  /**
+   * ユーザー新規作成リクエスト(username=email, enabled=true)。firstName / lastName は realm profile 必須項目を 満たすため
+   * displayName を設定。emailVerified は後続で設定。
+   */
+  public record UserCreateRequest(
+      String username, String email, String firstName, String lastName, boolean enabled) {}
 
   /** ユーザー更新(emailVerified のみ)。 */
   public record EmailVerifiedUpdate(boolean emailVerified) {}
