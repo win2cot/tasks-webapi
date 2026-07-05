@@ -6,7 +6,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^\\.github/workflows/web-ci\\.yml$"],
+      "managerFilePatterns": [
+        "/^\\.github/workflows/web-ci\\.yml$/"
+      ],
       "matchStrings": ["ghcr\\.io/validator/validator:latest@sha256:(?<currentDigest>[a-f0-9]+)"],
       "depNameTemplate": "ghcr.io/validator/validator",
       "currentValueTemplate": "latest",
@@ -14,7 +16,9 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["^\\.github/workflows/markdown-lint\\.yml$"],
+      "managerFilePatterns": [
+        "/^\\.github/workflows/markdown-lint\\.yml$/"
+      ],
       "matchStrings": ["markdownlint-cli2@(?<currentValue>[^\\s\"']+)"],
       "depNameTemplate": "markdownlint-cli2",
       "datasourceTemplate": "npm"
