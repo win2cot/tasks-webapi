@@ -23,7 +23,7 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 - **実 Keycloak + カスタム User Storage SPI**: Keycloak はユーザを tasks 側 MySQL から federation する自作 SPI で動く。ログインのたびに「Keycloak(最適化イメージ)→ tasks DB」連携が走り、**実デプロイ環境でしか通しで検証できない**。
 - **ユーザが実際に見る画面**: SPA の描画・OIDC リダイレクト・ログインテーマ(新規登録リンク)等はブラウザでしか検証できない。
 - **NIST 対応の API 不変条件**: 本システムは NIST 800-53 対応を掲げる(AC-4 等)。「クロステナント参照は 404(403 でなく)で存在を漏らさない」等の不変条件は、**正しく作られた UI からは発生しない操作**であり、API を直接叩かないと固定できない。
-- **メール依存フロー(会員登録 ADR-0040 / 招待受諾 / パスワードリセット / 通知)**: 例えばセルフサインアップは **double opt-in**(確認メールのリンク受領が到達性の証明)。これらを E2E で検証するには **送られたメールを受信してリンク/トークンを取り出す**必要がある。dev の SMTP は実 SES で、かつ **sandbox 運用(解除予定なし)**。
+- **メール依存フロー(会員登録 ADR-0040 / 招待受諾・パスワードリセット ADR-0017 / 通知 ADR-0037)**: 例えばセルフサインアップは **double opt-in**(確認メールのリンク受領が到達性の証明)。これらを E2E で検証するには **送られたメールを受信してリンク/トークンを取り出す**必要がある。dev の SMTP は実 SES で、かつ **sandbox 運用(解除予定なし)**。
 
 したがって「dev に上げたものを、native 実機で・実 Keycloak 経由で・画面と API 不変条件とメール依存フロー(会員登録/招待/パスワードリセット/通知)まで含めて」検証する **post-deploy テスト層**が必要になる。トリガーは完全自動でなくてよい(手動可)。
 
@@ -110,7 +110,8 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 
 - [ADR-0008](0008-graalvm-native-image.md) — GraalVM Native Image(native/JVM ギャップの根拠)
 - [ADR-0040](0040-onboarding-registration-and-credential-provisioning.md) — 会員登録 / double opt-in(検証対象フロー)
-- [ADR-0037](0037-scheduled-batch-shedlock-and-ses.md) — SES による送信(本 ADR は受信側を追加)
+- [ADR-0017](0017-invitation-and-credential-recovery-flows.md) — 招待受諾 / パスワードリセット(検証対象フロー)
+- [ADR-0037](0037-scheduled-batch-shedlock-and-ses.md) — SES による送信 / 通知メール(検証対象フロー。本 ADR は受信側を追加)
 - [ADR-0031](0031-single-product-version-dispatch-deploy.md) — デプロイ(post-deploy の起点)
 - [リリース前チェックリスト](../runbook/release-checklist.md) — 本 E2E のゲート組込先
 - [AWS 一般リファレンス — SES endpoints/quotas](https://docs.aws.amazon.com/general/latest/gr/ses.html) — SES email receiving 対応リージョン(Tokyo 対応を確認)
