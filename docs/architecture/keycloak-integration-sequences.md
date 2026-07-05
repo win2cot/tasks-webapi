@@ -153,7 +153,7 @@ sequenceDiagram
     U->>SPA: 氏名 / パスワード入力 → 参加
     SPA->>API: POST /api/invitations/{token}/accept
     API->>API: AcceptInvitationUseCase
-    API->>DB: RegisterMemberUseCase.upsertPendingMember(users)
+    API->>DB: RegisterMemberUseCase.register → UserRegistrationPort.upsertPendingMember(users)
     API->>KC: provisionCredential(...)(→ 図2 と同じ Keycloak 経路)
     API->>DB: MembershipFinalizer: user_tenants 紐付け + invitation USED(原子化)
     API-->>SPA: 201
