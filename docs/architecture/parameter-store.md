@@ -64,7 +64,7 @@
 | `/tasks/dev/app/jwt-issuer` | `https://auth-dev.dgz48.xyz/realms/tasks` |
 | `/tasks/dev/app/tenant-default-id` | `1` |
 | `/tasks/dev/db/keycloak-spi-read-username` | `keycloak_spi_read`（既定値、terraform 管理）|
-| `/tasks/dev/db/keycloak-spi-read-password` | DB ユーザー作成時に SSM コンソール/CLI で実値設定（EICE 経由で作成する MySQL ユーザーと一致させる）|
+| `/tasks/dev/db/keycloak-spi-read-password` | DB ユーザー作成時に SSM コンソール/CLI で実値設定（一時 SSM バスチオン経由で作成する MySQL ユーザーと一致させる。手順は `infra/environments/dev/rds.tf`）|
 | `/tasks/dev/db/spi-jdbc-url` | `jdbc:mysql://<rds-endpoint>:3306/tasks?...`（terraform が RDS エンドポイントから自動設定）|
 
 ---

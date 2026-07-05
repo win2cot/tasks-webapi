@@ -14,15 +14,23 @@ module "rds" {
 }
 
 # ---------------------------------------------------------------------------
-# EC2 Instance Connect Endpoint — DBA 用 MySQL トンネル (dev のみ)
+# EC2 Instance Connect Endpoint (dev のみ)
 #
-# ローカルから RDS への接続手順:
-#   aws ec2-instance-connect open-tunnel \
-#     --instance-connect-endpoint-id $(terraform output -raw eice_id) \
-#     --remote-port 3306 --local-port 13306
-#   mysql -h 127.0.0.1 -P 13306 -u admin -p
+# 注意: EICE の open-tunnel は RemotePort が **22(SSH)/ 3389(RDP)のみ**対応で、
+# MySQL :3306 への直接トンネルはできない(AWS 制約)。したがって RDS への DBA アクセスは
+# 「EICE で 3306」ではなく、下記の一時 SSM バスチオン + port-forward を用いる。
+# EICE 自体は将来 SSH bastion へ 22 で繋ぐ用途に残置(現状 RDS 直結には使わない)。
 #
-# 必要 IAM 権限: ec2-instance-connect:OpenTunnel on このリソース ARN
+# RDS への DBA 接続手順(master SQL 実行が必要なとき):
+#   1) private subnet に SSM 管理の使い捨て EC2(AL2023、SSM instance profile)を起動
+#      (private subnet は NAT egress があり SSM 登録可能)。RDS SG は VPC CIDR ingress を許可済み。
+#   2) aws ssm start-session --target <iid> \
+#        --document-name AWS-StartPortForwardingSessionToRemoteHost \
+#        --parameters host=<rds-endpoint>,portNumber=3306,localPortNumber=13306
+#   3) mysql -h 127.0.0.1 -P 13306 -u admin -p   # master password は SSM /tasks/dev/db/password
+#   4) 作業後、EC2 を terminate + 一時 SG/role/instance-profile を削除。
+#
+# 必要 IAM: ssm:StartSession(AWS-StartPortForwardingSessionToRemoteHost)/ ec2 run/terminate 等。
 # ---------------------------------------------------------------------------
 
 resource "aws_ec2_instance_connect_endpoint" "main" {
