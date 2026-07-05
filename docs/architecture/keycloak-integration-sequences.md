@@ -200,7 +200,7 @@ sequenceDiagram
     API->>DB: revokePending(既存 PENDING を REVOKED)
     API->>DB: INSERT invitations(token_hash, tenant_id, email, role, TTL 7d, PENDING)
     API->>SES: 招待メール送信(invitation.html?token)
-    API-->>SPA: 204
+    API-->>SPA: 201(招待作成・メール送信)
     SES-->>U: 招待メール
 
     Note over U,DB: 受諾(AcceptInvitationUseCase)
