@@ -24,7 +24,7 @@ jobs:
     outputs:
       web: ${{ steps.filter.outputs.web }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: dorny/paths-filter@v3
@@ -45,7 +45,7 @@ jobs:
         working-directory: web
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Node 24
         uses: actions/setup-node@v6

@@ -25,7 +25,7 @@ jobs:
     outputs:
       tf: ${{ steps.filter.outputs.tf }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: dorny/paths-filter@v3
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Trivy config scan — SARIF (全重大度、code scanning 用)
         id: trivy-sarif
