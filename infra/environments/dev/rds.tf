@@ -57,7 +57,7 @@ output "eice_id" {
 #     rds_ingress_cidr_blocks(VPC CIDR)で許可する(security_group.tf)。RDS SG は他 rule も
 #     インライン管理のため、インライン ingress として追加する(aws_security_group_rule 混在を避ける)。
 #   - keycloak_spi_read DB ユーザー(パスワード認証・SELECT のみ)は master 権限が必要なため
-#     EICE トンネル経由で手動作成する(本ファイル冒頭の手順、infrastructure-plan §手動)。
+#     一時 SSM バスチオン経由で手動作成する(本ファイル冒頭の手順、infrastructure-plan §手動)。
 # ---------------------------------------------------------------------------
 
 resource "aws_ssm_parameter" "spi_jdbc_url" {
