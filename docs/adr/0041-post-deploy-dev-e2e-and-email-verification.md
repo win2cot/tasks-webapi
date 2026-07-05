@@ -1,4 +1,4 @@
-# ADR-0041: dev 環境 post-deploy E2E テスト戦略(ブラウザ主軸 + 薄い API 補完 + SES 受信による会員登録メール検証)
+# ADR-0041: dev 環境 post-deploy E2E テスト戦略(ブラウザ主軸 + 薄い API 補完 + SES 受信によるメール検証)
 
 - **Status**: Accepted
 - **Date**: 2026-07-04
@@ -23,9 +23,9 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 - **実 Keycloak + カスタム User Storage SPI**: Keycloak はユーザを tasks 側 MySQL から federation する自作 SPI で動く。ログインのたびに「Keycloak(最適化イメージ)→ tasks DB」連携が走り、**実デプロイ環境でしか通しで検証できない**。
 - **ユーザが実際に見る画面**: SPA の描画・OIDC リダイレクト・ログインテーマ(新規登録リンク)等はブラウザでしか検証できない。
 - **NIST 対応の API 不変条件**: 本システムは NIST 800-53 対応を掲げる(AC-4 等)。「クロステナント参照は 404(403 でなく)で存在を漏らさない」等の不変条件は、**正しく作られた UI からは発生しない操作**であり、API を直接叩かないと固定できない。
-- **会員登録(ADR-0040)**: セルフサインアップは **double opt-in**(確認メールのリンク受領が到達性の証明)。E2E で検証するには **送られたメールを受信して確認リンクを取り出す**必要がある。dev の SMTP は実 SES で、かつ **sandbox 運用(解除予定なし)**。
+- **メール依存フロー(会員登録 ADR-0040 / 招待受諾 / パスワードリセット / 通知)**: 例えばセルフサインアップは **double opt-in**(確認メールのリンク受領が到達性の証明)。これらを E2E で検証するには **送られたメールを受信してリンク/トークンを取り出す**必要がある。dev の SMTP は実 SES で、かつ **sandbox 運用(解除予定なし)**。
 
-したがって「dev に上げたものを、native 実機で・実 Keycloak 経由で・画面と API 不変条件と会員登録メールまで含めて」検証する **post-deploy テスト層**が必要になる。トリガーは完全自動でなくてよい(手動可)。
+したがって「dev に上げたものを、native 実機で・実 Keycloak 経由で・画面と API 不変条件とメール依存フロー(会員登録/招待/パスワードリセット/通知)まで含めて」検証する **post-deploy テスト層**が必要になる。トリガーは完全自動でなくてよい(手動可)。
 
 ## 2. 検討した選択肢(Options Considered)
 
@@ -75,7 +75,7 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 
 ### 良い影響(Positive)
 
-- native 限定リグレッション + 実 Keycloak/SPI + 実画面 + 会員登録メール(実配信)を**自動で**検証できる。
+- native 限定リグレッション + 実 Keycloak/SPI + 実画面 + メール依存フロー(会員登録/招待/パスワードリセット/通知の実配信)を**自動で**検証できる。
 - 障害時に「ブラウザ(UI 統合)/ API(層特定)」の二段で切り分けられる。
 - API 補完により NIST 系の越境・認可不変条件を dev 実機でも固定できる。
 
@@ -104,7 +104,7 @@ Phase 1 の機能実装が一巡し、単体・Testcontainers 統合テスト・
 - **資格情報**: 既存ジャーニーは dev テストユーザー(`tasks-webapi` public client の password grant、realm-export / e2e fixtures の固定ユーザー)。CI からは GitHub secret か SSM(OIDC ロール)で取得。
 - **対象ホスト**: API=`https://api-dev.tasks.dgz48.xyz` / SPA=`https://tasks-dev.dgz48.xyz` / Keycloak=`https://auth-dev.dgz48.xyz`。いずれも公開 ALB のため GitHub Actions ランナーから到達可能(VPC 不要)。
 - **夜間停止対応**: 手動トリガー時は dev 稼働中に実行。完全自動化する場合のみ「RDS→ECS 起動 + health 待ち」の前段 job を追加(AWS OIDC ロール要)。
-- **段階実装(想定 PR 分割)**: ① SES 受信 infra(S3 + rule + IAM + MX)、② dev-smoke E2E(ブラウザ + API 補完)、③ 会員登録メール E2E(S3/MIME)、④ `dev-smoke.yml` + runbook 追記。
+- **段階実装(想定 PR 分割)**: ① SES 受信 infra(S3 + rule + IAM + MX)、② dev-smoke E2E(ブラウザ + API 補完)、③ メール依存フロー E2E(S3/MIME。会員登録を先行、招待/パスワードリセット/通知へ拡張)、④ `dev-smoke.yml` + runbook 追記。
 
 ## 7. 参考リンク(References)
 
