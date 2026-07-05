@@ -125,7 +125,7 @@ sequenceDiagram
         API->>KC: ② GET /users?email=&exact=true
         KC->>SPI: searchForUser(email) → 直前 upsert した行を federation(図3)
         KC-->>API: federated user id (f:comp:id)
-        Note over API,KC: 見つからなければ POST /users で作成(find-or-create、SPI 未活性環境向け)
+        Note over API,KC: 見つからなければ POST /users で作成(find-or-create の防御分岐。SPI 有効時は upsert 済み行が federation されるため通常は発火しない)
         API->>KC: ③ PUT /users/{id}/reset-password(パスワード設定)
         API->>KC: ④ PUT /users/{id}(emailVerified=true)
     end
