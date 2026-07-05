@@ -2,7 +2,7 @@
 
 タスク管理システム(tasks-webapi)
 
-Version 1.2
+Version 1.3
 
 2026-06-01
 
@@ -15,6 +15,7 @@ Version 1.2
 | 1.0 | 2026-06-01 | Issue #150 / 親 Issue #149(Sprint 0 画面設計)に基づき新規作成。コア 4 画面(ダッシュボード / タスク一覧 / タスク詳細 / テナント管理)のサイトマップと Mermaid 遷移図を初版として整備。Sprint 0 方向性レビューを反映し、ダッシュボード「当日対応 + 振り返り」4 セクション・行内編集・右ドロワー方針を組み込み | 開発チーム |
 | 1.1 | 2026-06-01 | §6.1 派生 4 番(A-14 PUT の部分更新化議論)の結論を Issue #329 で確定(案 (1) = `PATCH /api/tasks/{id}` 新設 + A-14 PUT 廃止)。派生 4 番に結論と派生 Issue 番号を back-ref として追記、§0 の「派生 4 の結論次第で」を「派生 4 の結論で確定した」に更新 | 開発チーム |
 | 1.2 | 2026-06-02 | §5.1「対応 API」を FM-G4(#355)の確定方針で更新。`GET /api/tasks?...dashboardScope=today` 相当のクエリ案を、専用エンドポイント **`GET /api/dashboard/tasks`**(OpenAPI v1.6.0、`DashboardTaskSections` 4 セクション構造化レスポンス、`dueWithinDays` 可変)に確定 | 開発チーム |
+| 1.3 | 2026-07-05 | Issue #862: §2 補足の本書スコープ外画面リストに公開オンボーディング画面(S-00 ログイン後ルーティング / S-16 新規登録 / S-17 登録の完了 / S-18 招待の受諾)を追記し、詳細は基本設計書 §3.2・§3.3 および keycloak 連携シーケンス図を参照する旨を明示。本書のコア 4 画面群スコープ(Issue #150)自体は不変 | 開発チーム |
 
 ## 目次
 
@@ -65,7 +66,7 @@ Version 1.2
 | S-13 | テナント一覧(SaaS Admin) | `/admin/tenants` | SaaS Admin 専用。テナント一覧 + 状態フィルタ + 名前検索 + ページング | `SaaS Admin` のみ。`Tenant Admin` / `Member` は 403(`hasRole('APP_ADMIN')` 不通過) |
 | S-14 | テナント詳細・状態切替(SaaS Admin) | `/admin/tenants/{id}` | SaaS Admin 専用。テナント名編集 / 状態切替(`ACTIVE` ↔ `SUSPENDED`)/ 所属ユーザー数・タスク数の表示 | `SaaS Admin` のみ |
 
-> 補足(参考、本書スコープ外の画面):S-01 ログイン(`/login`)/ S-02 OIDC コールバック(`/callback`)/ S-07 テナント切替(`/tenants/select`)/ S-11 テナント新規作成(`/tenants/new`)/ S-15 テナント運営者向けダッシュボード(`/tenant/dashboard`)などは基本設計書 §3.2 を参照。下記 Mermaid 図では文脈保持のため一部を補助ノードとして登場させるが、本書サイトマップの行はコア 4 画面群に限定する。
+> 補足(参考、本書スコープ外の画面):S-00 ログイン後ルーティング(`/index.html`)/ S-01 ログイン(`/login`)/ S-02 OIDC コールバック(`/callback`)/ S-07 テナント切替(`/tenants/select`)/ S-11 テナント新規作成(`/tenants/new`)/ S-15 テナント運営者向けダッシュボード(`/tenant/dashboard`)/ S-16 新規登録(`/signup.html`、公開)/ S-17 登録の完了(`/signup-complete.html`、公開)/ S-18 招待の受諾(`/invitation.html`、公開)などは基本設計書 §3.2 を参照(公開オンボーディング 3 画面の詳細フローは [keycloak 連携シーケンス図](../../architecture/keycloak-integration-sequences.md)も参照)。下記 Mermaid 図では文脈保持のため一部を補助ノードとして登場させるが、本書サイトマップの行はコア 4 画面群に限定する。
 
 > ロール × 画面の **操作レベルの権限マトリクス**(編集 / 削除 / 状態変更 / 集計閲覧 などの一覧)はサブ Issue #151 の成果物として別ファイルに整備する。本書ではサイトマップ行の「アクセス可能ロール」までを担当する。
 
