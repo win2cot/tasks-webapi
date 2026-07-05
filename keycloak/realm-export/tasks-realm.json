@@ -195,6 +195,18 @@
   "adminTheme": "tasks-admin",
   "loginTheme": "tasks-login",
   "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "tasks-webapi-users",
+        "providerId": "tasks-webapi-user-storage",
+        "subComponents": {},
+        "config": {
+          "cachePolicy": ["NO_CACHE"],
+          "enabled": ["true"],
+          "priority": ["0"]
+        }
+      }
+    ],
     "org.keycloak.userprofile.UserProfileProvider": [
       {
         "providerId": "declarative-user-profile",

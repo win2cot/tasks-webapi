@@ -62,6 +62,20 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.eice.id]
   }
 
+  # Keycloak SPI federation(ADR-0006): cross-stack のため SG 参照不可 → VPC CIDR で許可。
+  # インライン ingress として定義する(この SG は他 rule もインライン管理のため、AWS provider が
+  # 禁じる「インライン ingress + aws_security_group_rule の混在」による rule flapping を避ける)。
+  dynamic "ingress" {
+    for_each = var.rds_ingress_cidr_blocks
+    content {
+      description = "MySQL from Keycloak SPI federation (cross-stack VPC CIDR)"
+      from_port   = 3306
+      to_port     = 3306
+      protocol    = "tcp"
+      cidr_blocks = [ingress.value]
+    }
+  }
+
   tags = {
     Name = "tasks-${var.env}-sg-rds"
   }

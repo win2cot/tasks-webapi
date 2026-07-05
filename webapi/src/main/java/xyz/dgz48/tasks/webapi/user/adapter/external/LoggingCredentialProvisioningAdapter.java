@@ -14,7 +14,7 @@ import xyz.dgz48.tasks.webapi.user.usecase.CredentialProvisioningPort;
 public class LoggingCredentialProvisioningAdapter implements CredentialProvisioningPort {
 
   @Override
-  public void provisionCredential(String email, String rawPassword) {
+  public void provisionCredential(String email, String displayName, String rawPassword) {
     log.info("[dev] credential provisioning skipped (logging adapter): email={}", email);
   }
 }

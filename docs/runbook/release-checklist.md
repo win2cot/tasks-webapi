@@ -47,6 +47,33 @@ curl -s https://api-dev.tasks.dgz48.xyz/actuator/health   # {"status":"UP"}
 - 性能 N+1 回帰(#769): `TaskQueryCountIT` / `DashboardQueryCountIT`
 - 監査ハッシュチェーン B-05([ADR-0038](../adr/0038-audit-log-hash-chain-tamper-evidence.md)): `AuditChainVerificationIT` / `VerifyAuditChainUseCaseTest` / `AuditChainVerificationBatchSchedulerTest`
 
+### 1.2 デプロイ後 dev-smoke E2E(post-deploy、[ADR-0041](../adr/0041-post-deploy-dev-e2e-and-email-verification.md))
+
+§1 の CI ゲートは **pre-deploy**(JVM / ローカルスタック)であり、native image 固有の退行や dev 実体の構成差は捕捉できない。これを補うのが **デプロイ後**に dev 実体へ通すブラウザ主軸スモーク `Dev Smoke (post-deploy E2E)`(`.github/workflows/dev-smoke.yml`、`e2e/tests-dev/*.dev-smoke.spec.ts`)。実行タイミングは **§2 のデプロイ完了後**(下記 §2 の post-deploy 手順から参照)。
+
+カバレッジ(実 Keycloak / native write / 実 SES 配信を通しで検証):
+
+| spec | 検証内容 |
+|---|---|
+| `login-dashboard` | 実 Keycloak ログイン → dashboard(SPI 認証経路) |
+| `task-journey` | タスク作成・ステータス変更・削除(native write + ETag、失敗時 afterEach で後片付け) |
+| `login-theme` | ログイン画面の新規登録導線(`tasks-login` テーマ) |
+| `api-invariants` | 未認証 401 / 非メンバーテナント 403(NIST、認可マトリクス §4.1) |
+| `signup-email` | セルフサインアップ double opt-in **フルフロー**: signup → 実 SES 配信 → S3 受信 → 確認リンク → complete(ユーザー作成 + Keycloak 資格プロビジョニング)→ 新規ユーザーでログイン到達 |
+
+実行(手動 `workflow_dispatch`):
+
+```bash
+gh workflow run dev-smoke.yml                       # 全 dev-smoke(dev 稼働中に限る)
+gh workflow run dev-smoke.yml -f grep='signup email' # 一部のみ
+```
+
+前提・注意:
+
+- **dev が稼働中であること**。夜間停止中(§5.2、02:00 JST〜)は先に RDS/ECS を起動する([dev-operations.md](dev-operations.md))。
+- GitHub Environment **`dev-smoke`**(OIDC role `platform-dev-smoke` = e2e-mail バケット `inbound/` の S3 読取のみ、`infra/shared/modules/iam_oidc`)と Environment secret **`DEV_SMOKE_KC_ADMIN_CLIENT_SECRET`**(signup で作成した Keycloak ユーザーの後片付け用 `tasks-webapi-admin` client secret)が設定済みであること。
+- `signup-email` は **実メール送信 + 実 Keycloak ユーザー作成**を伴う(afterEach で作成ユーザーを削除)。SES は sandbox のため宛先ドメイン `e2e.dgz48.xyz` は検証済み identity。
+
 ## 2. デプロイ 2 段手順(plan → 承認 → apply)
 
 [ADR-0031](../adr/0031-single-product-version-dispatch-deploy.md) の dispatch 駆動。詳細は [dev-operations.md](dev-operations.md#デプロイadr-0031-dispatch) と整合。
@@ -76,6 +103,12 @@ curl -s https://api-dev.tasks.dgz48.xyz/actuator/health   # {"status":"UP"}
 - dev は承認ゲートなし(自動適用)。stg/prd は plan 添付を確認して apply を承認する。
 - 目標 digest と現行 digest が一致する場合、`deploy-webapi` は no-op(無駄な rolling update をしない)。
 - **ロールバック**: 直前の正常バージョンを再デプロイ(`gh workflow run deploy.yml -f version=<prev> -f environment=dev`)。infra も同 ref に戻るため差分に注意([dev-operations.md](dev-operations.md#ロールバック))。
+
+**post-deploy 疎通(dev)**: デプロイ完了後、dev 実体に対して §1.2 の dev-smoke E2E を実行して native / dev 構成差の退行を確認する。
+
+```bash
+gh workflow run dev-smoke.yml   # 完了後 Actions で全 spec green を確認(dev 稼働中に限る)
+```
 
 ## 3. IaC drift ゼロ確認
 
@@ -173,15 +206,21 @@ aws ssm get-parameters-by-path --path /tasks/dev --recursive --region ap-northea
 - **infra レベルの CloudWatch Alarm / SNS / metric filter は未配線**(`infra/modules/logging/main.tf` のコメントで、infra ADR-0005(ログ基盤、`infra/docs/adr/0005-logging-platform.md`。app の [ADR-0005](../adr/0005-task-authorization-three-roles.md) とは番号衝突する別 ADR)の Alarm/SNS 連携として明示的に後回し)。現状のアラートはアプリ側(B-05 バッチ + 構造化ログ)のみ。
 - 対応: MVP のアラート要件を確定し、metric filter → Alarm → SNS 配線を別 Issue 化する(本チェックリストで **既知ギャップ**として記録)。
 
+### 6.4 デプロイ後スモークによる実体確認([ADR-0041](../adr/0041-post-deploy-dev-e2e-and-email-verification.md))
+
+pre-deploy CI(§1)と infra アラート(§6.1–6.3)に加え、**デプロイ済み実体の疎通**は §1.2 の dev-smoke E2E で確認する。native / 実 Keycloak / 実 SES 配信という **CI では捕捉できない層**を通しで検証し、デプロイ後の即時退行検知に用いる(手動 `gh workflow run dev-smoke.yml`)。
+
 チェック:
 
 - [ ] 主要ログ group にログが出力されている(`aws logs tail /tasks/dev/webapi --since 15m`)
 - [ ] B-05 検証バッチが日次で成功している(監査ログに不整合 ERROR が無い)
 - [ ] infra アラート未配線を関係者が認識(別 Issue 追跡)
+- [ ] デプロイ後 dev-smoke E2E(§1.2)が全 spec green(native / 実 Keycloak / 実 SES 配信を通し確認)
 
 ## 7. 最終ゲート サマリ
 
 - [ ] §1 全 CI green(カバレッジ 0.80 / 漏洩・認可・性能・監査の回帰 IT green)
+- [ ] §1.2 デプロイ後 dev-smoke E2E が全 spec green(native / 実 Keycloak / 実 SES 配信)
 - [ ] §2 デプロイ 2 段(plan → 承認 → apply)を runbook どおり実施できる
 - [ ] §3 IaC drift ゼロ(plan が No changes)
 - [ ] §4 Secrets 棚卸し(SecureString 実値設定済み)

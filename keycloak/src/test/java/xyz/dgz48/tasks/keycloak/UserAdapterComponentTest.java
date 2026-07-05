@@ -41,6 +41,10 @@ class UserAdapterComponentTest extends AbstractMySqlContainerTest {
       assertThat(a.getEmail()).isEqualTo(email);
       assertThat(a.isEnabled()).isTrue();
       assertThat(a.isEmailVerified()).isTrue();
+      // realm profile 必須項目の firstName/lastName は full_name から供給する(未設定だと初回ログインが
+      // 「Update Account Information」で遮られるため。#862)。
+      assertThat(a.getFirstName()).isEqualTo("氏名 太郎");
+      assertThat(a.getLastName()).isEqualTo("氏名 太郎");
       assertThat(a.getFirstAttribute(UserAdapter.FULL_NAME)).isEqualTo("氏名 太郎");
       assertThat(a.getFirstAttribute(UserAdapter.FULL_NAME_KANA)).isEqualTo("シメイ タロウ");
       assertThat(a.getFirstAttribute(UserAdapter.DEPARTMENT_NAME)).isEqualTo("営業部");

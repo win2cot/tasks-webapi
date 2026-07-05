@@ -41,6 +41,7 @@ resource "aws_iam_role_policy" "webapi_exec_ssm" {
         Resource = [
           "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/app/jwt-issuer",
           "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/app/tenant-default-id",
+          "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/app/keycloak-admin-client-secret",
           "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/keycloak/oauth-client-secret",
         ]
       },
@@ -148,6 +149,16 @@ resource "aws_ecs_task_definition" "webapi" {
         # OTLP エクスポート先は localhost の ADOT Collector サイドカー(ADR-0007)
         { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = "http://localhost:4317" },
         { name = "OTEL_EXPORTER_OTLP_PROTOCOL", value = "grpc" },
+        # メール送信を SES 実送信に切替(既定は log フォールバック)。FROM は検証済み mail.<domain>。
+        # 会員登録/招待の確認リンクは dev SPA の実 URL を指す(既定 localhost を上書き)。ADR-0040 / ADR-0041。
+        { name = "NOTIFICATION_EMAIL_PROVIDER", value = "ses" },
+        { name = "NOTIFICATION_EMAIL_FROM", value = "no-reply@mail.dgz48.xyz" },
+        { name = "TENANT_SIGNUP_CONFIRM_URL_BASE", value = "https://tasks-dev.dgz48.xyz/signup-complete.html" },
+        { name = "TENANT_INVITE_ACCEPT_URL_BASE", value = "https://tasks-dev.dgz48.xyz/invitation.html" },
+        # 会員登録の Keycloak 資格プロビジョニングを有効化(既定 false = LoggingCredentialProvisioning
+        # フォールバック)。ADR-0040 §3.1。client-id/realm は既定(tasks-webapi-admin / tasks)を使用。
+        { name = "KEYCLOAK_ADMIN_ENABLED", value = "true" },
+        { name = "KEYCLOAK_ADMIN_SERVER_URL", value = "https://auth-dev.dgz48.xyz" },
       ]
 
       secrets = [
@@ -162,6 +173,10 @@ resource "aws_ecs_task_definition" "webapi" {
         {
           name      = "KEYCLOAK_CLIENT_SECRET"
           valueFrom = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/keycloak/oauth-client-secret"
+        },
+        {
+          name      = "KEYCLOAK_ADMIN_CLIENT_SECRET"
+          valueFrom = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/tasks/${var.env}/app/keycloak-admin-client-secret"
         },
       ]
 

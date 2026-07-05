@@ -26,8 +26,9 @@ data "aws_iam_policy_document" "trust" {
     tasks_plan      = "tasks-plan"
     tasks_apply     = "tasks-apply"
     release_build   = "release-build"
-    tasks_deploy    = var.env # "dev" → environment:dev OIDC sub (webapi ECS + web S3/CF + artifact verify)
-    platform_deploy = var.env # "dev" → environment:dev OIDC sub (keycloak ECS on platform cluster)
+    tasks_deploy    = var.env            # "dev" → environment:dev OIDC sub (webapi ECS + web S3/CF + artifact verify)
+    platform_deploy = var.env            # "dev" → environment:dev OIDC sub (keycloak ECS on platform cluster)
+    dev_smoke       = "${var.env}-smoke" # "dev" → environment:dev-smoke OIDC sub (post-deploy dev-smoke E2E, ADR-0041)
   }
 
   statement {
@@ -108,11 +109,18 @@ data "aws_iam_policy_document" "platform_plan" {
     resources = ["*"]
   }
 
-  # SES read (ses: domain identity / DKIM / Config Set)
+  # SES read (ses: domain identity / DKIM / Config Set / receipt rule)
   statement {
     sid       = "SesRead"
     actions   = ["ses:Get*", "ses:List*", "ses:Describe*"]
     resources = ["*"]
+  }
+
+  # S3 read (e2e-mail バケットの plan 中 refresh。規約 R2: 対象 bucket ARN に限定。ADR-0041 / #843)
+  statement {
+    sid       = "E2eMailS3Read"
+    actions   = ["s3:Get*", "s3:List*"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
   }
 
   # Route53 read (shared public zone records / cert validation)
@@ -493,10 +501,45 @@ data "aws_iam_policy_document" "platform_apply" {
       "ses:PutConfigurationSetReputationOptions",
       "ses:PutConfigurationSetSendingOptions",
       "ses:PutConfigurationSetTrackingOptions",
+      # SES 受信(ADR-0041 / #843): receipt rule set / rule(classic ses API、resource-level 非対応)
+      "ses:CreateReceiptRuleSet",
+      "ses:DeleteReceiptRuleSet",
+      "ses:CreateReceiptRule",
+      "ses:DeleteReceiptRule",
+      "ses:UpdateReceiptRule",
+      "ses:ReorderReceiptRuleSet",
+      "ses:SetActiveReceiptRuleSet",
       "ses:TagResource",
       "ses:UntagResource",
     ]
     resources = ["*"]
+  }
+
+  # S3 write (e2e-mail: 受信メール保存バケット / policy / PAB / SSE / versioning / lifecycle)
+  # 規約 R1: 書込み action は完全列挙
+  # 規約 R2: scoped to platform-<env>-e2e-mail bucket ARN(ADR-0041 / #843)
+  statement {
+    sid = "E2eMailS3Write"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:PutBucketPolicy",
+      "s3:DeleteBucketPolicy",
+      "s3:PutBucketPublicAccessBlock",
+      "s3:PutBucketTagging",
+      "s3:DeleteBucketTagging",
+      "s3:PutEncryptionConfiguration",
+      "s3:PutBucketVersioning",
+      "s3:PutLifecycleConfiguration",
+    ]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
+  }
+
+  # S3 read (e2e-mail バケットの apply 中 refresh。規約 R2: 対象 bucket ARN に限定)
+  statement {
+    sid       = "E2eMailS3Read"
+    actions   = ["s3:Get*", "s3:List*"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
   }
 
   # Route53 write (shared public zone records / cert validation)
@@ -1253,6 +1296,47 @@ resource "aws_iam_role_policy" "release_build" {
   name   = "release-build-policy"
   role   = aws_iam_role.release_build.id
   policy = data.aws_iam_policy_document.release_build.json
+}
+
+# ---------------------------------------------------------------------------
+# platform-<env>-smoke  (read-only; post-deploy dev-smoke E2E — ADR-0041 / #843)
+# Trust: environment:<env>-smoke(GitHub Environment 名は "<env>-smoke")。dev-smoke.yml が
+# SES 受信メールを S3 から取得して signup フルフローを検証するための最小権限(e2e-mail バケットの
+# inbound/ プレフィックス読取のみ)。Keycloak/SPA へは公開 HTTPS で到達するため AWS 権限は S3 読取だけで足りる。
+# ロール名は platform-* とする: platform_apply の IAM 管理スコープ(role/platform-* + role/tasks-*)で
+# 作成でき、かつ platform 所有の e2e-mail バケットを読むため。GitHub Environment 名(<env>-smoke)とは別。
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "dev_smoke" {
+  name               = "platform-${var.env}-smoke"
+  assume_role_policy = data.aws_iam_policy_document.trust["dev_smoke"].json
+}
+
+data "aws_iam_policy_document" "dev_smoke" {
+  # SES 受信メール本文(MIME)の取得。規約 R2: inbound/ プレフィックスのオブジェクト ARN に限定。
+  statement {
+    sid       = "E2eMailGet"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail/inbound/*"]
+  }
+
+  # 受信メール一覧(宛先一致ポーリング)。ListBucket は prefix condition で inbound/ に限定。
+  statement {
+    sid       = "E2eMailList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::platform-${var.env}-e2e-mail"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["inbound/*"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "dev_smoke" {
+  name   = "platform-${var.env}-smoke-policy"
+  role   = aws_iam_role.dev_smoke.id
+  policy = data.aws_iam_policy_document.dev_smoke.json
 }
 
 # ---------------------------------------------------------------------------

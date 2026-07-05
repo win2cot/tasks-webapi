@@ -32,7 +32,7 @@ public class RegisterMemberUseCase {
     Long userId =
         userRegistrationPort.upsertPendingMember(
             cmd.email(), cmd.fullName(), cmd.fullNameKana(), cmd.departmentName());
-    credentialProvisioningPort.provisionCredential(cmd.email(), cmd.rawPassword());
+    credentialProvisioningPort.provisionCredential(cmd.email(), cmd.fullName(), cmd.rawPassword());
     return userId;
   }
 }

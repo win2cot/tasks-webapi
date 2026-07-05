@@ -11,7 +11,7 @@ class LoggingCredentialProvisioningAdapterTest {
 
   @Test
   void provisionCredentialDoesNotThrow() {
-    assertThatCode(() -> adapter.provisionCredential("user@example.com", "raw-password"))
+    assertThatCode(() -> adapter.provisionCredential("user@example.com", "表示 名", "raw-password"))
         .doesNotThrowAnyException();
   }
 }
