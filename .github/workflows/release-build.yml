@@ -52,7 +52,7 @@ jobs:
       build_web: ${{ steps.detect.outputs.build_web }}
       run_validate_infra: ${{ steps.detect.outputs.run_validate_infra }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
@@ -174,7 +174,7 @@ jobs:
       BUILD_WEBAPI: ${{ needs.detect-changes.outputs.build_webapi }}
       BUILD_KEYCLOAK: ${{ needs.detect-changes.outputs.build_keycloak }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.version }}
 
@@ -380,7 +380,7 @@ jobs:
       BUILD_WEB: ${{ needs.detect-changes.outputs.build_web }}
       S3_BUCKET: tasks-dev-frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.version }}
 
@@ -462,7 +462,7 @@ jobs:
     env:
       TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.version }}
 
@@ -522,7 +522,7 @@ jobs:
       PREV_VERSION: ${{ needs.detect-changes.outputs.prev_version }}
       FIRST_RELEASE: ${{ needs.detect-changes.outputs.first_release }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ needs.detect-changes.outputs.version }}
