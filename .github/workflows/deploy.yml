@@ -143,7 +143,7 @@ jobs:
         run: mkdir -p ~/.terraform.d/plugin-cache
 
       - name: Restore Terraform plugin cache (shared/dev)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.terraform.d/plugin-cache
           key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
@@ -220,7 +220,7 @@ jobs:
         run: mkdir -p ~/.terraform.d/plugin-cache
 
       - name: Restore Terraform plugin cache (tasks/dev)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.terraform.d/plugin-cache
           key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
@@ -574,7 +574,7 @@ jobs:
         run: mkdir -p ~/.terraform.d/plugin-cache
 
       - name: Restore Terraform plugin cache (shared/dev)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.terraform.d/plugin-cache
           key: tf-plugins-shared-dev-${{ hashFiles('infra/shared/environments/dev/.terraform.lock.hcl') }}
@@ -643,7 +643,7 @@ jobs:
         run: mkdir -p ~/.terraform.d/plugin-cache
 
       - name: Restore Terraform plugin cache (tasks/dev)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.terraform.d/plugin-cache
           key: tf-plugins-tasks-dev-${{ hashFiles('infra/environments/dev/.terraform.lock.hcl') }}
