@@ -37,7 +37,7 @@ dependencies {
     compileOnly("org.keycloak:keycloak-server-spi-private:$keycloakVersion")
     // User Storage SPI の基底(UserStorageProvider / UserStorageProviderFactory)は model-storage に在る。
     compileOnly("org.keycloak:keycloak-model-storage:$keycloakVersion")
-    implementation("org.jspecify:jspecify:1.0.0")
+    implementation("org.jspecify:jspecify:1.0.1")
 
     mysqlDriver("com.mysql:mysql-connector-j:$mysqlConnectorVersion")
 
