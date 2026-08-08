@@ -77,7 +77,7 @@ dependencies {
     // JsonNullable for PATCH partial-update DTOs (ADR-0014)
     // jackson-databind-nullable は Jackson 2/3 両対応だが当プロジェクトは Jackson 3 (tools.jackson) のみ使用する。
     // Jackson 2 の transitive 依存は Flyway / Logback から別途持ち込まれるため機能上問題なく除外可能。
-    implementation("org.openapitools:jackson-databind-nullable:0.2.10") {
+    implementation("org.openapitools:jackson-databind-nullable:0.2.11") {
         exclude(group = "com.fasterxml.jackson.core")
     }
 
