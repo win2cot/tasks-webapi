@@ -71,8 +71,8 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.14.2")
     testRuntimeOnly("org.slf4j:slf4j-simple:2.0.18")
 
-    errorprone("com.google.errorprone:error_prone_core:2.50.0")
-    errorprone("com.uber.nullaway:nullaway:0.13.7")
+    errorprone("com.google.errorprone:error_prone_core:2.51.0")
+    errorprone("com.uber.nullaway:nullaway:0.14.3")
 }
 
 // Keycloak イメージの providers/ へ配備する JAR(SPI 本体 + MySQL JDBC ドライバ)を build/providers/ に集める。

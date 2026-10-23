@@ -93,8 +93,8 @@ dependencies {
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.10.0")
 
     // Other dependencies
-    errorprone("com.google.errorprone:error_prone_core:2.50.0")
-    errorprone("com.uber.nullaway:nullaway:0.13.7")
+    errorprone("com.google.errorprone:error_prone_core:2.51.0")
+    errorprone("com.uber.nullaway:nullaway:0.14.3")
 }
 
 tasks.withType<JavaCompile>().configureEach {
